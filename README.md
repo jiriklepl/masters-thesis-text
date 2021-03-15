@@ -1,4 +1,4 @@
-# Master-s-Thesis-Text
+# Master's-Thesis-Text
 
 ## Zadání
 
