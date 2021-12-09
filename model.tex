@@ -1,0 +1,63 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[a-2u]{pdfx}
+
+%% Character encoding: usually latin2, cp1250 or utf8:
+\usepackage[utf8]{inputenc}
+
+%% Prefer Latin Modern fonts
+\usepackage{lmodern}
+
+\usepackage{amsmath}        % extensions for typesetting of math
+\usepackage{amsfonts}       % math fonts
+\usepackage{amsthm}         % theorems, definitions, etc.
+% \usepackage{bbding}         % various symbols (squares, asterisks, scissors, ...)
+\usepackage{bm}             % boldface symbols (\bm)
+
+\begin{document}
+
+Type variable space: $\mathbb{N}$ (finite)
+
+\begin{itemize}
+    \item Assumptions: $A :: List(Fact)$ (finite)
+    \item Facts: $F :: List(Fact)$ (finite)
+    \item Known typings: $\mathcal{T} :: \mathbb{N} \to \mathbb{T}$ where $\mathbb{T}$: set of types (infinite)
+    \item Known kinds: $\mathcal{K} :: \mathbb{N} \to \mathbb{K}$ where $\mathbb{K}$: set of kinds (constant)
+    \item Known constnesses: $\mathcal{S} :: \mathbb{N} \to \mathbb{S}$ where $\mathbb{S}$: set of constnesses (constant)
+\end{itemize}
+
+Facts: (subset)
+\begin{itemize}
+    \item Unification: $(\sim) :: \mathbb{N} \to \mathbb{N} \to Fact$
+    \item Subtyping (left type is less specific): $(\leq) :: \mathbb{N} \to \mathbb{N} \to Fact$
+    \item Typing: $(= \mathtt{F} (\mathbf{n})) \circ \mathcal{T} :: \mathbb{N} \to Fact$, with a type function $\mathtt{F} :: \mathbb{N}^{n_\mathtt{F}} \to \mathbb{N}$
+    \item Kind limit: $(\geq \mathtt{Kind}) \circ \mathcal{K} :: \mathbb{N} \to Fact$
+    \item Constness limit: $(\geq \mathtt{Constness}) \circ \mathcal{S} :: \mathbb{N} \to Fact$
+    \item Class constraint: $\mathcal{C}_{\texttt{Class}, i} :: \mathbb{N}^{n_{\texttt{Class}, i}} \to Fact$
+\end{itemize}
+
+We define subtyping as reflexive, transitive and antisymmetric and we extend the definition to kinds and constnesses
+
+Rules (for every type variable $a, b, c$ and vector of type variables $\mathbf{a}, \mathbf{b}$, class constraint $\mathcal{C}$, typing $\mathcal{T}$, kind assignments $\mathcal{K}$, constness assignments $\mathcal{S}$ and type function $\texttt{F}$):
+\begin{itemize}
+    \item Deduction: $a \leq b \iff \mathcal{T}(a) = \mathcal{T}(b) \land \mathcal{K}(a) \leq \mathcal{K}(b) \land \mathcal{S}(a) \leq \mathcal{S}(b)$
+    \item Most generic kind: $\mathtt{GENERIC} \leq \mathcal{K}(a); \mathtt{GENERIC} \cap \mathcal{K}(a) = \mathcal{K}(a)$
+    \item Most restrictive kind: $\mathcal{K}(a) \leq \mathtt{EMPTY}; \mathtt{EMPTY} \cap \mathcal{K}(a) = \mathtt{EMPTY}$
+    \item Kind intersection: $\mathcal{K}(a) \leq \mathcal{K}(c) \land \mathcal{K}(b) \leq \mathcal{K}(c) \implies \mathcal{K}(a) \cap \mathcal{K}(b) \leq \mathcal{K}(c)$
+    \item Constness limits: $\mathtt{REGULAR} \leq \mathcal{S}(a) \leq \mathtt{CONSTEXPR}$
+    \item Constness linearity: $\mathcal{S}(a) \leq \mathcal{S}(b) \lor \mathcal{S}(b) \leq \mathcal{S}(a)$
+    \item $(a_i \leq b_i \land \mathcal{C}^i = (+)) \lor (a_i \geq b_i \land \mathcal{C}^i = (-)) \land \mathcal{C}(\mathbf{a}) \implies \mathcal{C}(\mathbf{b})$ (also, do overlap checks!, $(+)$ and $(-)$ denote (contra)variance)
+    \item $\mathcal{T}(a) = (b \to c) \implies \mathcal{S}(c) \leq \mathcal{S}(b) \leq \mathcal{S}(a)$
+    \item Body typing: $\mathtt{F}(\_, c) = (\_ \to c) \land \mathtt{Def}(b) \in \mathtt{body}(\mathtt{F}) \implies \mathcal{S}(c) \leq \mathcal{S}(b)$
+\end{itemize}
+\pagebreak
+
+Strategy:
+\begin{enumerate}
+    \item Find minimal satisfying values for $\mathcal{T}$ and $\mathcal{K}$, overlap check assures that this process does not determine the code's semantics
+    \item Check whether there is a proof for every $\mathcal{T}$ and $\mathcal{K}$, all $\mathcal{T}$ in monotype context should be set to some concrete value and all $\mathcal{K}$ should be higher than $\mathtt{GENERIC}$
+    \item Find maximal satisfying values for $\mathcal{S}$
+    \item Compute all terms that have $\mathcal{S}$ set to $\mathtt{CONSTEXPR}$
+    \item Translate the rest to the (virtual) machine code
+\end{enumerate}
+
+\end{document}
