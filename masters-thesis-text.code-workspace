@@ -4,5 +4,21 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"todo-tree.regex.regex": "(//|#|%|<!--|\\\\|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)",
+		"todo-tree.general.tags": [
+			"BUG",
+			"HACK",
+			"FIXME",
+			"TODO",
+			"todo",
+			"XXX",
+			"[ ]",
+			"[x]"
+		],
+		"cSpell.words": [
+			"constnesses",
+			"unifications"
+		]
+	}
 }
