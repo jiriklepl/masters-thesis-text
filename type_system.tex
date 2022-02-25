@@ -1,0 +1,93 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[a-2u]{pdfx}
+
+%% Character encoding: usually latin2, cp1250 or utf8:
+\usepackage[utf8]{inputenc}
+
+%% Prefer Latin Modern fonts
+\usepackage{lmodern}
+
+\usepackage{amsmath}        % extensions for typesetting of math
+\usepackage{amsfonts}       % math fonts
+\usepackage{mathtools}       
+\usepackage{array}       
+\usepackage{amsthm}         % theorems, definitions, etc.
+% \usepackage{bbding}         % various symbols (squares, asterisks, scissors, ...)
+\usepackage{bm}             % boldface symbols (\bm)
+\usepackage{algpseudocode}
+\usepackage{bussproofs}
+
+\usepackage{float}
+
+\newtheorem{definition}{Definition}
+\newtheorem{observation}{Observation}
+\newtheorem{lemma}{Lemma}
+
+\newenvironment{grammar}[2]
+ {\begin{tabular}{@{\qquad}>{$}l<{$}@{\qquad}p{.75\linewidth}@{}}
+  \multicolumn{1}{@{}l@{}}{$#1$}&\multicolumn{1}{l@{}}{\hspace{-2em}#2}\\}
+ {\end{tabular}}
+
+\begin{document}
+
+\section{Type System}
+
+The type system is based on an extension of the ML type system with (multi-parameter) type classes and type constructors with monomorphic type kinds.
+
+This is extended by adding a limited form of subtyping. In the new type system, the types are a result of the traditional typing together with added subtype dimensions and their subtype constraints.
+
+\begin{definition}[Typing dimension]
+    The typing dimension is a semilattice with type unification serving as the meet operation.
+\end{definition}
+
+\begin{definition}[Subtype dimension]
+    The subtype dimension $\mathbb{S}$ is required to be a bounded lattice independent on the type-inferred program. We then define a transitive and reflective binary relation on types $\leq_S$ ($\tau \leq_S \sigma \iff \tau_S \wedge \sigma_S = \tau_S\ \mathrm{and}\ \tau_S \vee \sigma_S = \sigma_S$, where $\tau_S$ and $\sigma_S$ are the types' respective subtype dimensions) which states that one type is less general in the given dimension than another type.
+
+    We extend this definition to other comparison operators as well. Note that $\tau =_S \sigma \not\Rightarrow \tau = \sigma$, but indeed $\tau = \sigma \Rightarrow \tau =_S \sigma$.
+
+    We use the operator $\leq_S$ as a type constraint and we allow one of the operands be an element of $\mathbb{S}$.
+
+    In the type system specific to this thesis, we use two subtype dimensions: data kinds $\mathbb{K}$ and constnesses $\mathbb{C}$.
+\end{definition}
+
+\begin{observation}[Subtype dimension constraint combining]
+    If a type $\tau$ is upper-bounded in a subtype dimension by multiple upperbounds: $\tau \leq_S s_1$, $\tau \leq_S s_2$, then we can replace such constraints with a single $\tau \leq_S (s_1 \wedge s_2)$. Similarly for lowerbounds and the join operation.
+
+    Note that given multiple upperbounds and lowerbounds, the set of viable types can be empty. 
+\end{observation}
+
+
+\begin{definition}[Types]
+    Let $\mathbb{S}_1, \dots \mathbb{S}_n$ be all subtype dimensions recognized by the system. Then for two types $\tau, \sigma$ with the same typing: \linebreak $\tau = \sigma \iff \forall i \in \{1, \dots n\} . \tau =_{S_n} \sigma$. 
+
+    We then formally define types as a composition of their dimensions:
+    $\tau = \tau_T + \tau_{S_1} + \cdots \tau_{S_n}$, where $\tau_T$ is the typing of $\tau$.
+\end{definition}
+
+\begin{definition}[Type variables]
+    $\mathbb{V}$ is the space of type variables given as follows, each (sub)type considered by the inference algorithm will be assigned a type variable representing it:
+    \begin{grammar}{\mathbb{V} \Rightarrow v}{}
+        \mid \mathbb{V} '
+    \end{grammar}
+
+    The variables follow the obvious lexical ordering (based on their length), we use this ordering when choosing \textit{fresh variables}.
+\end{definition}
+
+\begin{definition}[Typings]
+    $\mathbb{T}$ is the space of typings given as follows, they specify that a type follows the same typing as a different type:
+    \begin{table}[H]
+        \begin{grammar}{\mathbb{T} \Rightarrow }{Typing}
+            \mathbb{V} & Variable \\
+            \left[\mathbb{T}\right] \to \mathbb{T} & Function \\
+            \mid \left[\mathbb{T}\right] & Tuple \\
+            \mid \mathbb{T}\ \mathbb{T} & Application \\
+            \cdots
+        \end{grammar}
+    \end{table}
+\end{definition}
+
+\begin{definition}[Types]
+    Types use the same language as typings and thus the space $\mathbb{T}$ is considered the space of types as well as the space of typings.
+\end{definition}
+
+\end{document}
