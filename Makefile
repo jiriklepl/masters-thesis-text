@@ -1,17 +1,14 @@
-export TEXINPUTS=../tex//:
+NAME=thesis
+ABSTRACT=abstract
+LATEXMKOPTS=#-pdf #enable for forcing pdflatex
+LATEXMK=latexmk $(LATEXMKOPTS)
 
-all: thesis.pdf abstract.pdf
+PDFS=$(NAME).pdf $(ABSTRACT)-en.pdf $(ABSTRACT)-cz.pdf
 
-# LaTeX must be run multiple times to get references right
-thesis.pdf: thesis.tex $(wildcard *.tex) bibliography.bib thesis.xmpdata
-	pdflatex $<
-	bibtex thesis
-	pdflatex $<
-	pdflatex $<
-
-abstract.pdf: abstract.tex abstract.xmpdata
-	pdflatex $<
+all:
+	$(LATEXMK) $(NAME)
+	$(LATEXMK) $(ABSTRACT)-cz
+	$(LATEXMK) $(ABSTRACT)-en
 
 clean:
-	rm -f *.log *.dvi *.aux *.toc *.lof *.lot *.out *.bbl *.blg *.xmpi
-	rm -f thesis.pdf abstract.pdf
+	$(LATEXMK) -C
