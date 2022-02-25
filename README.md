@@ -1,86 +1,25 @@
+# Master's Thesis Text
 
-# A slightly improved thesis template
+## Zadání
 
-What's new:
+C-- je nízkoúrovňový programovací jazyk používaný jako částečně přenositelný backend pro jiné překladače, především pro ghc. Syntaxe C--, odvozená z jazyka C, je pro programátory čitelnější než reprezentace v assembleru nebo LLVM, navíc umožňuje výrazně flexibilnější specifikace flow control a datových struktur.
 
-- modern packages (biblatex, cleveref, better fonts)
-- less confusing directory structure
-- slightly more useful examples (figures, diagrams, tables, code listings),
-  structure hints, some goodies
-- autobuilding of abstract PDF/A files from metadata
-- multiple variants of the front page
-  - MFF with the new logo
-  - "traditional" UK variant
-  - Nature faculty & bioinformatics
-- Czech localization with nicely named references
-- Dockerized & CI build options
+Cílem práce je rozšířit C-- o generické programování implementované parametrickým polymorfismem s typovými třídami. Student naváže na svou bakalářskou práci, která ukázala užitečnost kombinace imperativního jazyka s Hindley-Milnerovým typovým systémem. Hlavní náplní práce budou komplexnější vlastnosti typového systému potřebné pro podporu záznamových typů, automatické zprávy zdrojů podobné RAII, a uživatelsky specifikovatelné sémantiky konstant. Zdrojový kód v rozšířeném C-- bude kompilovaný do vhodně zvolené nižší reprezentace, např. LLVM.
 
-See the [pre-built version](build/thesis.pdf) for details
+Výsledek by měl zjednodušit implementaci specifického nízkoúrovňového softwaru. Schopnosti kompilátoru budou zhodnoceny pomocí demonstračních programů, především porovnáním s podobně zacílenými jazyky.
 
-## CI configuration
+## Literatura
 
-The repository contains valid configuration for both *GitLab* CI and the *GitHub* actions.
-No matter what GIT hosting you use, you can always download latest version of your thesis right from the artifacts!
+Sulzmann, M., Müller, M. and Zenger, C., 1999. Hindley/Milner style type systems in constraint form. Res. Rep. ACRC-99-009, University of South Australia, School of Computer and Information Science.
 
-## How-to
+Heeren, B.J., Hage, J. and Swierstra, S.D., 2002. Generalizing Hindley-Milner type inference algorithms.
 
-1. Type `make`, check that everything compiles. You should get a `thesis.pdf` that passes the PDF/A validation. If not, complain.
-2. Fill in `metadata.tex` and all `xmpdata` files.
-3. Look at the example code (there are several hints), remember it, erase it.
-4. Write the thesis.
-5. Submit and defend the thesis.
+Vytiniotis, D., Jones, S.P., Schrijvers, T. and Sulzmann, M., 2011. OutsideIn(X): Modular type inference with local assumptions. Journal of functional programming, 21(4-5), pp.333-412.
 
-### Installing LaTeX
+Jones, S.P., Ramsey, N. and Reig, F., 1999, September. C--: A portable assembly language that supports garbage collection. In International Conference on Principles and Practice of Declarative Programming (pp. 1-28). Springer, Berlin, Heidelberg.
 
-LaTeX installation may be hard (especially on various substandard operating systems). On most BSD and GNU-style Linux distributions, it should be sufficient to install some random `texlive-*` packages (and add more if non-standard TeX functionality is required); see e.g. [a complete list for Debian](docker/Dockerfile).
+Lattner, C. and Adve, V., 2004, March. LLVM: A compilation framework for lifelong program analysis & transformation. In International Symposium on Code Generation and Optimization, 2004. CGO 2004. (pp. 75-86). IEEE.
 
-- For a single-user distribution on unix, use the provided [installation script](https://www.tug.org/texlive/quickinstall.html).
-- On windows, use [MiKTeX](https://www.tug.org/texlive/windows.html).
-- On Mac, use any suitable variant of [MacTeX](https://www.tug.org/mactex/).
+Abelson, H. and Sussman, G.J., 1996. Structure and interpretation of computer programs (p. 688). The MIT Press.
 
-Optionally, you can use a Docker container with TeX. You can either build the image yourself from the supplied `Dockerfile`:
-```sh
-cd docker
-docker build -t betterthesis/latex .
-```
-
-...or get some pre-built one (which is usually much faster:
-![image size](https://img.shields.io/docker/image-size/aergus/latex)
-)
-```sh
-docker pull aergus/latex
-```
-
-After that, you should be able to compile the thesis using this command (change the container name to `betterthesis/latex` in case you built it yourself):
-```sh
-docker run -u $UID -ti --rm -v $PWD:/th -w /th aergus/latex make
-```
-
-## PDF/A
-
-With a bit of luck, you should get a valid PDF/A right out of LaTeX.
-
-A PDF/A validator that can point out exact problems is available here: https://github.com/mff-cuni-cz/cuni-thesis-validator
-
-Common PDF/A problems include:
-
-- imported PDF pictures that are not PDF/A.
-- the used font does not support PDF/A (including the fonts in imported pictures). See https://martin.hoppenheit.info/blog/2018/pdfa-validation-and-inconsistent-glyph-width-information/ for a very ugly case.
-
-Solutions:
-
-- use `pdfa.sh` to convert the imported picture PDFs to PDF/A-compatible form the "hard way" (although this does _not_ retain the PDF/A metadata mark, see comments in the script)
-- read the commentary by Martin Mareš (that describes most of the common problems) here: https://mj.ucw.cz/vyuka/bc/pdfaq.html
-- as a last resort if everything other fails, use `pdfa.sh` for the whole `thesis.pdf`
-
-## Ideas/improvements/more examples?
-
-Pull requests welcome.
-
-## License?
-
-Parts of the code (esp. the title page) are based on the original template (available from the faculty website) by Martin Mareš, Arnošt Komárek, and Michal Kulich. (Thanks!)
-
-University and faculty logos are a property of the respective universities and faculties.
-
-Everything else in this repository is released into the public domain, not encumbered by any kind of copyright at all.
+Jones, S.P. and Marlow, S., 2002. Secrets of the glasgow haskell compiler inliner. Journal of Functional Programming, 12
