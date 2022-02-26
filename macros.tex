@@ -111,3 +111,9 @@
 \newcommand{\crefpairconjunction}{ a~}
 \newcommand{\crefrangeconjunction}{ a~}
 \fi
+
+
+\newenvironment{grammar}[2]
+ {\begin{tabular}{@{\qquad}>{$}l<{$}@{\qquad}p{.75\linewidth}@{}}
+  \multicolumn{1}{@{}l@{}}{$#1$}&\multicolumn{1}{l@{}}{\hspace{-2em}#2}\\}
+ {\end{tabular}}
