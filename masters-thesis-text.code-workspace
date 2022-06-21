@@ -5,7 +5,7 @@
 		}
 	],
 	"settings": {
-		"todo-tree.regex.regex": "(//|#|%|<!--|\\\\|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)",
+		"todo-tree.regex.regex": "(//|#|%|<!--|\\\\|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)|\\\\(xxx)",
 		"todo-tree.general.tags": [
 			"BUG",
 			"HACK",
@@ -19,6 +19,27 @@
 		"cSpell.words": [
 			"constnesses",
 			"unifications"
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Build",
+				"type": "shell",
+				"group": "build",
+				"command": "make",
+				"presentation": {
+					"echo": false,
+					"reveal": "always",
+					"focus": true,
+					"panel": "shared",
+					"showReuseMessage": false,
+					"clear": false
+				},
+				"isBackground": false,
+				"problemMatcher": []
+			}
 		]
 	}
 }
