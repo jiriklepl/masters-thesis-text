@@ -197,7 +197,10 @@ This is extended by adding a limited form of subtyping. In the new type system, 
         \item Result function: $u :: \mathcal{G} \to \mathcal{V}$
     \end{itemize}
 
-    By $<_\mathcal{K}$ and $<_\mathcal{C}$, we understand that there exist a directional path between the given distinct operands in the respective graphs. We naturally extend this definitions to the other comparison operators (for example: $x =_\mathcal{K} y$ if there are paths back and forth between $x$ and $y$ in the graph $\mathcal{K}$ or $x = y$). % TODO: not that they can be equal
+    By $<_{\mathcal{K}}$ and $<_{\mathcal{C}}$,
+    we understand that there exist a directional path between the given distinct operands in the respective graphs.
+    We naturally extend this definitions to the other comparison operators
+    (for example: $x =_{\mathcal{K}} y$ if there are paths back and forth between $x$ and $y$ in the graph $\mathcal{K}$ or $x = y$). % TODO: not that they can be equal
 
 \end{defn}
 
@@ -221,20 +224,19 @@ This is extended by adding a limited form of subtyping. In the new type system, 
 
         \item \label{invG} If we have two type variables $v, v' \in \mathcal{V}$ representing two types, then:
             \begin{enumerate}
-                \item If $k (v) =_\mathcal{K} k (v')$, then: $k (v) = k(v')$. In other words, graph $\mathcal{K}$ has no strongly connected components (this will be true for $\mathcal{C}$ as well).
-                \item If $c (v) =_\mathcal{C} c (v')$, then: $c (v) = c(v')$.
+                \item If $k (v) =_{\mathcal{K}} k (v')$, then: $k (v) = k(v')$. In other words, graph $\mathcal{K}$ has no strongly connected components (this will be true for $\mathcal{C}$ as well).
+                \item If $c (v) =_{\mathcal{C}} c (v')$, then: $c (v) = c(v')$.
                 \item If $b_K (k (v)) = b_K (k (v')) = [k_1, k_1]$ for some kind $k_1 \in \mathbb{K}$, then $k (v) = k (v')$.
                 \item If $b_K (k (v)) = b_K (k (v')) = [k_1, k_2]$ for some kinds $k_1, k_2 \in \mathbb{K}$, $k_2 < k_1$, then $k (v) = k (v')$ and it is an invalid kind.
                 \item If $b_C (c (v)) = b_C (c (v')) = [c_1, c_1]$ for some constness $c_1 \in \mathbb{C}$, then $c (v) = c (v')$.
                 \item If $b_C (c (v)) = b_C (c (v')) = [c_1, c_2]$ for some constnesses $c_1, c_2 \in \mathbb{K}$, $c_2 < c_1$, then $c (v) = c (v')$ and it is an invalid constness.
-                \item If $k (v) <_\mathcal{K} k (v')$, then for bounds $k_1, k_2, k_3, k_4$ such that $b_K (k (v)) = [k_1, k_3]$, and $b_K (k (v')) = [k_2, k_4]$ it holds that $k_1 \leq k_2$ and $k_3 \leq k_4$. Note that for new (and any non-stored) variables we will assume the least restrictive bounds, so adhering to this invariant means we update the bounds monotonically.
-                \item If $c (v) <_\mathcal{C} c (v')$, then for bounds $c_1, c_2, c_3, c_4$ such that $b_C (c (v)) = [c_1, c_3]$, and $b_C (c (v')) = [c_2, c_4]$ it holds that $c_1 \leq c_2$ and $c_3 \leq c_4$.
+                \item If $k (v) <_{\mathcal{K}} k (v')$, then for bounds $k_1, k_2, k_3, k_4$ such that $b_K (k (v)) = [k_1, k_3]$, and $b_K (k (v')) = [k_2, k_4]$ it holds that $k_1 \leq k_2$ and $k_3 \leq k_4$. Note that for new (and any non-stored) variables we will assume the least restrictive bounds, so adhering to this invariant means we update the bounds monotonically.
+                \item If $c (v) <_{\mathcal{C}} c (v')$, then for bounds $c_1, c_2, c_3, c_4$ such that $b_C (c (v)) = [c_1, c_3]$, and $b_C (c (v')) = [c_2, c_4]$ it holds that $c_1 \leq c_2$ and $c_3 \leq c_4$.
             \end{enumerate}
 
         \item If a type represented by a type variable $v$ is explained ($v \in \mathcal{V}_p$), then $t (d (v)) = p(v) \left[ \tau := t (d (\tau)) | \tau \in \mathrm{free} (p (d))\right]$. In other words, the typing of the type represented by $v$ follows the typing generated from the typings of the types via which it is explained. \label{invT}
     \end{enumerate}
 \end{defn}
-
 
 \begin{defn}[Algorithm interstate invariants]
     The algorithm is designed to have the following interstate invariants: (we use the indices to distinguish a successor state variable from its predecessor, we will always assume $n < m \in \mathbb{N}$, we then use these indices in all derived functions too).
