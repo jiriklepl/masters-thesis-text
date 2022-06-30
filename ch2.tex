@@ -1,10 +1,38 @@
+
+\providecommand{\cmm}{C-{}-}
+
 \chapter{C-{}-}
 
 \todo{C-{}- is great etc etc}
 
+Before we talk about the specifics of C-{}-, let us explain our choice of this particular language for our demonstration of using type inference and RAII in a systems-programming context.
+
+\url{https://downloads.haskell.org\/ghc\/latest\/docs\/html\/users_guide\/codegens.html}
+
+\xxx{man2}
+
+Cmm (a variant of C-{}-) is used as a backend intermediate representation for GHC, the most popular haskell compiler. C-{}- is thus designed on great experiential basis by one of the co-creators of the haskell language, Simon Peyton Jones, alongside with GHC and itself.
+
+Just as Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers, abstracting away various architectural specifics, while also offering the users to target for specific registers-sizes. For example, \lstinline{bits32}; register types, in the context of \cmm, called ``kinds'' (but we will refer to them as ``data kinds'' or ``data-kinds'' to distinguish them from kinds we know from the HM type system and similar systems), note that these data kinds are usually strictly separated from each other in other languages (by so-called ``aliasing rules'' \xxx{link aliasing rules for c++ (perhaps C)? or for some asssembler if such exist?}); and then \cmm can give constraints even on using specific registers. This was one of the main motivations for choosing this language for our exploration as it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers.
+
+It is due to the above reasons, it is usually categorized as pseudo-assembler.
+
+The algorithm our experimental approach is based on, so called ``deferred inference'' or the ``French approach'' \xxx{refer to the prev chapter}, was proposed to the public by the same person, so there were even more arguments for this choice motivated by some overlaps in design and ideas. \xxx{is it good to point out specific overlaps?}
+
+As we based the proof-of-concept implementation on the second, and the latest \xxx{when?}, revision of the standard, we will always refer to this version unless otherwise specified.
+
 \section{C-{}- specification}
 
+What characterizes \cmm the best is perhaps simply minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and it offers a high number of additional compiler hints and constraints the user can specify.
+
+What differs the approach of \cmm from other C-like languages is that it has call statements instead of call expressions. This is an important distinction as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. This follows a similar philosophy to people like Linus Torvalds, for example, who oppose quite popular modern features like operator overloading and C\# accessors. \xxx{link torvals}, \xxx{link the cis language?}.
+
+It is important to note that \cmm it is not minimalistic in all aspects as it, as opposed to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation and, opposed to regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed.
+
+It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers.
+
 \todo{put focus on the general specifics}
+
 
 \section{Used extensions to the language}
 
@@ -12,15 +40,85 @@
 
 \subsection{Type classes and instances}
 
+Syntactically, we extended the language with \li{class}es and their \li{instance}s to showcase the solution to the problems identified in our previous work. \xxx{explain, link}
+
+\xxx{example for classes and motivation}
+
+
 \subsection{Structures and member fields}
 
-%todo{rename to records}
+And then we added \li{struct}s (a record structure syntax known from other C-like languages) as they are not a part of the \cmm language and we also added \li{new} specifiers for their instances to implement our RAII goal. For these RAII features see the subsection \ref{RAII}
+
+Structures use the syntax derived from regular data specialization for maximum consistency.
+
+\xxx{an example for structs and motivation}
+
+One of the side-effects of this approach is that one field can have various name aliases. This might seem inconsequential, but it can have very interesting consequences in polymorphic programming.
+
+\xxx{more rambling?}
+
+\xxx{one of the good features or just an interesting tid-bit of trivia?}
+
+
+In our previous work, we discussed that the standard Damas-Milner approach to inference does not cover so called ``functional dependencies'', more on that in \xxx{somewhere in the first section}, there we discuss why these functional dependencies are an important topic in the scope of this thesis.
+
+Our example implementation, albeit incomplete demonstrates the effects on programming convenience within type-safety, which comes from using functional dependencies $\text{structure} \to \text{field}$. As we discussed in the previous work, the best work-around without this inference feature would be requiring some special structure of the code: either requiring all field to have unique names; requiring all field of the same name be of the same type as well; or have the same dependencies on the structures-type arguments.
+
+\todo{rename to records?}
 
 \subsection{Generic dereference and typed labels}
 
+On the semantic level, we extended the language to have typed labels. All data labels have the type derived from the object stored at the label's location, and the code labels have a distinct type from data labels as they do not point to any such object.
+
+This typing of labels allowed us to make quite subtle, but very useful syntactic extension of allowing the type be omitted in pointer dereference expressions.
+
+\xxx{example here}
+
+This combines well with structures and their fields.
+
+
+\xxx{example here, more text}
+
+\subsection{Extensions to the type system}
+
+We extended the language with the HM-like type system with type classes. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it served as a side goal in exploring type systems and type inference.
+
+This turned out to be a very significant decision as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible guides on best practices. \xxx{we will offer such a guide in our conclusions}.
+
+We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types registers a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value.
+
+This subtyping mechanism was designed to model an orthogonal space where each dimension is a bounded lattice and we do not consider sharp inequalities. Sharp inequalities would be, on one hand, very easy way to design an incomputable system, and on the other, sharp inequalities do not make any sense when we want to determine just the minimal ``run-timeness'' \xxx{i cannot think of anything better} or the minimal set of registers a value can be received on from an assignment.
+
+Lattice-constrained subtyping is efficiently computable if it is orthogonal to the mechanism of deciding type class instances. For each topological component of the code (a part of code, that has cyclic references), it is a simple minimization problem on a lattice structure defined by some fixed constants.
+
+Let us explain this on a simple procedure with arguments $a$ and $b$ and a return value $c$, and let there be a constant $K$ that represents a concrete data kind or constness (perhaps, it can be a link-expr requirement).
+
+If there is a value $x$ and then another two values $y, w$ and the system contains constraints: (we will omit saying more-or-equal in order to make the statements shorter; it is good for clarity to read ``more constant'' as ``more specific'')
+
+\begin{itemize}
+    \label{subtyping-idea}
+    \item $x$ is more constant than $y$ (perhaps, because we assign $x$ to $y$, an easy exercise is to show that for these types of subtyping, assignment targets have to be more general than the source operand)
+    \item $y$ is more constant than $c$
+    \item $x$ is more constant than $K$
+    \item $w$ is more constant than $x$
+    \item $a$ and $b$ are more constant than $w$
+\end {itemize}
+
+If those are the only subtyping constraints in the given component (in this dimension, since they are required to be orthogonal) \xxx{add dot}.
+
+As our algorithm was based on \textit{deferring inference} algorithm which assumes an equality theory of the types and not lattice structures, the implementation progressed for a long time with some modifications to the general idea of the original algorithm, but met many obstacles and there was a lot of time spent on resolving those. It then seemed necessary to offer a better, working alternative, which we will in the \xxx{reference}.
+
+We eventually designed a simpler and much easier to implement primitives for this type system. 
+
+
 \subsection{RAII}
 
-%todo{reference something about RAII}
+\label{RAII}
+
+\xxx{example for structs and motivation; why RAII, what is RAII, why is RAII, how RAII differs in the context of a procedural language}
+
+
+\todo{reference something about RAII}
 
 \section{Modelling C-{}-}
 
