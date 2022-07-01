@@ -87,39 +87,45 @@ This turned out to be a very significant decision as the modelling of these data
 
 We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types of registers a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value.
 
-This subtyping mechanism was designed to model an orthogonal space where each dimension is a bounded semilattice and we do not consider sharp inequalities. Sharp inequalities would be, on one hand, very easy way to design an incomputable system, and on the other, sharp inequalities do not make any sense when we want to determine just the minimal ``run-timeness'' \xxx{i cannot think of anything better to name the idea of being a run-time variable} or the minimal set of registers a value can be received on from an assignment.
+This subtyping mechanism was designed to model an orthogonal space where each dimension is a bounded semilattice and we do not consider constraints with sharp inequalities. Sharp inequalities would be very easy way to design an incomputable system, and also, they do not make any sense when we want to determine just the minimal ``run-timeness'' \xxx{i cannot think of anything better to name the idea of being a run-time variable} or the minimal set of registers a value can be received on, from an assignment.
 
 We represent the various subtype dimensions of the type variables with so-called ``subtype variables''. We will use these two representation synonymously.
 
 
 \begin{defn}[Typing dimension]
-    The typing dimension is a semilattice with type instantiation serving as the $\leq_T$ operation and $\forall a . a$ being the bottom element.
+    \label{typing_def}
+    The typing dimension is a semilattice with instantiation \xxx{ref to instantiation} serving as the $\leq_T$ operation and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables \xxx{mention de bruijn notation? Are types $\forall a . \forall b . a \to b$ and $\forall b . \forall a . a \to b$ equivalent? Not really if assuming type applications, and at the same time yes they are if we are talking HM}).
+
+    Note that, apart from other, subtype, dimensions, the equality in typing dimension is congruent with type applications, type substitutions, and, if we are not considering type functions, all type operations are bijective.
+\end{defn}
+
+\begin{defn}[Types]
+    Types follow the same rules as the typing dimension, see the previous definition (\ref{typing_def}).
 \end{defn}
 
 \begin{defn}[Subtype dimension]
     Each subtype dimension $s$ is required to be a bounded semilattice orthogonal to other dimensions and non-affecting typeclass instantiation.
     
-    It is defined by $\leq_s$ operation and a set of subtyping constants specific to each subtype dimension. This set is nonempty for each dimension and it contains a bottom $\bot_s$.
+    It is defined by $\leq_s$ operation and a set of distinct subtyping constants specific to each subtype dimension. This set is nonempty for each dimension and it contains a bottom $\bot_s$.
     
     We can then simply extend the definition to apply to user-defined subtype dimensions, but that is not within the scope of this thesis.
 
     In the type system specific to this thesis, we use two subtype dimensions: \textit{data kinds} and \textit{constnesses}.
 \end{defn}
 
-
 \begin{defn}[Subtype constraints]
     We define the set of constraints $t \leq_s t'$ where $t$ and $t'$ are two types and $\leq_s$ is ordering of $t$ and $t'$ in the subtype dimension $s$
 \end{defn}
 
-\begin{defn}[Equality on types]
+\begin{defn}[Equality of types implies equality of their subtype dimensions]
     If two types $t$ and $t'$ are equal, then $t =_s t$ for every subtype dimension $s$. Note that it does not the other way.
 \end{defn}
 
-\begin{defn}[Subtype]
+\begin{defn}[(Direct) subtype]
     We call $t$ a (direct) subtype of $t'$, if $t \leq_s t'$ in subtype dimensions and $t =_T t'$ (their typings are the same).
 \end{defn}
 
-\begin{defn}[subtype variable]
+\begin{defn}[Subtype variable]
     A subtype variable of a type variable $t$ is a variable $s$ such that $t =_s s$ and, for every other type $t' \neq t$ and a corresponding subtype variable $s'$, $t' =_s t \To s =_s s'$.
 \end{defn}
 
@@ -146,13 +152,13 @@ If there is a constness value $x$ and then another two constness values $y, w$ a
     \item $a$ and $b$ are more constant than $w$
 \end {itemize}
 
-\centerline{\includegraphics[width=\linewidth / 2]{img/subtyping-idea.pdf}}
+\centerline{\includegraphics[width=\linewidth / 2]{img/out/subtyping-idea.pdf}}
 
 If those are the only subtyping constraints in the given component (in this dimension, since they are required to be orthogonal), we can safely unify the constness variables $x$ and $w$ as they are limited by the same fixed values (upper-bouned by $c$ and $K$ and lower-bouned by $a$ and $b$). And we can clearly see that the minimal $x$ will be always equal to $w$ regardless of constnesses of $a$, $b$ and $c$ in various outside contexts. Less obvious is whether we can safely unify $x$ and $y$. And since the system is based on minimization, the minimal $y$ will be, again, always equal to $x$ (with an exception of cases where $x$ is not solvable; but we are interested in solving the whole constraint space and not single values, so separating them does not make sense - yet still, in practice, we can keep some outside meta-information about the bounds of the original variables for better error messages).
 
 So, to clearly conclude the example. We are interested in an algorithm that unifies variables $x$, $y$ and $w$ and annotated the type of the function with constraints $c \geq a, c \geq b, K \geq a, K \geq b$ for the outside subtype information and $c \geq x, K \geq x, x \geq a, x \geq b$ for the inside subtype information. We then will go even further and state that $x = \sup \{a, b\}$ and that $x \leq c, x\leq K$ ($x$ is defined by its lower-bounds), notice the equality in the former constraint. We then can completely remove the constraint $x \leq c, x \leq K$ as it is redundant (can be shown via transitivity).  We then will use a notation similar to the latter constraint for more understandable outside subtype information for each variable. For $c$, that would be $c \geq \sup \{a, b\}$. Fixing the subtype variables to suprema of their lower-bounds has an effect of not having any free variables in the constraints for the procedure.
 
-If the theory contained sharp inequalities, we could not separate the outside subtype information from the inside subtype information, nor have such liberty in unifying the variables.
+If the theory contained constraints with sharp inequalities, we could not separate the outside subtype information from the inside subtype information, nor have such liberty in unifying the variables.
 
 This example demonstrates that the minimal subtypes within a space of fixed values can be transformed into an equality theory.
 
@@ -204,11 +210,19 @@ If we extend this mechanism to the type system with typeclasses, we have to rega
 \end{defn}
 
 
+The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context. \xxx{see ch1}
+
+\begin{defn}[fixed value in subtyping with type classes and context levels]
+    Each subtype variable of a skolem constant, subtyping dimension constant, a subtype variable of a type variable appearing in a type class constraint, or a variable with a lower context level than that of the solver is a fixed value.
+\end{defn}
+
+We did not strive for representing existentials as there has to be runtime type information included with them, so we will ignore such system.
+
+\xxx{the folllowing is obsolete}
 
 As our algorithm was based on \textit{deferring inference} algorithm which assumes an equality theory of the types and not lattice structures, the implementation progressed for a long time with some modifications to the general idea of the original algorithm, but met many obstacles and there was a lot of time spent on resolving those. It then seemed necessary to offer a better, working alternative, which we will in the \xxx{reference}.
 
 We eventually designed a simpler and much easier to implement primitives for this type system. 
-
 
 \subsection{RAII}
 

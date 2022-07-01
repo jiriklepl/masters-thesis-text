@@ -91,7 +91,7 @@ They are typically constrained by some class, which then provides the witness th
         let xs = [MkT 5, MkT "String"]
 
         -- f :: T -> String
-        f T{getT=a} = show a
+        f MkT{getT=a} = show a
 
         traverse_ putStr (fmap f xs)
         -- prints: 5"hello"
