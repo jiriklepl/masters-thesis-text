@@ -1,0 +1,27 @@
+digraph {
+	rankdir = LR
+
+	node [shape="circle", style="filled"]
+
+	subgraph blue {
+		node [fillcolor="lightblue"]
+		x
+		y
+		w
+	}
+
+	subgraph green {
+		node [fillcolor="lightgreen"]
+		a
+		b
+		c
+	}
+
+	subgraph red {
+		node [fillcolor="orange"]
+		K
+	}
+
+	c -> y -> x -> w -> { a b }
+	K -> x
+}

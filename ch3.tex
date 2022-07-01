@@ -10,44 +10,6 @@
 
 \section{Type System}
 
-The type system is based on an extension of the HM type system with (multi-parameter) type classes and type constructors with monomorphic type kinds.
-
-This is extended by adding a limited form of subtyping. In the new type system, the types are a result of the traditional typing together with added subtype dimensions and their subtype constraints.
-
-\begin{defn}[Typing dimension]
-    The typing $\mathbb{T}$ dimension is a lattice with type instantiation serving as the $\leq$ operation and $\forall a . a$ being the top element.
-\end{defn}
-
-\begin{defn}[Subtype dimension]
-    The subtype dimension $\mathbb{S}$ is required to be a bounded lattice independent on the type-inferred program. We can then simply extend the definition to apply to user-defined subtype dimensions, but that is not within the scope of this thesis.
-
-    In the type system specific to this thesis, we use two subtype dimensions: data kinds $\mathbb{K}$ and constnesses $\mathbb{C}$.
-\end{defn}
-
-\begin{defn}[Types]
-    We then formally define types $\widehat{\mathbb{T}}$ as a composition of typings and subtype dimensions:
-    
-    Let (distinct) $\mathbb{S}_1, \dots \mathbb{S}_n$ be all subtype dimensions recognized by the system, then a type $\tau$ is defined as $\tau = \tau_T \cap \tau_{S_1} \cap \cdots \tau_{S_n}$; where $\tau_T \in \mathbb{T}$ is called the typing of $\tau$ and $\tau_{S_1} \in \mathbb{S}_1, \dots \tau_{S_n} \in \mathbb{S}_n$ are called subtype coordinates of $\tau$ in the respective dimensions. The operation $\cap$ is a meet operation on constraints $\tau_T, \tau_{S_1}, \dots \tau_{S_n}$ such that the result is unique for each combination.
-\end{defn}
-
-\begin{defn}[Subtype dimension comparison]
-    We define a transitive and reflective binary relation on types $\leq_S$ ($\tau \leq_S \sigma \iff \tau_S \wedge \sigma_S = \tau_S\ \mathrm{and}\ \tau_S \vee \sigma_S = \sigma_S$, where $\tau_S$ and $\sigma_S$ are the types' respective subtype coordinates in the dimension $\mathbb{S}$) which states that one type is less general in the given dimension than another type.
-
-    We extend this definition to other comparison operators as well. Note that $\tau =_S \sigma \not\Rightarrow \tau = \sigma$, but indeed $\tau = \sigma \Rightarrow \tau =_S \sigma$.
-
-    We use the operator $\leq_S$ as a type constraint and we allow one of the operands be an element of $\mathbb{S}$.
-\end{defn}
-
-\begin{lemma}[Type equality]
-    Let (distinct) $\mathbb{S}_1, \dots \mathbb{S}_n$ be all subtype dimensions recognized by the system. Then for two types $\tau, \sigma$ with the same typing: $\tau = \sigma \iff \forall i \in \{1, \dots n\} . \tau =_{S_n} \sigma$. 
-\end{lemma}
-
-\begin{lemma}[Subtype dimension constraint combining]
-    If a type $\tau$ is upper-bounded in a subtype dimension by multiple upperbounds: $\tau \leq_S s_1$, $\tau \leq_S s_2$, then we can replace such constraints with a single $\tau \leq_S (s_1 \wedge s_2)$. Similarly for lowerbounds and the join operation.
-
-    Note that given multiple upperbounds and lowerbounds, the set of viable types can be empty. 
-\end{lemma}
-
 \section{Inference}
 
 \subsection{Kind inference}

@@ -85,18 +85,60 @@ We extended the language with the HM-like type system with type classes. And for
 
 This turned out to be a very significant decision as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible guides on best practices. \xxx{we will offer such a guide in our conclusions}.
 
-We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types registers a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value.
+We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types of registers a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value.
 
-This subtyping mechanism was designed to model an orthogonal space where each dimension is a bounded lattice and we do not consider sharp inequalities. Sharp inequalities would be, on one hand, very easy way to design an incomputable system, and on the other, sharp inequalities do not make any sense when we want to determine just the minimal ``run-timeness'' \xxx{i cannot think of anything better} or the minimal set of registers a value can be received on from an assignment.
+This subtyping mechanism was designed to model an orthogonal space where each dimension is a bounded semilattice and we do not consider sharp inequalities. Sharp inequalities would be, on one hand, very easy way to design an incomputable system, and on the other, sharp inequalities do not make any sense when we want to determine just the minimal ``run-timeness'' \xxx{i cannot think of anything better to name the idea of being a run-time variable} or the minimal set of registers a value can be received on from an assignment.
 
-Lattice-constrained subtyping is efficiently computable if it is orthogonal to the mechanism of deciding type class instances. For each topological component of the code (a part of code, that has cyclic references), it is a simple minimization problem on a lattice structure defined by some fixed constants.
+We represent the various subtype dimensions of the type variables with so-called ``subtype variables''. We will use these two representation synonymously.
 
-Let us explain this on a simple procedure with arguments $a$ and $b$ and a return value $c$, and let there be a constant $K$ that represents a concrete data kind or constness (perhaps, it can be a link-expr requirement).
 
-If there is a value $x$ and then another two values $y, w$ and the system contains constraints: (we will omit saying more-or-equal in order to make the statements shorter; it is good for clarity to read ``more constant'' as ``more specific'')
+\begin{defn}[Typing dimension]
+    The typing dimension is a semilattice with type instantiation serving as the $\leq_T$ operation and $\forall a . a$ being the bottom element.
+\end{defn}
+
+\begin{defn}[Subtype dimension]
+    Each subtype dimension $s$ is required to be a bounded semilattice orthogonal to other dimensions and non-affecting typeclass instantiation.
+    
+    It is defined by $\leq_s$ operation and a set of subtyping constants specific to each subtype dimension. This set is nonempty for each dimension and it contains a bottom $\bot_s$.
+    
+    We can then simply extend the definition to apply to user-defined subtype dimensions, but that is not within the scope of this thesis.
+
+    In the type system specific to this thesis, we use two subtype dimensions: \textit{data kinds} and \textit{constnesses}.
+\end{defn}
+
+
+\begin{defn}[Subtype constraints]
+    We define the set of constraints $t \leq_s t'$ where $t$ and $t'$ are two types and $\leq_s$ is ordering of $t$ and $t'$ in the subtype dimension $s$
+\end{defn}
+
+\begin{defn}[Equality on types]
+    If two types $t$ and $t'$ are equal, then $t =_s t$ for every subtype dimension $s$. Note that it does not the other way.
+\end{defn}
+
+\begin{defn}[Subtype]
+    We call $t$ a (direct) subtype of $t'$, if $t \leq_s t'$ in subtype dimensions and $t =_T t'$ (their typings are the same).
+\end{defn}
+
+\begin{defn}[subtype variable]
+    A subtype variable of a type variable $t$ is a variable $s$ such that $t =_s s$ and, for every other type $t' \neq t$ and a corresponding subtype variable $s'$, $t' =_s t \To s =_s s'$.
+\end{defn}
+
+Lattice-constrained subtyping is efficiently computable if it is orthogonal to the mechanism of deciding type class instances. For each topological component of the code (a part of code, that has cyclic references), it is a simple minimization problem on a semilattice structure defined by some fixed constants.
+
+\begin{cor}
+    We say that there is an inequality (or equality) constraint between two values if such constraint is given by the input to the algorithm, is in a set of base assumptions (relations between subtyping constants, definition of bottom), or comes from transitivity, reflexivity, and weak antisymmetry.
+
+    We will always assume generated closure over transitivity, reflexivity and weak antismymmetry as that simplifies many statements and lemmata.
+\end{cor}
+
+\begin{ex}
+\label{subtyping-idea}
+
+Let us explain this on a simple procedure with arguments' constnesses $a$ and $b$ and a return value's $c$, and let there be a constant $K$ that represents a concrete constness (perhaps, it can be a link-expr requirement).
+
+If there is a constness value $x$ and then another two constness values $y, w$ and the system contains constraints: (we will omit saying more-or-equal in order to make the statements shorter; it is good for clarity to read ``more constant'' as ``more specific'')
 
 \begin{itemize}
-    \label{subtyping-idea}
     \item $x$ is more constant than $y$ (perhaps, because we assign $x$ to $y$, an easy exercise is to show that for these types of subtyping, assignment targets have to be more general than the source operand)
     \item $y$ is more constant than $c$
     \item $x$ is more constant than $K$
@@ -104,7 +146,64 @@ If there is a value $x$ and then another two values $y, w$ and the system contai
     \item $a$ and $b$ are more constant than $w$
 \end {itemize}
 
-If those are the only subtyping constraints in the given component (in this dimension, since they are required to be orthogonal) \xxx{add dot}.
+\centerline{\includegraphics[width=\linewidth / 2]{img/subtyping-idea.pdf}}
+
+If those are the only subtyping constraints in the given component (in this dimension, since they are required to be orthogonal), we can safely unify the constness variables $x$ and $w$ as they are limited by the same fixed values (upper-bouned by $c$ and $K$ and lower-bouned by $a$ and $b$). And we can clearly see that the minimal $x$ will be always equal to $w$ regardless of constnesses of $a$, $b$ and $c$ in various outside contexts. Less obvious is whether we can safely unify $x$ and $y$. And since the system is based on minimization, the minimal $y$ will be, again, always equal to $x$ (with an exception of cases where $x$ is not solvable; but we are interested in solving the whole constraint space and not single values, so separating them does not make sense - yet still, in practice, we can keep some outside meta-information about the bounds of the original variables for better error messages).
+
+So, to clearly conclude the example. We are interested in an algorithm that unifies variables $x$, $y$ and $w$ and annotated the type of the function with constraints $c \geq a, c \geq b, K \geq a, K \geq b$ for the outside subtype information and $c \geq x, K \geq x, x \geq a, x \geq b$ for the inside subtype information. We then will go even further and state that $x = \sup \{a, b\}$ and that $x \leq c, x\leq K$ ($x$ is defined by its lower-bounds), notice the equality in the former constraint. We then can completely remove the constraint $x \leq c, x \leq K$ as it is redundant (can be shown via transitivity).  We then will use a notation similar to the latter constraint for more understandable outside subtype information for each variable. For $c$, that would be $c \geq \sup \{a, b\}$. Fixing the subtype variables to suprema of their lower-bounds has an effect of not having any free variables in the constraints for the procedure.
+
+If the theory contained sharp inequalities, we could not separate the outside subtype information from the inside subtype information, nor have such liberty in unifying the variables.
+
+This example demonstrates that the minimal subtypes within a space of fixed values can be transformed into an equality theory.
+
+\end{ex}
+
+We are using the term ``fixed values'', but we have not yet introduced its meaning. They are some constants that are not to be optimized by the subtyping inference mechanism. In the most simple version of this system, if we do not consider type classes (only the HM type system with type constructors), the fixed values consist of subtyping dimension constants (in the example \ref{subtyping-idea}, that would be $K$); and then the subtype dimensions of skolem constants (again, in the example \ref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
+
+\begin{defn}[fixed value in subtyping without type classes]
+    Each subtype variable of a skolem constant or subtyping dimension constant is a fixed value.
+\end{defn}
+
+If the type is a monotype (and thus it is a valid type for a program), it has no skolem constants and that means we can safely define all the subtype variables as suprema of their lower bounds.
+
+\begin{lemma}[Each subtype variable can be set to a suprema of its lower bounds, where each such bound is the first fixed value on each path from this variable towards the bottom; this will give us the minimimal solution to the constraints]
+    \label{suprema-subtyping}
+\end{lemma}
+
+\begin{proof}
+The validity of this simplification can be shown in toplogical order of the variables, where the topology is defined by their inequalities. If they are in a strongly connected component, they have to be equal, so without a loss of generality, we can assume, that there is a topological ordering of the variables, starting with the lowest.
+
+If a set $X$ denotes the set of all the lower bounds of a variable $x$ and it is the variable with the lowest topological order. That means that if a variable $y$ constrained by $x$, then the constraint is $x \leq y$. If $x^\star$ is equal to the supremum of its lower bounds, then for every other $x'$ such that $x' \geq x^\star$, if $y \geq x'$, then also $y \geq x^\star$. This means that $x^\star$ is at least as good as $x'$ for all the constraints regarding $x$, while it also minimizes $x$ itself.
+\end{proof}
+
+\begin{defn}[Outside subtype information (of a function)]
+    The outside subtype information consists of subtype constraints between all fixed values. And the bindings to their respective types. All subtype variables appearing in a strongly connected component are unified. 
+
+    It can be reduced under transitivity and reflexivity.
+\end{defn}
+
+\begin{cor}[Outside subtype information]
+    The bindings of types to their corresponding subtype variables are $1 \to \star$.
+\end{cor}
+
+\begin{defn}[Inside subtype information]
+    The inside subtype information consists of a set of statements in the form $x = \sup X$.
+
+    Validity of this is described by lemma \ref{suprema-subtyping}.
+\end{defn}
+
+\begin{cor}[Typechecker for user-code that contains blackbox function does not need inside subtype information]
+
+    Another direct consequence of lemma \ref{suprema-subtyping}.
+\end{cor}
+
+If we extend this mechanism to the type system with typeclasses, we have to regard the subtype dimensions of variables constrained in a type class constraints.
+
+\begin{defn}[fixed value in subtyping with type classes]
+    Each subtype variable of a skolem constant, subtyping dimension constant, or a subtype variable of a type variable appearing in a type class constraint is a fixed value.
+\end{defn}
+
+
 
 As our algorithm was based on \textit{deferring inference} algorithm which assumes an equality theory of the types and not lattice structures, the implementation progressed for a long time with some modifications to the general idea of the original algorithm, but met many obstacles and there was a lot of time spent on resolving those. It then seemed necessary to offer a better, working alternative, which we will in the \xxx{reference}.
 
