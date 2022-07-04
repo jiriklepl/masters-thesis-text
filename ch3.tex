@@ -1,3 +1,7 @@
+\providecommand{\mbb}[1]{\mathbb{#1}}
+\providecommand{\pipe}{\ |\ }
+\providecommand{\mcal}{\mathcal}
+
 \chapter{Design}
 
 \todo{PROC BC JO ALE PROC ZLEPSIT}
@@ -8,7 +12,11 @@
 
 \section{Flattening and blockifying}
 
-Flattening phase and blockifying phases together are important parts of the algorithm if we are interested either in translating the code into an SSA intermediate form or llvm backend. And at the same time they analyze the control flow of the program.
+Flattening phase and blockifying phase together are important parts of the algorithm especially if we are interested either in translating the code into an SSA intermediate form (for example for the llvm backend) or any other form which assumes semi-sequential code (a graph of basic blocks).
+
+Basic blocks are defined as the maximum sequence of consecutive statements such that it starts with a label (or the procedure's entry point) and ends with a (conditional) branch or a return statement (and apart from these two instances, it contains neither label statements nor any control flow statements), fallthrough to another basic block is regarded as an implicit branch.
+
+The result of the combination of these two phases is semi-sequential representation of the code annotated with the information of starts and ends of singular basic blocks and the control flow of the program analyzed.
 
 \subsection{Flattening}
 
@@ -26,11 +34,9 @@ One more work for the flattening phase in the scope of this programming language
 
 The blockifying phase follows the flattening phase and it annotated the nodes of AST with annotations stating whether the node starts a basic block, is part of a certain basic block, or that it is not a part of any basic block (is trivially unreachable). It then gives warnings for encountering these unreachable statements.
 
-Basic blocks are defined as the maximum sequence of consecutive statements such that it starts with a label and ends with a (conditional) branch or a return statement (and apart from these two instances, it contains neither label statements nor any control flow statements), fallthrough to an another basic block is regarded as implicit branch.
-
 It also analyzes illegal fallthroughs (fallthroughs to continuation statements and fallthroughs outside of the procedure).
 
-After the blockifier annotates all basic blocks in a procedure, it then measures live ranges of all variables and gives errors for uninitialized variables. It also finds out unreachable labels (and thus finds nontrivially unreachable code as well).
+After the blockifier annotates all basic blocks in a procedure, it then measures live ranges of all variables and gives errors for uninitialized variables \xxx{link bednarek}. It also finds out unreachable labels (and thus finds nontrivially unreachable code as well).
 
 The state it keeps is usable for translating the code into an SSA form. For each basic block, it keeps the list of the basic blocks it is preceded by in the control flow of the corresponding procedure and for each variable present in the block or alive in its scope, it contains whether the variable is required to be alive at the basic block's entry, whether it is written to, and whether it is being read from.
 
@@ -163,68 +169,134 @@ In our solution, the type inferencer contains keeps track of the type definition
     The functions that project objects from $\mathcal{D}$ to the respective properties are called $t$, $c$ and $k$.
 \end{defn}
 
-\begin{defn}[Facts]
-    $\mathbb{F}$ is the space of flat facts given as follows:
+\begin{defn}[Constraints]
+    $\mathbb{F}$ is the space of flat constraints given as follows:
     \begin{table}[H]
-        \begin{grammar}{\mathbb{F} \Rightarrow }{Flat facts}
+        \begin{grammar}{\mathbb{F} \Rightarrow }{Flat constraints}
             \mathbb{T} \sim \mathbb{T} & Equality constraint: \textit{specifies that the types are identical} \\
-            \mathbb{T} \sim_T \mathbb{T} & Typing unification: \textit{specifies that the types are identical in the typing dimension} \\
+            \mathbb{T} \sim_T \mathbb{T} & Typing equality: \textit{specifies that the types are identical in the typing dimension} \\
             \mathbb{T} \leq_K \mathbb{T} & SubKind: \textit{specifies that the right-hand operand has more general data kind than the left-hand operand} \\
             \mathbb{T} \leq_C \mathbb{T} & SubConst: \textit{specifies that the right-hand operand has more general constness than the left-hand operand} \\
             \mathbb{K} \leq_K \mathbb{T} \leq_K \mathbb{K} & Kind bounds: \textit{specifies that the type has a data kind from the given range} \\
             \mathbb{C} \leq_C \mathbb{T} \leq_C \mathbb{C} & Const bounds: \textit{specifies that the type has a constness from the given range} \\
-            C\ \mathbb{T} & Class constraint: \textit{specifies that the given constraint type (application of a class constraint constructor to a certain number of types - unless nullary) is instantiable} \\
-            \mathbb{T} \geq_M \mathbb{T} & Instantiation constraint: \textit{specifies that the left-hand operand is monotype instance of the polytype right-hand operand; note: this is satisfiable only if the right-hand operand is indeed a polytype} \\
+            C?\ \mathbb{T} & Class constraint: \textit{specifies that the given constraint type (application of a class constraint constructor to a certain number of types - unless nullary) has to be instantiable} \\
+            C!\ \mathbb{T} & Class fact: \textit{specifies that the given constraint type (application of a class constraint constructor to a certain number of types - unless nullary) is instantiable} \\
+            \mathbb{T} \sqsupseteq_M \mathbb{T} & Instantiation constraint: \textit{specifies that the left-hand operand is monotype instance of the polytype right-hand operand; note: this is satisfiable only if the right-hand operand is indeed a polytype} \\
         \end{grammar}
     \end{table}
 
-    Sometimes we will use derived facts like $\mathbb{T} \leq_K \mathbb{K}$, $\mathbb{T} =_K \mathbb{T}$, etc. These are either special cases of the aforementioned facts, or compositions of multiple facts. The most complicated derived fact we will use is the ``SubType'' fact, $\mathbb{T} \leq \mathbb{T}$, which is a combination of $\mathbb{T} \sim_T \mathbb{T}$, $\mathbb{T} \leq_K \mathbb{T}$ and $\mathbb{T} \leq_C \mathbb{T}$.
+    Sometimes we will use derived constraints like $\mathbb{T} \leq_K \mathbb{K}$, $\mathbb{T} =_K \mathbb{T}$, etc. These are either special cases of the aforementioned constraints, or compositions of multiple constraints. The most complicated derived constraint we will use is the ``SubType'' constraint, $\mathbb{T} \leq \mathbb{T}$, which is a combination of $\mathbb{T} \sim_T \mathbb{T}$, $\mathbb{T} \leq_K \mathbb{T}$ and $\mathbb{T} \leq_C \mathbb{T}$.
 
-    It should be noted that, within the defined language, we cannot state the facts $\mathbb{T} \not\sim_T \mathbb{T}$, $\mathbb{T} \not\leq_K \mathbb{T}$, $\mathbb{T} \not\leq_C \mathbb{T}$ and $\mathbb{T} \not\leq_M \mathbb{T}$ and thus these (and similar ones) are not even derived facts.
+    It should be noted that, within the defined language, we cannot state the constraints $\mathbb{T} \not\sim_T \mathbb{T}$, $\mathbb{T} \not\leq_K \mathbb{T}$, $\mathbb{T} \not\leq_C \mathbb{T}$ and $\mathbb{T} \not\sqsupseteq_M \mathbb{T}$ and thus these (and similar ones) are not even derived constraints.
 
-    $\mathbb{W}$ is the space of facts given as follows:
+    $\mathbb{W}$ is the space of (nested) constraints given as follows:
 
     \begin{table}[H]
         \begin{grammar}{\mathbb{W} \Rightarrow }{Facts}
-            \mathbb{F} & Flat fact \\
-            \forall \alpha_1, \dots \alpha_n . [\mathbb{F}] \Rightarrow [\mathbb{W}] & Nested facts: \textit{specifies that satisfying the given nested facts (listed after the double arrow) requires the assumed facts (listed before the double arrow) to be satisfied as well}
+            \mathbb{F} & Flat constraint \\
+            \forall \alpha_1, \dots \alpha_n . [\mathbb{F}] \Rightarrow [\mathbb{F}] & Nested constraints: \textit{specifies that satisfying the given nested constraints (listed after the double arrow) requires the assumed constraints (listed before the double arrow) to be satisfied as well}
+
+            Since we do not support existentials and nested functions, we differ from the \xxx{spj algorithm here} algorithm here having only a single nested level.
         \end{grammar}
     \end{table}
 \end{defn}
 
 \begin{defn}[Bounds]
-    We call the right-hand operand of a bounds fact the upper-bound and the left-hand operand the lower-bound.
+    We call the right-hand operand of a bounds constraint the upper-bound and the left-hand operand the lower-bound.
 \end{defn}
 
 \begin{defn}[Trivial bounds]
-    If a fact $F$ states $k_1 \leq_K \tau \leq_K k_2$ and $k_2 \leq k_1$, or $c_1 \leq_C \tau \leq_C c_2$ and $c_2 \leq c_1$, we call such a bounds fact trivial.
+    If a constraint $F$ states $k_1 \leq_K \tau \leq_K k_2$ and $k_2 \leq k_1$, or $c_1 \leq_C \tau \leq_C c_2$ and $c_2 \leq c_1$, we call such a bounds constraint trivial.
 
 \end{defn}
 
 \begin{lemma}[Trivial bounds]
     \label{trivBoundsObs}
     \begin{enumerate}
-        \item If the bounds of a trivial bounds fact are equal, the type constesses of the types constrained by such a fact have to be the same and we can unify them.
-        \item If, for a bounds fact, the upperbound is lower than the lowerbound, the fact cannot be satisfied.
+        \item If the bounds of a trivial bounds constraint are equal, the type constesses of the types constrained by such a constraint have to be the same and we can unify them.
+        \item If, for a bounds constraint, the upperbound is lower than the lowerbound, the constraint cannot be satisfied. We mark it an absurd bounds constraint and we include it in an error report.
     \end{enumerate}
 \end{lemma}
 
+\begin{defn}[Functional dependency set]
+    We define a space $\mbb {FD}$ of functional dependency sets $FD$.
+
+    Functional dependency set $FD$ on a sequence of type variables $V :: [\mbb V]$ is a set of rules $R$, each of the form $V \to \{\mtt {FROM}, \mtt {TO}, \mtt {UNDEFINED}\}$. This set of rules always contains a ``trivial'' rule $r_0$ such that $r_0(v) = \mtt{FROM}$, this trivial rule is implicit and can be omitted when defining a functional dependency set. If a constraint $C \bmath \alpha$ (where $\bmath \alpha = V$) follows a functional dependency set $FD$, then, for each proof $C \bmath t$ of this constraint and for every corresponding rule $r$ in its set of rules $R$, we generate a new proof of the form $\forall \{v \pipe v \gets \bmath \alpha, r(v) = \mtt {TO}\} . \{v \sim t \pipe (v, t) \gets (\mtt {zip}\ \bmath \alpha\ \bmath t), r(v) = \mtt {TO} \} \To C_r [\mtt {if}\ r(v) = \mtt {FROM}\ \mtt {then}\ t\ \mtt {else}\ v \pipe (v, t) \gets (\mtt {zip}\ \bmath \alpha\ \bmath t), r(v) \neq \mtt {UNDEFINED}]$. (we borrowed haskell syntax for more succinct definition) This new constraint proof for the variables with $\mtt {FROM}$ variables replaced by types generates new equality constraints on $\mtt {TO}$ variables. We then remove the proof $C \bmath t$.
+
+    We then replace each constraint $C \bmath t$ with constraints $C_r \bmath t_r$ for each corresponding rule $r$, where $t_r$ are subsequences of $t$ generated in a fashion similar to the constraint generation. And we then remove the constraint $C \bmath t$.
+
+    In practice, we always simplify the functional dependency sets to minimize the number of constraints. \xxx{fundep simplification}
+
+    The written notation for defining a functional dependency set is a list of statements of the form $\bmath \alpha_1 \to \bmath \alpha_2$ where $\bmath \alpha_1, \bmath \alpha_2 \subseteq V$. Each such statement then corresponds to a new rule $r$, where $r(v) := \mtt {FROM}$ if $v \in \alpha_1$, otherwise if $v \in \alpha_2$, then $r(v) := \mtt {TO}$, for each variable $v \in V$.
+\end{defn}
+
+\subsection{Type inference preprocessing}
+
+\xxx{how the preprocessor works}
+
+\subsection{Type inference algorithm}
+
 \begin{defn}[Algorithm state]
-    The algorithm state consists of the following finite variables
+    The algorithm state consists of the following finite variables. \xxx{Feel free to disregard all variables mentioning data kinds or constnesses as they are not relevant for demonstration of the algorithm.}
     % TODO: explain each
     \begin{itemize}
-        \item Facts: $\mathcal{F} :: [\mathbb{W}]$
+        \item Constraints: $\mathcal{F} :: [\mathbb{W}]$
+
+        This is the complete list of unresolved constraints. In the initial state, it contains the constraints generated by the preprocessor. In subsequent states, it can also contain constraints which are derived from various resolving rules.
+
+        It defines the termination state. The algorithm terminates if it cannot resolve any of the currently unresolved constraints. The algorithm terminates with success if the list $\mcal F$ is empty.
         \item Active type variables: $\mathcal{V} \subset \mathbb{V}$
+        
+        This set contains the type variables ever encountered by the algorithm and not present in $\mcal G$. The initial value is therefore $\emptyset$. The algorithm then, when generating a ``fresh variable'', uses the smallest possible $v$ such that $\forall v' \in \mcal V. v > v'$.
+        
+        This is only used when describing the algorithm, the actual implementation represents this set via the mapping $u$ and a single integral value
+
         \item Forgotten type variables: $\mathcal{G} \subset \mathbb{V}$
+        
+        This set contains all type variables that were in $\mcal V$ in some past state of the algorithm, but are not in the current state.
+        
+        Same as above, this state variable is not present in the implementation, but helps describing some invariants.
         \item primitive patterns: $\mathcal{P} \subset \mathbb{P}$
+        
+        This set contains all type definitions separated encountered or generated by the algorithm separated structurally by type constructors. see \xxx{definition for primitive patterns}
         \item Type properties: $\mathcal{D} \subset \mathbb{D}$
-        \item SubKinds: $\mathcal{K} :: \text{Directional graph} on\ \mathbb{V}$
+        This set contains three-valued tuples containing the properties of each type. See \xxx{definition for type properties}
+        \item SubKinds: $\mathcal{K} :: \text{Directional graph on}\ \mathbb{V}$
+        
+        Directional graph that stores the encountered and determined inequalities between data kinds of pairs of type variables.
         \item KindBounds: $b_K :: \mathbb{V} \to \text{interval} \left[\mathbb{K}, \mathbb{K}\right]$
+        
+        This mapping maps each type variable representing the data kind of some types to the known bounds of this data kind.
         \item SubConsts: $\mathcal{C} :: \text{Directional graph on}\ \mathbb{V}$
+        
+        Similar to $\mcal{K}$, but for constnesses
         \item ConstBounds: $b_C :: \mathbb{V} \to \text{interval} \left[\mathbb{C}, \mathbb{C}\right]$
+        
+        Similar to $b_K$, but for constnesses
         \item Type explanation: $p :: \mathcal{V}_p \to \mathcal{P}; \mathcal{V}_p \subseteq \mathcal{V}$
-        \item Type definition: $d :: \mathcal{V} \to \mathcal{D}$
-        \item Result function: $u :: \mathcal{G} \to \mathcal{V}$
+        
+        Mapping between type variables with know (encountered or derived) definitions and their respective definitions.
+        \item Type properties: $d :: \mathcal{V} \to \mathcal{D}$
+        
+        Mapping between all type variables and their respective properties
+        \item Result renaming: $u :: \mathcal{G} \to \mathcal{V}$
+        
+        Substitution between forgotten type variables and active type variables resulting from type variables being unified.
+        \item Current parent: $cp :: \mathcal{V}$
+        
+        The current parent of a nested context. When the algorithm is currently solving a context of a nested constraint
+        \item Schemes: $fs :: \mathcal{V}_f \to \mathbb{W}; \mcal V_f \subseteq \mcal V$
+        
+        The schemes of the closed functions (regular functions, methods, their instances, field accessors)
+        \item Class schemes: $cs :: C_{cs} \to [\mathbb{W}]; C_{cs} :: \{\mbb C\}$
+        
+        The schemes of the known classes, each of the form $\bmath \alpha . F \To C \alpha$, where $C?  \bmath \alpha$ is a class constraint and $F :: [\mbb F]$ is a list of superclasses 
+        \item Class facts: $cf :: C_{cf} \to [\mathbb{W}]; C_{cf} \subseteq C_{cs}$
+        
+        The known proofs for each class constraint. Each proof has the form $\bmath \alpha . F \To C \bmath t$, where $C! \bmath t$ $F$ is a class fact and $F :: [\mcal F]$ is the list of assumptions of the corresponding proof.
+        \item Functional dependencies: $fd :: C_{fd} \to \mathbb{FD}; C_{fd} \subseteq C_{cs}$
+        
+        Functional dependency sets for each class constraint. They are stored after acquiring a simplified form with subsequent addition of the implicit trivial rule. 
     \end{itemize}
 
     By $<_{\mathcal{K}}$ and $<_{\mathcal{C}}$,
@@ -232,6 +304,14 @@ In our solution, the type inferencer contains keeps track of the type definition
     We naturally extend this definitions to the other comparison operators
     (for example: $x =_{\mathcal{K}} y$ if there are paths back and forth between $x$ and $y$ in the graph $\mathcal{K}$ or $x = y$). % TODO: not that they can be equal
 
+\end{defn}
+
+\begin{defn}[simplified notation]
+    We expand the function applicability of $b_K$ and $b_C$ to type properties in such a way that for an arbitrary type variable $v \in \mathcal{V}$, we have $b_K (d (v)) = b_K (k (d (v)))$, and similarly for $b_C$. In other words: applying $b_K$ to a type's properties is equivalent to applying it to the type's kind (and similarly for $b_C$ and constness).
+
+    We expand the applicability of $p$ and $d$ in such a way that for an arbitrary type variable $v \in \mathcal{V}_p$ it holds that $d(v) = d(p(v))$ and $p(v) = p(d(v))$.
+
+    And finally, we expand the applicability of $t, k, c$ in such a way that for an arbitrary $v \in \mathcal{V}$ it holds that $t (v) = t (d (v))$, $k (v) = k (d (v))$, and $c (v) = c (d (v))$.
 \end{defn}
 
 \begin{defn}[Algorithm intrastate invariants]
@@ -242,29 +322,24 @@ In our solution, the type inferencer contains keeps track of the type definition
     \begin{enumerate}
         \item Active and forgotten variables: $Var(\mathcal{F}) \cup Var(\mathcal{P}) \cup Var(\mathcal{D}) \cup Var(\mathcal{K}) \cup Var(\mathcal{C}) = Var(\mathcal{V})$ and $Var(\mathcal{V}) \cap Var(\mathcal{G}) = \emptyset$. \label{invVar}
 
-        \item $\mathcal{V}$ and $\mathcal{D}$ are bijected by the type definition function $d$ with its inverse $d^{-1}$. The subset $\mathcal{V}_p \subseteq \mathcal{V}$ and the set $\mathcal{P}$ are bijected by the type explanation function $p$ and its inverse $p^{-1}$. Note that there generally are many types with no known explanation. \label{invPD}
-
-        We expand the function applicability of $b_K$ and $b_C$ to type definitions is such a way that for an arbitrary type variable $v \in \mathcal{V}$, we have $b_K (d (v)) = b_K (c (d (v)))$, and similarly for $b_C$. In other words: applying $b_K$ to a type definition is equivalent to applying it to the type's kind (and similarly for $b_C$).
-
-        We expand the applicability of $p$ and $d$ in such a way that for an arbitrary type variable $v \in \mathcal{V}_p$ it holds that $d(v) = d(p(v))$ and $p(v) = p(d(v))$.
-
-        And finally, we expand the applicability of $t, k, c$ in such a way that for an arbitrary $v \in \mathcal{V}$ it holds that $t (v) = t (d (v))$, $k (v) = k (d (v))$, and $c (v) = c (d (v))$.
-
-        \item 
+        \item $\mathcal{V}$ is projected to $\mathcal{D}$  by the type properties function $d$. The subset $\mathcal{V}_p \subseteq \mathcal{V}$ and the set $\mathcal{P}$ are bijected by the type explanation function $p$ and its inverse $p^{-1}$. Note that there generally are many types with no known explanation. \label{invPD}
 
         \item \label{invG} If we have two type variables $v, v' \in \mathcal{V}$ representing two types, then:
             \begin{enumerate}
-                \item If $k (v) =_{\mathcal{K}} k (v')$, then: $k (v) = k(v')$. In other words, graph $\mathcal{K}$ has no strongly connected components (this will be true for $\mathcal{C}$ as well).
-                \item If $c (v) =_{\mathcal{C}} c (v')$, then: $c (v) = c(v')$.
-                \item If $b_K (k (v)) = b_K (k (v')) = [k_1, k_1]$ for some kind $k_1 \in \mathbb{K}$, then $k (v) = k (v')$.
-                \item If $b_K (k (v)) = b_K (k (v')) = [k_1, k_2]$ for some kinds $k_1, k_2 \in \mathbb{K}$, $k_2 < k_1$, then $k (v) = k (v')$ and it is an invalid kind.
-                \item If $b_C (c (v)) = b_C (c (v')) = [c_1, c_1]$ for some constness $c_1 \in \mathbb{C}$, then $c (v) = c (v')$.
-                \item If $b_C (c (v)) = b_C (c (v')) = [c_1, c_2]$ for some constnesses $c_1, c_2 \in \mathbb{K}$, $c_2 < c_1$, then $c (v) = c (v')$ and it is an invalid constness.
-                \item If $k (v) <_{\mathcal{K}} k (v')$, then for bounds $k_1, k_2, k_3, k_4$ such that $b_K (k (v)) = [k_1, k_3]$, and $b_K (k (v')) = [k_2, k_4]$ it holds that $k_1 \leq k_2$ and $k_3 \leq k_4$. Note that for new (and any non-stored) variables we will assume the least restrictive bounds, so adhering to this invariant means we update the bounds monotonically.
-                \item If $c (v) <_{\mathcal{C}} c (v')$, then for bounds $c_1, c_2, c_3, c_4$ such that $b_C (c (v)) = [c_1, c_3]$, and $b_C (c (v')) = [c_2, c_4]$ it holds that $c_1 \leq c_2$ and $c_3 \leq c_4$.
+                \item If $k (v) =_{\mathcal{K}} k (v')$, then: $k (v) = k(v')$. In other words, graph $\mathcal{K}$ has no strongly connected components (this will be true for $\mathcal{C}$ as well). If such strongly connected components is created by registering an edge representing a subtyping constraint, then the variables inside this new strongly connected component are unified to preserve this invariant.
+                \item If $c (v) =_{\mathcal{C}} c (v')$, then: $c (v) = c(v')$. Again, with the same resolution on encountering a newly created strongly connected component. We resolve the violation of this invariant similarly to the previous one.
+                \item If $b_K (k (v)) = b_K (k (v')) = [k_1, k_1]$ for some kind $k_1 \in \mathbb{K}$, then $k (v) = k (v')$. The type variables representing the data kinds of $v$ and $v'$ are unified whenever it is derived they have the same value.
+                \item If $b_K (k (v)) = b_K (k (v')) = [k_1, k_2]$ for some kinds $k_1, k_2 \in \mathbb{K}$, $k_2 < k_1$, then $k (v) = k (v')$ and it is an invalid kind. We resolve the violation of this invariant similarly to the previous one.
+                \item If $b_C (c (v)) = b_C (c (v')) = [c_1, c_1]$ for some constness $c_1 \in \mathbb{C}$, then $c (v) = c (v')$. We resolve the violation of this invariant similarly to the previous one.
+                \item If $b_C (c (v)) = b_C (c (v')) = [c_1, c_2]$ for some constnesses $c_1, c_2 \in \mathbb{K}$, $c_2 < c_1$, then $c (v) = c (v')$ and it is an invalid constness. We resolve the violation of this invariant similarly to the previous one.
+                \item If $k (v) <_{\mathcal{K}} k (v')$, then for bounds $k_1, k_2, k_3, k_4$ such that $b_K (k (v)) = [k_1, k_3]$, and $b_K (k (v')) = [k_2, k_4]$ it holds that $k_1 \leq k_2$ and $k_3 \leq k_4$. Note that for n variables we always assume the least restrictive bounds. Which are well defined as constnesses and data kinds are both bounded lattices.
+
+                The violations of this invariant are resolved by propagating the values. The data kind bounds are, for each variable, always updated monotonically.
+                \item If $c (v) <_{\mathcal{C}} c (v')$, then for bounds $c_1, c_2, c_3, c_4$ such that $b_C (c (v)) = [c_1, c_3]$, and $b_C (c (v')) = [c_2, c_4]$ it holds that $c_1 \leq c_2$ and $c_3 \leq c_4$. The violations for this invariant are resolved similarly to the previous one.
             \end{enumerate}
 
-        \item If a type represented by a type variable $v$ is explained ($v \in \mathcal{V}_p$), then $t (d (v)) = p(v) \left[ \tau := t (d (\tau)) | \tau \in \mathrm{free} (p (d))\right]$. In other words, the typing of the type represented by $v$ follows the typing generated from the typings of the types via which it is explained. \label{invT}
+
+        \item If a type represented by a type variable $v$ has a know definition (if $v \in \mathcal{V}_p$), then $t (d (v)) = p(v) \left[ \tau := t (d (\tau)) | \tau \in \mathrm{free} (p (d))\right]$. In other words, the typing of the type represented by $v$ follows the typing generated from the typings of the types via which it is defined. \label{invT}
     \end{enumerate}
 \end{defn}
 
@@ -274,23 +349,35 @@ In our solution, the type inferencer contains keeps track of the type definition
     \begin{enumerate}
         \item Forgotten variables stay forgotten: $v \in \mathcal{G}_n \Rightarrow v \in \mathcal{G}_m$.
         \item Forgotten variables used to be alive: $v \in \mathcal{G}_m \Rightarrow \exists n . v \in \mathcal{V}_n$.
-        \item All free variables from facts are considered by the algorithm: $v \in \mathrm{free} (\mathcal{F}_0) \Rightarrow v \in \mathcal{V}_0$.
+        \item All free variables from constraints are considered by the algorithm: $v \in \mathrm{free} (\mathcal{F}_0) \Rightarrow v \in \mathcal{V}_0$. And $v \in \mathrm{free} (\mathcal{F}_n) \Rightarrow v \in \mathcal{V}_n$.
         \item Assumed subtype constraints are monotonically getting restricted. For kinds: $v \in {\mathcal{V}}_n \Rightarrow {b_K}_m (k_m(u_m(v))) \subseteq {b_K}_n (k_n(v))$ and for constnesses: $v \in {\mathcal{V}}_n \Rightarrow {b_C}_m (c_m(u_m(v))) \subseteq {b_C}_n (c_n(v))$.
-        \item Typings do not get forgotten: $v \in {\mathcal{V}}_n \Rightarrow \exists s . s(t_n(v)) = t_m(u_m (v))$.
+        \item Typings do not get forgotten: $v \in {\mathcal{V}}_n \Rightarrow \exists s . s(t_n(v)) = t_m(u_m (v))$, where $s$ is a substitution
         \item Explanations do not get forgotten: $v \in {\mathcal{V}_p}_n \Rightarrow \exists s . s(p_n(v)) = p_m(u_m (v))$.
         \item Results are results of results: $u_m = u_m (u_n)$.
+        \item Schemes do not get forgotten: $fs_n \subseteq fs_m, cs_n \subseteq cs_m, cf_n \subseteq  cf_m, fd_n \subseteq  fd_m$. Note the lack of applying $u$.
         % TODO: add more constraints
     \end{enumerate}
 \end{defn}
 
 \begin{defn}[Unifications]
-    In the scope of this algorithm we distinguish 4 types of unification. The algorithms for each will be the same, but their meaning is different.
+    In the scope of this algorithm we distinguish 4 types of unification. The algorithms for each is the same, but their meaning is different.
 
     \begin{enumerate}
-        \item Type unification: we unify two type variables that represent types, we then apply the resulting unification to all type variables considered by the algorithm. \label{tUni}
-        \item Typing unification: we unify two typings of certain types, we then apply the resulting unification to all other typings considered by the algorithm.
-        \item Kind unification: we unify two type variables that represent kinds of certain types, we then apply the resulting unification to all other variables representing kinds considered by the algorithm. \label{kUni}
+        \item Type unification: we unify two type variables that represent types, we then apply the resulting unification to all type variables considered by the algorithm (this unification translates to the other three types as well). \label{tUni}
+
+        This process ends with adding one of the type variables to the set of forgotten variables $\mcal G$ and adding the mapping from one type variable to the other to the function $u$. It also causes the need to update the variables $\mcal P, \mcal D, \mcal K, \mcal C, b_K, b_C,$ and $\mcal F$ so the algorithm still satisfies the required invariants. And any collisions in these variables has to be followed up by further unifications.
+
+        \item Typing unification: we unify the typings of two input types, we then apply the resulting unification to all other typings considered by the algorithm.  \label{tyUni}
+        
+        This updates the variable $\mathcal D$.
+
+        \item Kind unification: we unify type variables that represent two input kinds of certain types, we then apply the resulting unification to all other variables representing kinds considered by the algorithm. \label{kUni}
+        
+        This updates the variables $\mcal D, \mcal K, b_K$.
+
         \item Constness unification: we unify two type variables that represent constnesses of certain types, we then apply the resulting unification to all other variables representing constnesses considered by the algorithm. \label{cUni} 
+        
+        This updates the variables $\mcal D, \mcal C, b_C$.
     \end{enumerate}
 \end{defn}
 
@@ -301,11 +388,22 @@ In our solution, the type inferencer contains keeps track of the type definition
 
 \begin{defn}[Algorithm middlesteps]
     \label{middlesteps}
-    After each step of the algorithm that transforms one of the state variables (mainly $\mathcal{G}$,$\mathcal{P}$ or $\mathcal{D}$) into a new state, we perform the minimal necessary unifications to ``repair'' the bijections $d$ and $p$ (intrastate invariant \ref{invPD}, all unifications), to collapse any strongly connected components of the graphs $\mathcal{K}$ and  $\mathcal{C}$ and to remove any duplicate images of trivial bounds from $b_K$ and $b_C$ (intrastate invariant \ref{invG}, unifications \ref{kUni} and \ref{cUni}). This will be often performed recursively. We then apply the resulting combined unification (limited to just unifications \ref{tUni}) to the function $u$ so it satisfies the intrastate invariant \ref{invVar}. % TODO: fix wording
+
+    After each step of the algorithm that transforms one of the state variables (mainly $\mathcal{G}$ and $\mathcal{P}$) into a new state, we perform the minimal necessary unifications:
+
+    \begin{enumerate}
+        \item To ``repair'' the injections $d$ and bijection $p$ (intrastate invariant \ref{invPD}, this translates into using all four unifications)
+
+        \item To collapse any strongly connected components of the graphs $\mathcal{K}$ and  $\mathcal{C}$ and to remove any duplicate images of trivial bounds from $b_K$ and $b_C$ (intrastate invariant \ref{invG}, using unifications \ref{kUni} and \ref{cUni}).
+    \end{enumerate}
+    
+    Note that this will be often performed recursively.
 \end{defn}
 
 \begin{lemma}[Algorithm middlesteps]
-    The algorithm may (correctly) fail during the middlesteps. This can be shown by the observation \ref{trivBoundsObs}.
+    The algorithm may (correctly) fail during the middlesteps.
+    
+    This can be shown by the observation \ref{trivBoundsObs}.
 \end{lemma}
 
 \begin{defn}[Introducing new (fresh) variable]
@@ -315,30 +413,94 @@ In our solution, the type inferencer contains keeps track of the type definition
 \end{defn}
 \begin{defn}[Algorithm presteps]
     \label{presteps}
-    All the (flat) facts generally use complicated types, before each step of the algorithm we replace the types in the observed fact with type variables that represent the types.
 
-    The transformation is performed according to the observation \ref{typesObs}, changing the state variables $\mathcal{P}$, $\mathcal{D}$, $\mathcal{V}$, $p$ and $d$ accordingly and we set the typing of the type to adhere to the intrastate invariant \ref{invT}. For the yet unnamed types we perform the steps explained in definitions \ref{freshVar} and \ref{introVar}.
+    All the (flat) constraints generally use complicated types, before each step of the algorithm we replace the types in the observed constraint with type variables that represent the types. Storing the structure of each input type $t$ to the variable $\mathcal P$ under the mapping $p$, generating a fresh type variable for each immediate subterm not present in $\mcal P$, recursively.
+
+    The replacement is performed according to the observation \ref{typesObs}, changing the state variables $\mathcal{P}$, $\mathcal{D}$, $\mathcal{V}$, $p$ and $d$ accordingly. We then, starting from the type variables representing leaves of the structural tree of the type $t$, update the typing of all subterms of $t$ to adhere to the intrastate invariant \ref{invT}. For the yet unnamed types, we perform the steps explained in definitions \ref{freshVar} and \ref{introVar}.
 \end{defn}
 
 \begin{defn}[Algorithm initialization]
-    The initial state is: $\mathcal{V} = \mathcal{G} = \mathcal{P} = \mathcal{D} = \mathcal{K} = \mathcal{C} = \emptyset$, $p = d = u = b_K = b_C = \emptyset \to \emptyset$ and $\mathcal{F}$ is the list of facts to be satisfied.
+    The initial state is: $\mathcal{V} = \mathcal{G} = \mathcal{P} = \mathcal{D} = \mathcal{K} = \mathcal{C} = \emptyset$, $p = d = u = b_K = b_C = \emptyset \to \emptyset$ and $\mathcal{F}$ is the list of constraints to be satisfied.
 
     Before the algorithm starts, we introduce the variables encountered in $\mathcal{F}$ according to the definition \ref{introVar}.
 \end{defn}
 
 \begin{defn}[Algorithm steps]
-    After the prestep (definition \ref{presteps}), we retrieve the first fact $f$ of $\mathcal{F}$ and then:
 
-    \begin{itemize}
-        \item If $f \equiv t_1 \sim t_2$, we unify $t_1$ and $t_2$
-        \item If $f \equiv t_1 \sim_T t_2$, we unify the typings $t (d (t_1))$ and $t (d (t_2))$, resulting in the unification $m$ which we then apply to all typings in $\mathcal{D}$.
-        \item If $f \equiv t_1 \leq_K t_2$, we add an edge $(t_1, t_2)$ to $\mathcal{K}$.
-        \item If $f \equiv t_1 \leq_C t_2$, we add an edge $(t_1, t_2)$ to $\mathcal{C}$.
-    \end{itemize}
+    \begin{enumerate}
+        \item We perform a prestep (definition \ref{presteps}) \label{prestep_step}
 
-    Then we perform the middlestep (definition \ref{middlesteps}) and continue to the next step.
+        \item Constraint solving step, we retrieve the first constraint $f$ of $\mathcal{F}$ and then:
+
+        \begin{itemize}
+            \item If $f \equiv t_1 \sim t_2$, we unify $t_1$ and $t_2$ by the unification \ref{tUni}
+
+            \item If $f \equiv t_1 \sim_T t_2$, we unify the typings $t (d (t_1))$ and $t (d (t_2))$ using the unification \ref{tyUni}.
+
+            \item If $f \equiv t_1 \leq_K t_2$, we add an edge $(k(t_1), k(t_2))$ to $\mathcal{K}$.
+
+            \item If $f \equiv t_1 \leq_C t_2$, we add an edge $(c(t_1), c(t_2))$ to $\mathcal{C}$.
+
+            \item If $f \equiv k_1 \leq_K t \leq_K k_2$, we update the bounds for $k(t)$ in the variable $b_K$ in such a way that given $b_K(k(t)) = [k_1', k_2']$, we set $b_K$ to $b_K[ k(t) := [k_1 \cup k_1', k_2 \cap k_2'] ]$.
+
+            \item If $f \equiv c_1 \leq_C t \leq_C c_2$, we update the bounds for $c(t)$ in the variable $b_C$ in such a way that given $b_C(c(t)) = [c_1', c_2']$, we set $b_C$ to $b_C[ c(t) := [\max (c_1, c_1'), \min (c_2,  c_2')] ]$.
+
+            \item If $f \equiv C?\ \bmath t$. Then if $C$ has a functional dependency set defined in $fd$, we perform rewrites of the constraint according to \xxx{add ref}.
+            
+            Otherwise we lookup the class scheme proofs for $C$ in $cf(C)$ for a proof such that $t(t) \sqsupseteq t(cf(C))$ (checked by unification algorithm which always prefers substituting the right-hand variables, otherwise it fails, trying the next proof).
+
+            If we successfully lookup a proof for $C \bmath t$, then we simply replace the constraint by assumptions of the proof, otherwise we put it aside and continue with the next constraint.
+            
+            Since we require all proofs to be disjunctive on their results, we can stop the lookup at the first successful find.
+
+            \item If $f \equiv C!\ \bmath t$, we store the proof $C \bmath t$ to the list of proofs $cf(C)$.
+
+            \item If $f \equiv t_1 \supseteq t_2$, we check whether we have a scheme present for $t_1$. If so, we instantiate the scheme, replacing all its quantified variables.
+
+            \item If $f \equiv t_1 \supseteq t_2$, we check whether we have a function scheme present for $t_1$. If so, we instantiate the scheme, replacing all its quantified variables with fresh variables. We then replace this constraint with an equality constraint with the fresh scheme's result type for the left-hand side operand (leaving $t_2$ as the right-hand side operand, unchanged) and the assumptions of the scheme as new constraints. Otherwise, we put it aside.
+            
+            Note that since the lookup is dependent on the type, we have to make sure never to change $t_1$ in this constraint. By either providing an exception to the prestep or by using a special type (variable) not present in other constraints.
+            
+            \item \xxx{ nested constraint}
+        \end{itemize}
+        
+        \item Then we perform the middlestep (definition \ref{middlesteps}) and continue to the next constraint. If no further constraint can be solved we continue with the constraints which have been put aside (recursively), unless it is the same set of constraints as the one before, if it is, we continue to the next step. 
+        
+        \item If we have put aside any instantiation constraints, then we know we have an unclosed function. Since if it was closed, there would be a corresponding scheme present in $fs$. We collect the instantiation constraints and we construct an ``instantiation'` graph with edges of the form ``(instantiated, instantiated by)'' and we analyze the topological ordering of this graph, identifying the strongly connected components and relations between them.
+
+        \item If we have constructed the instantiation graph, we then take the functions in the component which does not have any connected edges with the ``instantiated by'' end outside of the component. And we return the instantiation constraints originating in these functions back to their respective nested constraints while rewriting them into equality constraints. We then continue with the step \ref{prestep_step}. \label{do_inst_graph}
+        
+        \item We then collect all the type variables free in the currently solved component, we minimize the subtypes according to the principle \xxx{ref prev chap}. We translate the resulting subtype variable definitions by suprema back into constraints (we do not recommend this. Instead, use type-like variable-length constructors that unify by unionization), and then we collect the leftover constraints on the free variables of the component, we then also include the constraints derived from the type descriptions (namely typing constraints, two-way subkind and subconst constraints derived from identical properties) and subtyping bounds, kind-bound and const-bound constraints. We close the component, generating a scheme for each function, quantifying the free variables of the component and assuming all the listed constraints.
+        
+        \item If there are more components in the instantiation graph, we construct a new instantiation graph by removing the currently closed component, we then continue with the step \ref{do_inst_graph}
+        
+        \item If there are none, we determine whether there are some unresolved constraints and if there are, we report an error. If there are none, the code is ready to be monomorphized.
+    \end{enumerate}
+
+    \xxx{maybe remove or move to conclusion}. We would like to point out that, ideally, there should be a phase between type inference and monomorphization that would annotate the code with the inferred schemes, which would have an effect of simplifying the the monomorphization implementation and decreasing the space for errors as the ast would be annotated with clear indications whether the singular nodes of ast are polymorphic or monomorphic (the monomorphic nodes would have no free variables, they are monotyped).
+
+    Note that, in the included implementation, this is part of the monomorphization phase, so all the primitives of this new layer are already demonstrated.
 \end{defn}
 
 \section{Monomorphization}
 
+The monomorphization algorithm is a two-phase processes which is performed on type-inferred code with type handles present in an annotation of each node of the AST.
+
+\begin{enumerate}
+    \item In the first phase, we go through the top level definitions in the program and identify which ones are monomorphic. We add them to the queue of code to be instantiated.
+
+    \item We remove the first top level definition to be instantiated from the queue, prepending it to the resulting program, and then we add all statements causing instantiations to the queue. We repeat this step as long as the queue is not empty or we do not reach some predefined monomorphization limit.
+\end{enumerate}
+
+\xxx{add example for monomorphization}
+
+If there was no limit on monomorphization, it could potentially continue forever.
+
+\xxx{add example for this case}
+
+The demonstration algorithm differs from this description in that it also updates type handles \xxx{ref to preprocessing and inference} of each node of the currently instantiated top level definition. It also separates the queue into waves. The zeroth wave consists of monomorphic the top level definitions, then the first consist of the top levels being instantiated from references in the zeroth level, etc. It does not really differ from the approach with the linear queue. \xxx{it really doesn't?}
+
 \section{Translation}
+
+The final translation of the code
+

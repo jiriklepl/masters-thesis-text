@@ -20,7 +20,9 @@
 			"constnesses",
 			"existentials",
 			"unifications"
-		]
+		],
+		"makefile.extensionOutputFolder": "./.vscode",
+		"editor.wordWrap": "on"
 	},
 	"tasks": {
 		"version": "2.0.0",

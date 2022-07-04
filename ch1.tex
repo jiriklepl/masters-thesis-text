@@ -2,7 +2,7 @@
 \providecommand{\dom}[1]{\mtt{Dom} (#1)}
 \providecommand{\ran}[1]{\mtt{Ran} (#1)}
 
-\providecommand{\bmath}[1]{\boldmath{#1}}
+\providecommand{\bmath}[1]{\boldsymbol{#1}}
 
 \chapter{The french approach}
 
@@ -16,7 +16,7 @@ We concluded that if a term is typable in these systems, the algorithm W will fi
 
 The algorithm W assumed no recursion in the code and thus any real program with any trivial or nontrivial recursion had to be rewritten into a form where recursive functions were represented by the \lstinline{fix} operator applied to some argument. Type of the \lstinline{fix} operator is $\forall \alpha . \pars {\alpha \to \alpha} \to \alpha$.
 
-The algorithm for trivial recursions is simple. A function represented as $f \boldmath{x} = \calC[f, \boldmath{x}]$, where $C$ is a lambda term such that $\{f\} \cup \boldmath{x} \subseteq \free \calC$, is simply rewritten into $f = \mathit{fix}\ \lambda F \boldmath{X} .\calC[f := F, \boldmath{x} := \boldmath{X}]$. For a nontrivial recursion (which we can identify using an algorithm for finding strongly connected components of the call graph), we use a generalization of the double fixed-point \xxx{reference it} theorem, describes how to construct this rewriting for a component of size two.
+The algorithm for trivial recursions is simple. A function represented as $f \bmath{x} = \calC[f, \bmath{x}]$, where $C$ is a lambda term such that $\{f\} \cup \bmath{x} \subseteq \free \calC$, is simply rewritten into $f = \mathit{fix}\ \lambda F \bmath{X} .\calC[f := F, \bmath{x} := \bmath{X}]$. For a nontrivial recursion (which we can identify using an algorithm for finding strongly connected components of the call graph), we use a generalization of the double fixed-point \xxx{reference it} theorem, describes how to construct this rewriting for a component of size two.
 
 For our purposes of generalizing C to use a HM-style type system with type classes, we determined that the algorithm W as described in THIH is too weak. It was able to either type-infer a program with no field overloading (all record field names are unique even between multiple record types) or type-check a program with limited type inference if we would allow field name overloading. What does this mean? It is best to give an example:
 
@@ -26,7 +26,7 @@ But we do not want to bother the programmer with such strong constraints, so to 
 
 The algorithm W as described in THIH is strong enough to type-check such construction, but it lacks the ability to infer the obvious types of previously mentioned expressions \lstinline{a.x} or \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b}. In this particular example, this could be solved during subsequent monomorphization phase which would know that the type of a record type determines the types of its fields (for example, by using a simple map that would map structure types to field types). But in a general case, this would mean that the subsequent monomorphization phase would have to be unnecessarily complex and that it would have to defer monomorphizations of polytype targets (without functional dependencies present, the monomorphization algorithm would simply report that the program is not monomorphizable as it is polytyped). This leads to turning monomorphization into second type inference. And we will later introduce an inference algorithm that efficiently performs this deferred solving and then allows for simple linear monomorphization (linear in the terms of the size of the resulting monomorphized code).
 
-If we want to simply modify the algorithm W so it solves principal types even in the case of functional dependencies and other such constructs, we can easily observe that in order to function properly, it has to first perform the usual unifications on the syntactic structure of each subprogram (strongly connected component of the program's call-graph; we perform type inference on these subprograms in topological order, beginning with the leaf components) returning type assignments in the form $\mtt{name} :: \forall \boldmath \alpha . C \boldmath \tau \To t$, where $C$ is the constraint on the types $\boldmath \tau$ and $\boldmath \alpha = $ (note that it can be broken into more granular constraints) propagated from the subexpressions of $\mtt {name}$. We consider such assignments as ambiguous if $\free \tau \setminus \free t \setminus \free \Gamma \neq \emptyset$ (in THIH, there is so-called defaulting described, which can resolve these ambiguities under some conditions, but we will not consider them here as they do not apply general cases). THIH describes the constraint propagation well, but then the algorithm it does not describe how to solve the constraint $C$ if it does not fall into the trivial case of being instantiable from a known predicate, for example, given $\mtt {Ord} [a] \in \Gamma$ (using a simplified representation for contexts combining class environments with assumptions into one set $\Gamma$), we can deduce $\Gamma \vdash \mtt {Ord} [Int]$, proven by substitution $[a := \mtt {Int}]$. Notice that the substitution $\sigma$ that proves a constraint $C \tau$ from a known predicate $C \tau'$ has to satisfy $\dom \sigma \subseteq \free \tau' \land \ran \sigma \subseteq \free \tau$, while also being an mgu \xxx{what is mgu} of $\tau$ and $\tau'$. \xxx{Connect it to the later algorithm.} \xxx{better styling etc?}
+If we want to simply modify the algorithm W so it solves principal types even in the case of functional dependencies and other such constructs, we can easily observe that in order to function properly, it has to first perform the usual unifications on the syntactic structure of each subprogram (strongly connected component of the program's call-graph; we perform type inference on these subprograms in topological order, beginning with the leaf components) returning type assignments in the form $\mtt{name} :: \forall \bmath \alpha . C \bmath \tau \To t$, where $C$ is the constraint on the types $\bmath \tau$ and $\bmath \alpha = $ (note that it can be broken into more granular constraints) propagated from the subexpressions of $\mtt {name}$. We consider such assignments as ambiguous if $\free \tau \setminus \free t \setminus \free \Gamma \neq \emptyset$ (in THIH, there is so-called defaulting described, which can resolve these ambiguities under some conditions, but we will not consider them here as they do not apply general cases). THIH describes the constraint propagation well, but then the algorithm it does not describe how to solve the constraint $C$ if it does not fall into the trivial case of being instantiable from a known predicate, for example, given $\mtt {Ord} [a] \in \Gamma$ (using a simplified representation for contexts combining class environments with assumptions into one set $\Gamma$), we can deduce $\Gamma \vdash \mtt {Ord} [Int]$, proven by substitution $[a := \mtt {Int}]$. Notice that the substitution $\sigma$ that proves a constraint $C \tau$ from a known predicate $C \tau'$ has to satisfy $\dom \sigma \subseteq \free \tau' \land \ran \sigma \subseteq \free \tau$, while also being an mgu \xxx{what is mgu} of $\tau$ and $\tau'$. \xxx{Connect it to the later algorithm.} \xxx{better styling etc?}
 
 Another, more complicated, example would be deducing $\Gamma \vdash \mtt {Ord} [Int]$ from the context $\mtt {Ord}\ \mtt {Int}, \mtt {Ord}\ a \To \mtt {Ord} [a] \in \Gamma$. First, we deduce $\Gamma \vdash \mtt {Ord} [Int] \Leftarrow \Gamma \vdash \mtt {Ord}\ Int$ (proven by substitution $[a := \mtt {Int}]$) and then $\Gamma \vdash \mtt {Ord}\ Int$ (proven by empty substitution). This shows that if we introduce functional dependencies to the type system, the typing can be easily undecidable under certain conditions. \xxx{get back to it later}.
 
@@ -46,7 +46,7 @@ In the deferring solving algorithm they serve as proofs for each constraint. Dic
     The language of constraints is an extension of traditional type language with type variables annotated with ``context levels'' extended by the following two constructs, flat constraints (F) and nested constraints (W).
 
     \begin{grammar}{F \Rightarrow }{Flat constraint}
-        d: C \boldmath \tau & Class constraint \\
+        d: C \bmath \tau & Class constraint \\
         \mid g : \tau_1 \sim \tau_2 & Equality constraint \\
     \end{grammar}
 
@@ -55,7 +55,7 @@ In the deferring solving algorithm they serve as proofs for each constraint. Dic
     \begin{grammar}{W \Rightarrow }{Nested constraint}
         F & Flat constraint \\
         W_1, W_2 & Conjunction \\
-        \forall \boldmath \alpha . \{F\} \To W & Implication constraint \\
+        \forall \bmath \alpha . \{F\} \To W & Implication constraint \\
     \end{grammar}
 
     \label{constraint_language}
