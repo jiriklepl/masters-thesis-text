@@ -1,6 +1,7 @@
 \providecommand{\mbb}[1]{\mathbb{#1}}
 \providecommand{\pipe}{\ |\ }
 \providecommand{\mcal}{\mathcal}
+\providecommand{\tit}{\textit}
 
 \chapter{Design}
 
@@ -35,6 +36,9 @@ One more work for the flattening phase in the scope of this programming language
 The blockifying phase follows the flattening phase and it annotated the nodes of AST with annotations stating whether the node starts a basic block, is part of a certain basic block, or that it is not a part of any basic block (is trivially unreachable). It then gives warnings for encountering these unreachable statements.
 
 It also analyzes illegal fallthroughs (fallthroughs to continuation statements and fallthroughs outside of the procedure).
+
+
+\xxx{move this to the next subsection}
 
 After the blockifier annotates all basic blocks in a procedure, it then measures live ranges of all variables and gives errors for uninitialized variables \xxx{link bednarek}. It also finds out unreachable labels (and thus finds nontrivially unreachable code as well).
 
@@ -232,7 +236,47 @@ In our solution, the type inferencer contains keeps track of the type definition
 
 \subsection{Type inference preprocessing}
 
-\xxx{how the preprocessor works}
+The type inference preprocessing, also called constraint generation, is quite complex and the code for it is very lengthy. It is also quite difficult to check for errors. This is why the actual implementation extends the language of constraints with constraint comments. Those are completely ignored by the inference algorithm, but they are invaluable in debugging and in human-readability of the constraints.
+
+The result of type inference preprocessing is the list of constraints and the annotated AST. The list of constraints is then given to the type inference algorithm and after that the inferred type assignments stored in the state of the inferencer are paired with the annotated AST, resulting in AST with type annotation.
+
+\xxx{give an example, maybe move to conclusions, mention in conclusion? haven't find this mentioned in any theory as it is not generally written by hackers}
+
+The algorithm reads the syntactic tree, annotates its nodes (starting from the leaves) with ``type holes'' and then gives constraints for these type holes.
+
+\begin{defn}[Type holes]
+    Type holes are simple structures that contain zero, one or multiple type variables depending on the type of the hole
+
+    \begin{itemize}
+        \item Empty type hole: does not contain any type variable, this is the annotation to nodes which are not interesting in the context of type inference \xxx{example}
+        
+        \item Simple type hole: contains one type variable, this is the most usual type hole. It is used for the nodes which have simple type dependencies on other nodes that are easily expressible with few equality and subtyping constraints. It is also used for regular functions and structs.
+        
+        \item Lvalue instance type hole: this type hole is used when there is potential instantiation happening when evaluating a name reference. This is the case for function calls.
+        
+        It contains the type variable representing the instance and the type variable representing the function to be instantiated (scheme).
+
+        \item Method type hole: this type hole is given to method instances. 
+        
+        It contains three type variables. One representing the method instance, one representing the method, and the last one representing the ``elaborated method''.
+        
+        The elaborated method is referred to by both the nested constraint representing the method itself and the nested constraint representing the instance. It is extended with one virtual argument representing the class constraint witness. This ensures that the right instance is looked up from the function schemes in the inference algorithm \xxx{add reference}. 
+
+        \item Member type hole: this type hole is given to struct member fields. It contains the type variable representing the struct, a type variable and a name representing the ``HasField\$name'' type class of each alias of the field, and then pairs of type variables representing the field accessor method instances and methods of the  ``HasField\$name'' class, for each corresponding field.
+    \end{itemize}
+\end{defn}
+
+\begin{defn}[Type inference preprocessing]
+    When entering each context (unit, struct, class, instance, function), the type inference preprocessor calls the variable collector. This collector then reports all the newly declared variables inside this context back to the preprocessor.
+    
+    The preprocessor then generates fresh type variables for these variables and uses them whenever they appear in the currently preprocessed code.
+
+    \xxx{This was later determined to be completely replacible by declaration hoisting in the procedures and preprocessing the program in topological order}.
+
+    When preprocessing a piece of code which contains nontrivial subnodes (sub-expressions, sub-statements, etc.), these subnodes are generally preprocessed first, then the algorithm retrieves their type holes and adds the constraints defined by the semantics of the code to the current list of constraints.
+
+    The list of constraints is represented by a list of lists as each context nesting in the code also nests the context of constraints. The decision for a list of list is not completely necessary, but it makes the definition both easy to use, and future-proof with being well-generalizable.
+\end{defn}
 
 \subsection{Type inference algorithm}
 
@@ -500,7 +544,88 @@ If there was no limit on monomorphization, it could potentially continue forever
 
 The demonstration algorithm differs from this description in that it also updates type handles \xxx{ref to preprocessing and inference} of each node of the currently instantiated top level definition. It also separates the queue into waves. The zeroth wave consists of monomorphic the top level definitions, then the first consist of the top levels being instantiated from references in the zeroth level, etc. It does not really differ from the approach with the linear queue. \xxx{it really doesn't?}
 
+\xxx{if the AST contained type information with no external state, the monomorphization could be implemented via generics.}
+
+
+\subsection{Monomorphization postprocessing}
+
+The monomorphization algorithm does not change the code, it simply copies the top level definitions and changes their type annotations so that they contain the correct monotypes.
+
+\subsubsection{Type hole filling}
+
+This phase reads the type annotations of all types encountered in the monomorphized code and replaces the AST nodes with representations of the inferred types.
+
+The resulting code then contains only explicitly typed declarations (no \li{auto}).
+
+\subsubsection{Name mangling}
+
+This phase renames all functions not marked with the \li{foreign "C"} specialization. According to their types. The name mangling used in this implementation is not very space-efficient as it is designed to be human-readable for easier exploration and debugging.
+
+\begin{defn}[Name mangling]
+    The mangled name consists of the \li{_M\$} prefix (standing for ``mangled'') followed by the name and then by the result of applying the mangle function to a type which, for primitive types, returns their name, and for aggregate types, returns the prefix corresponding to the aggregate type followed by the arguments enclosed in \li{\$L} and \li{R\$} (for functions, the arguments and the returns are enclosed separately).
+\end{defn}
+
+
+\xxx{example}
+
 \section{Translation}
 
-The final translation of the code
+The final translation of the code (or code generation) is performed on the postprocessed code with type annotations. It uses \xxx{reference} llvm-hs-pure as a framework for llvm AST generation.
+
+Apart from the postprocessed code, it takes three variables from the blockifier:
+
+
+\xxx{define the variables in the blockifier}
+\begin{enumerate}
+    \item[Control flow] The edges of the control flow graph
+    \item[Block data] The mapping from each block's index and variable name appearing in the context of the corresponding block to a three-valued tuple \linebreak \li{(reads, writes, requests alive) where each entry is a boolean}
+    \item[Blocks table] The mapping from each block's index to its name so we can use the blocks' actual names in the generated code.
+\end{enumerate}
+
+The output of translation is then a code interpretable by the low-level virtual machine compiler llc.
+
+It first restructures the code so that all the struct definitions (since they do not ever call any procedures) are at the top and the procedures are at the bottom.
+
+Then it collects the definitions of all structs and represents them in the pairs \linebreak \li{([(field_alias, field_index)], [field_type])}. The second field then corresponds to how llvm-hs-pure represents the structures.
+
+After the translator collects all the struct definitions, it starts translating the procedures:
+
+\begin{enumerate}
+    \item It generates argument variables for all formal arguments
+
+    \item It hoists the declarations inside the procedure to the beginning of the procedure and generates an \li{alloca} instruction for each struct datum declared in the procedure's \li{stackdata} declarations and stores the mapping from their aliases to the operands representing the \li{alloca}'ted memory.
+    
+    \item Then it breaks the list of statements into consecutive blocks. The blocks are already annotated by the blockifier, so it just collects the ones annotated by the same block index into one group.
+    
+    \item Then it finalizes the entry block (started implicitly when beginning to translate the procedure). It gives the translation procedure the mapping from formal arguments to operands.
+    
+    
+    The translation of the entry block then returns this mapping with added entries for assignments performed in the entry block. These new entries can override the old ones and the current mapping always affects the translation of the currently translated statement \xxx{we will return to that}. We will call this mapping \li{nvars}
+    
+    Note that one variable corresponds to multiple operands \xxx{example where we assign to `x' multiple times}. \xxx{define llvm's phi nodes somewhere}
+
+    \item After the procedure entry is done, it generates a list \li{placeholders} of placeholders used as operands for phi nodes at the entry of each block, these placeholders are indexed by the pair \li{(idx, name)} where \li{idx} is the index of the block the operand is from and \li{name} is the name of the variable the operand corresponds to. These placeholders are generated for each block's (with the exception of the entry block) potentially exported variable (every variable $v$ such that \tit{block data} for the block and $v$ have the \li{writes} and/or \li{requests alive} set).
+    
+    \item Then, it translates each block, giving it the \li{nvars} mapping and the indexed list of placeholders. We will assume the block is indexed \li{idx}.
+    
+    \begin{enumerate}
+        \item The block translation begins by generating the list \li{vars} of variables $v$ to be imported (via phi nodes). These are the ones, for which \tit{block data} maps the blocks's \li{idx} and the variable $v$ to a tuple with the \li{requests alive} entry set.
+        
+        \item Then it generates the list \li{from} of blocks to generate the variables from. This is done by collecting the out-nodes $f$ of the edges $e$ in the control flow list such that $e = (f, idx)$.
+        
+        \item Then it translates the first statement of the block (this block is a label statement).
+        
+        \item Now, it finally generates the phi nodes to import each variable from the \li{vars} list from the blocks in the \li{from} list.
+        
+        It does so by generating a phi node for each $v$ in \li{vars}. Each of these phi nodes is then given an argument for each $f$ in \li{from}, taking a value from \li{nvars} corresponding to $v$ if $f$ corresponds to the entry block, otherwise a placeholder from the \li {placeholders} list indexed by the pair $(f, v)$. \xxx{lemma: quadratic number of imports}
+
+        \xxx{does this deserve an example?}
+
+        It then adds the entry pairs for each $v$ and its corresponding phi node to the  mapping $bvars$.
+
+        \item Then we translate the statements in the block, each given a mapping from the variables to the corresponding operands that represent their current values. The assignment statements and call statements can (and usually will) change this mapping and this new mapping is then given to the next statement, etc. The last such mapping serves as the \li{exports} list of the current block        
+    \end{enumerate}
+
+    \item We collect the \li{exports} lists of each block and zip it with the list of \li{placeholders} \xxx{lemma: they have the same length} and from this we create a mapping \li{(placeholder, export)}. We then use this mapping to replace all placeholders in phi nodes with the actual operands that are to be exported from the corresponding blocks. \xxx{lemma: the placeholders appear only in phi nodes}
+\end{enumerate}
 

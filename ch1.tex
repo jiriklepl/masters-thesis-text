@@ -86,7 +86,7 @@ They are typically constrained by some class, which then provides the witness th
         data T where
             MkT :: Show a => { getT :: a } -> T
         -- defines a type `T' with
-        --   an existentially-type field `getT'
+        --   an existentially-typed field `getT'
 
         let xs = [MkT 5, MkT "String"]
 

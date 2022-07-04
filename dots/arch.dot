@@ -2,7 +2,7 @@ digraph {
     node [style="filled"]
 
     subgraph terminals {
-        node [shape="ellipse", fillcolor="lightblue"]
+        node [shape="ellipse", fillcolor="yellow"]
 
         Source [label="CHMMM source"]
         LLVM [label="LLVM code"]
@@ -30,7 +30,7 @@ digraph {
             LeftFacts [label="Leftover facts"]
             Variables [label="Variables"]
             ASTTypeHoles [label="AST\nwith type holes"]
-            Judgments [label="Type Judgments"]
+            Judgments [label="Type assigments"]
             FlatAST [label="Flat AST"]
             BlockifiedAST [label="Blockified AST"]
             BlockifiedASTAnnots [label="Blockified AST\nwith analyzed flow"]
@@ -59,7 +59,7 @@ digraph {
             FlowAnalysis [label="Flow analysis"]
             Inference [label="Type inference"]
             Monomorphization
-            HoleFilling [label="Turning AST elaborations into types"]
+            HoleFilling [label="Type hole filling"]
             Mangling
             Translator
         }
