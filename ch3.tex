@@ -540,9 +540,34 @@ The monomorphization algorithm is a two-phase processes which is performed on ty
 
 If there was no limit on monomorphization, it could potentially continue forever.
 
-\xxx{add example for this case}
+\begin{ex}[non-terminating monomorphization]
+    Suppose, we have the following program:
 
-The demonstration algorithm differs from this description in that it also updates type handles \xxx{ref to preprocessing and inference} of each node of the currently instantiated top level definition. It also separates the queue into waves. The zeroth wave consists of monomorphic the top level definitions, then the first consist of the top levels being instantiated from references in the zeroth level, etc. It does not really differ from the approach with the linear queue. \xxx{it really doesn't?}
+    \begin{lstlisting}
+        class C a {
+            c() -> auto (a);
+        }
+
+        instance C ptr(auto(a)) => C auto (a) {
+            c() {
+                auto x;
+                auto y;
+
+                x = c();
+                y = [x];
+
+                return (y);
+            } 
+        }
+    \end{lstlisting}
+
+    Then the program is semantically valid, but a successful monomorphization of its use would require an infinite set of subsequent definitions for the instances of c.
+
+    \xxx{An interesting piece of information about this program is that it does not have any uninitialized values even though the variable $x$ cannot be proven to receive any value, yet it passes its value to some instruction.}
+
+\end{ex}
+
+The demonstration algorithm differs from the above description in that it also updates type handles \xxx{ref to preprocessing and inference} of each node of the currently instantiated top level definition. It also separates the queue into waves. The zeroth wave consists of monomorphic the top level definitions, then the first consist of the top levels being instantiated from references in the zeroth level, etc. It does not really differ from the approach with the linear queue. \xxx{it really doesn't?}
 
 \xxx{if the AST contained type information with no external state, the monomorphization could be implemented via generics.}
 
@@ -626,6 +651,6 @@ After the translator collects all the struct definitions, it starts translating 
         \item Then we translate the statements in the block, each given a mapping from the variables to the corresponding operands that represent their current values. The assignment statements and call statements can (and usually will) change this mapping and this new mapping is then given to the next statement, etc. The last such mapping serves as the \li{exports} list of the current block        
     \end{enumerate}
 
-    \item We collect the \li{exports} lists of each block and zip it with the list of \li{placeholders} \xxx{lemma: they have the same length} and from this we create a mapping \li{(placeholder, export)}. We then use this mapping to replace all placeholders in phi nodes with the actual operands that are to be exported from the corresponding blocks. \xxx{lemma: the placeholders appear only in phi nodes}
+    \item We collect the \li{exports} lists of each block into one list and zip the collected list with the list of \li{placeholders} \xxx{lemma: they have the same length} and from this we create a mapping \li{(placeholder, export)}. We then use this mapping to replace all placeholders in phi nodes with the actual operands that are to be exported from the corresponding blocks. \xxx{lemma: the placeholders appear only in phi nodes}
 \end{enumerate}
 
