@@ -16,9 +16,9 @@ And with the multiple exits, there often comes an action, we want to perform on 
 Without the RAII features, we can either enclose the procedure in a wrapper which performs the necessary actions, but significantly restricting the API of the function; or we can create a cleanup section in the procedure we then use instead of regular exiting. We compare this pattern with RAII \xxx{in the next section}.
 
 
-\xxx{described here and here} (namely the \li{new} specialization for structure declarations and the corresponding generation of \li{drop} calls) 
+\xxx{described here and here} (namely the \li{new} specialization for structure declarations and the corresponding generation of \li{drop} calls)
 \xxx{ to the reference
-The RAII mechanism we propose generates, on every procedure exit, an implicit call to the cleanup code tied to the \li{new} specialized object on the stack, type of which has to be a valid argument to the \lstinline{drop} method of the \li{RAII} class. 
+The RAII mechanism we propose generates, on every procedure exit, an implicit call to the cleanup code tied to the \li{new} specialized object on the stack, type of which has to be a valid argument to the \lstinline{drop} method of the \li{RAII} class.
 The pointer to the object the call is tied to is then given as the argument to this call.
 }
 
@@ -40,15 +40,29 @@ This can be easily ensured by the flow analysis algorithm which is already demon
 
 With the proposed type system, it can be ensured, that the whole object is represented only during compilation and thus if the code generation generates a tail call instead of a regular call, which can be ensured in the \cmm language, this abstraction can have zero cost on the runtime.
 
-One improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple RAII objects, each such action then possibly being prevented a separate \xxx{dropped} instruction on some subset of control flow paths.
+One possible improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple RAII objects, each such action then possibly being prevented by a separate \xxx{dropped} instruction on some subset of control flow paths.
 
 \section{Comparison to other languages offering RAII}
 
 There are multiple constructs that implement the RAII mechanism. We will look into two: \xxx{C++ RAII constructor/destructor} and \xxx{C\# try{}finally{...}}.
 
-\section{The promises and futures}
+\section{Subtype-dependent class constraint resolution}
 
-\section{A guideline for the compiler capable of modeling the proposed language model}
+In our design, in the demonstrational implementation just as well as in the proposed design for the practical implementation, we disconnected the concept of subtyping from the mechanism of class constraint resolution.
+
+This is due to the unsolvability or nonconfluence of such a system, if these two concept were not disconnected.
+
+\begin{ex}
+    Let us assume a class $C a b$ with two instances with no assumptions on some given monomorphic typings and kinds such that one requires $a >_c b$ and the other one $a <_ b$ (the instances differ only in constness and they are nonoverlapping). The sharp inequalities are not allowed in the system \xxx{ref to reasoning}, but they can be ensured by choosing two constness constants $c_1, c_2$ such that $c_1 \leq c_2$. And since the subtyping constants are assumed to be unique, it follows that $c_1 < c_2$ and therefore we can ensure two instances with the stated properties.
+
+    We then solve $C a b$ for
+\end{ex}
+
+\section{The promises and futures}
+Our demonstrational implementation, albeit incomplete, demonstrates the effects on programming convenience within type-safety, which comes from using functional dependencies $\text{structure} \to \text{field}$. As we discussed in the previous work, the best work-around without this inference feature would be requiring some special structure of the code: either requiring all field to have unique names; requiring all field of the same name be of the same type as well; or have the same dependencies on the structures-type arguments.
+
+
+\section{A guide for the compiler capable of modeling the proposed language model}
 
 The proposed type system and the code instantiation guided by its the described inference models the capabilities we wanted to cover.
 
@@ -88,40 +102,40 @@ We propose the following type inference pipeline:
 
 \begin{enumerate}
     \item Determine the strongly connected components of the program and their topology order
-    
+
     \item Then for each component:
-    
+
     \begin{enumerate}
         \item We generate the constraints that capture the semantics of the program, for all references within this component, we generate equality constraints, then we do the same for any monotyped references to the previously solved components, otherwise we instantiate the schemes of the polytyped reference, removing the scheme's inside type information \xxx{reg to chpt 2}, (for a method, we instantiate the method (which, in this proposal, directly takes the class witness - this was not possible in the demonstrational implementation as it was uncertain whether the function is a method or a regular function) - we do not instantiate any instances (it is actually possible, but that would be a design-decision and a potential optimization practice); for a struct, we instantiate it according to its definition, struct definitions are in the base version of the type system not constrained by any class so they never require witnesses).
-        
+
         \item Then, for any constraint containing at least one type $t$ and a subtyping dimension $s$, we generate a constraint $t \to_s s_1$, where $s_1$ is a fresh subtype variable.
-        
+
         \item Then, we do the similar for any skolem constant $t$, with subtype skolem constants instead of subtype variables, the skolem constant is a subtype variable marked with the context level of $t$. \label{gen_subskolem}
-        
+
         Note that, because of the occurrence of so many constraints of this form, it might be beneficial to store them ordered by $t$ so that we can quickly identify any pairs (and generally groups) $t \to_s s_1$ and $t \to_s s_2$ and unify them. \label{mapping_once}
 
         \xxx{Since we do not require any specific ordering, it can be ordered by a hashing function; but there are orderings that are almost invariant under rewrites that might be good as well (orderings determined by the outside constructor first)}
-        
+
         \item Then, we rewrite any constraints of the form $t_1 \leq_s t_2$ for any two types $t_1$ and $t_2$ into constraints $t_1 \to_s s_1, t_2 \to_s s_2, s_1 \leq_s s_2$, where $s_1, s_2$ are fresh subtype variables in the space of $s$. For typings, consider $\sim_T$ instead.
-        
-        \item Then, we perform rewrites of the constraints according to type equality constraints, typing equality constraints, and attempting to lookup proofs for any class constraints (by instantiating the respective matching proof schemes). Note that if the classes have any functional dependency sets defined, we perform the replacement  \xxx{defined where?}. But since we require explicit witnesses, we should state the new constraints carry the same witness as the original constraint (in both cases of the replacement).
-        
+
+        \item Then, we perform rewrites of the constraints according to type equality constraints, typing equality constraints, and attempting to lookup proofs for any class constraints (by instantiating the respective matching proof schemes). Note that if the classes have any functional dependency sets defined, we perform the replacement  \xxx{defined where?}. But since we require explicit witnesses, we should state the new constraints carry the same witness as the original constraint for the trivial rule and new witnesses for other rules (in both cases of the replacement; in proofs, the witnesses are constant).
+
         If we find a matching proof, we unify the constraint's witnesses with the proof's witness. It should be noted that the proof witnesses are constants as they serve to identify the respective instances.
-        
+
         \item Then, we determine the skolem constants of the functions (or other definitions in the component; WLOG, we will assume them to to be functions) by retrieving the free variables from each function's type (stored in the AST), and then quantifying them. Note, that the skolem constants for each function might be explicitly requested by the user, then we just check whether such functions have any free variables, and if so, we report errors (or we store the errors to be reported later, quantifying the free variables so the inferring continues as if the user patched this problem by including them in the skolems for each  respective function) \label{func_skolem}
-        
+
         \item The constraints regarding subkinding and subconsting are postponed to this phase as they do not affect the class resolution nor the types and typings.
-        
+
         \item If we generated new skolem constants, we perform the step \ref{gen_subskolem} on these skolem constants.
-        
+
         \xxx{lemma: if a type variable is bound in an unsolved constraint, it is a skolem or it has lower context level than the current scope}.
-        
+
         \item We collect the constraints of the form $t \to_s s$, then, we group them by $t$ and if there is any group of more than one element, we unify them. This then means that each type is mapped to exactly one subtype variable in the given subtyping dimension. We can skip this step if we keep the invariant that each type is mapped to exactly one subtype, see the step \ref{mapping_once}.
-        
+
         \item We determine the strongly connected components of the graphs defined by the subtypings topology and we unify the variables present in any such strongly connected component, if the size of the corresponding component is greater than one.
-        
+
         \item We then identify the lower bounds (as described by \xxx{chap 2}) of each subtype variable $s$ that is not marked.
-        
+
         We then remove all constraints regarding $s$. And then we unify it with the $\sup$ constructor applied to the set of its lower bounds.
 
         \xxx{lemma: Then, all subtypes appearing in the constraints of the current component are either: subtype constants, or they are marked to represent skolem type constants, or they are defined via the $\sup$ constructor (then recursively for each argument, but without the $\sup$ constructor)}
@@ -136,11 +150,11 @@ We propose the following type inference pipeline:
     \item Then we look at the functions specified as \li{foreign "C"}. And report any such functions if they are not monotyped (and therefore monomorphic). Otherwise we add them to a list \li{C_symbols} of functions , names of which we do not want to mangle.
 
     \item The monomorphization then starts by puting the \li{foreign "C"} to the resulting program and then for each reference to a monomorphic object, we simply add it to the monomorphization queue with no substitution. If the referenced object is not monomorphic, whe instantiate its scheme, unifying it with the type of the reference resulting in the unification $u$ and then we add it to the monomorphization queue with the unification $u$ and any witnesses the referenced object requests (we either pass our own witnesses or we pass the constant witnesses included with reference). \label{mono_step}
-    
+
     \item Then we take the first item from the monomorphization queue and if it represents a monomorphic object, we add it to the resulting program, following the same process as in the step \ref{mono_step}. If the object is polymorphic, we first check whether it is an instance and if so, it requested a witness, which we then use to efficiently lookup the corresponding instance.
-    
+
     We then apply the provided substitution to all the nodes in the object. And then we follow the same process as in the step \ref{mono_step}.
-    
+
     Note that the constant witnesses can be just references to the corresponding instances.
 
     \item We then mangle all the names that do not appear in \li{C_symbols}.
@@ -160,7 +174,7 @@ As this work is our first compiler with no significant dependencies on an establ
 
 \begin{itemize}
     \item One such finding is the design pattern we used for defining the AST nodes in Haskell. We will explain it on an example:
-    
+
     \begin{lstlisting}[language=Haskell]
 data TopLevel a
     = TopSection StrLit [Annot Section a]
@@ -205,20 +219,20 @@ mangle n@(_ `Annot` (_ :: a)) = go n
         \end{lstlisting}
 
         The important part of the example, we want to show, is the function \linebreak \li{go = gmapM go `extM` lValueCase}. This function, which can be extended with more \li{`extM` xCase} cases performs the monadic (= stateful) transformation \li{lValueCase} on the given input, or, if the type of the argument does not match the type expected by the case, it traverses all immediate subterms, again, attempting to perform one of the monadic transformations, and then recursively on their immediate subterms, etc., until each branch of the expression has match or ends in a leaf.
-        
+
         Notice that if the case matches the expected type, but not the expected value, we explicitly (using \li{gmapM go}) propagate the transformation to child nodes of the matched case.
     \end{ex}
 
     The \li{go = gmapM go `extM` lValueCase} pattern does not look that impressive at first, but it is a generalized visitor pattern which can quite significantly shorten the development time and the code complexity. For stateless transformations, use \li{gmapT} and \li{extT}.
 
     \item The second finding is the importance of separating the whole compilation into layers similarly to the UNIX philosophy. Each of such layers should do one job and do it well. This approach greatly improves the debugging and the analysis of the program.
-    
+
     As an anti-example, take the monomorphization layer. It has two (albeit very related) jobs: it stores the types inferred by the inference layer into the annotations in AST and it also monomorphizes the code - those are two distinct responsibilities. Separating them into two layers would have an effect of it being possible to use the above pattern to simplify one of such layers into mere hundreds of lines of code.
-    
+
     Good examples of using this principle are the modules \li{CMM.Mangle} (source of the above example \xxx{ref}) and \li{CMM.FillHoles}.
-    
+
     \item The third finding is the benefit of defining the layers with no assumptions on the actual structure of the node annotations but requiring a type class which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.
-    
+
     \item The fourth finding is the benefit of adding unnecessary debug information to the data passed around \xxx{the comment constraints in preprocessing; that is not recommended by any source}. And it is especially if this generation of debug information can be turned off by a build option. This principle extends to explicit invariant checks.
 
     \xxx{more findings}

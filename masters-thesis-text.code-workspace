@@ -19,10 +19,15 @@
 		"cSpell.words": [
 			"constnesses",
 			"existentials",
-			"unifications"
+			"RAII",
+			"unifications",
+			"unnested"
 		],
 		"makefile.extensionOutputFolder": "./.vscode",
-		"editor.wordWrap": "on"
+		"editor.wordWrap": "on",
+		"files.trimTrailingWhitespace": true,
+		"files.trimFinalNewlines": true,
+		"files.insertFinalNewline": true
 	},
 	"tasks": {
 		"version": "2.0.0",

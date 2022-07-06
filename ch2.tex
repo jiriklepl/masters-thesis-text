@@ -1,162 +1,265 @@
 
-\providecommand{\cmm}[0]{C-{}- }
+\providecommand{\cmm}[0]{ C-{}- }
 
-\chapter{C-{}-}
+\chapter{\cmm extension with type inference and RAII features}
 
-\todo{C-{}- is great etc etc}
+\label{chap2}
 
-Before we talk about the specifics of C-{}-, let us explain our choice of this particular language for our demonstration of using type inference and RAII in a systems-programming context.
-
-\url{https://downloads.haskell.org\/ghc\/latest\/docs\/html\/users_guide\/codegens.html}
+\xxx{\url{https://downloads.haskell.org\/ghc\/latest\/docs\/html\/users_guide\/codegens.html}}
 
 \xxx{man2}
 
-Cmm (a variant of C-{}-) is used as a backend intermediate representation for GHC, the most popular haskell compiler. C-{}- is thus designed on great experiential basis by one of the co-creators of the haskell language, Simon Peyton Jones, alongside with GHC and itself.
+\section{\cmm history and significance}
 
-Just as Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers, abstracting away various architectural specifics, while also offering the users to target for specific registers-sizes. For example, \lstinline{bits32}; register types, in the context of \cmm, called ``kinds'' (but we will refer to them as ``data kinds'' or ``data-kinds'' to distinguish them from kinds we know from the HM type system and similar systems), note that these data kinds are usually strictly separated from each other in other languages (by so-called ``aliasing rules'' \xxx{link aliasing rules for c++ (perhaps C)? or for some asssembler if such exist?}); and then \cmm can give constraints even on using specific registers. This was one of the main motivations for choosing this language for our exploration as it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers.
+Before we talk about the specifics of \cmm, let us explain our choice of this particular language for our demonstration of using type inference and RAII in a systems-programming context.
+
+Cmm (a variant of \cmm) is used as a backend intermediate representation for GHC, the most popular haskell compiler. \cmm is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
+
+\begin{remark}
+    The \cmm language has two major revision, which are differ quite significantly. So it is important to note that, by saying just \cmm, we will always refer to the second revision of the language.
+\end{remark}
+
+Just like Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register.
+
+The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent in the context of \cmm.
+
+The way \cmm distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' or ``data-kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
+
+Note that these data kinds are usually strictly separated from each other in many languages (by so-called ``aliasing rules'' \xxx{link aliasing rules for c++ (perhaps C)? or for some asssembler if such exist?}).
+
+By specifying a kind, a user can give constraints on which type of physical registers is the value allowed to be stored (or expected to) and then this constraint can be even more tightly constraint by specifying a specific register by its name.
+
+This can be modelled well with a very limited notion of lattice-based subtyping where we consider the empty set of possible registered the bottom and all registers the top.
+
+\xxx{\url{http://boole.stanford.edu/cs353/handouts/book1.pdf}}
+
+This was one of the main motivations for choosing this language for our exploration as it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers, offering these features that can be easily tied to type inference.
 
 It is due to the above reasons, it is usually categorized as pseudo-assembler.
 
-The algorithm our experimental approach is based on, so called ``deferred inference'' or the ``French approach'' \xxx{refer to the prev chapter}, was proposed to the public by the same person, so there were even more arguments for this choice motivated by some overlaps in design and ideas. \xxx{is it good to point out specific overlaps?}
+The algorithm our experimental approach is based on, so called ``deferred inference'' or the ``French approach'' (described in the section \ref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
 
-As we based the proof-of-concept implementation on the second, and the latest \xxx{when?}, revision of the standard, we will always refer to this version unless otherwise specified.
+\section{\cmm specification}
 
-\section{C-{}- specification}
+What characterizes \cmm perhaps the best is simply: minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only two control flow statements it supports are if statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
 
-What characterizes \cmm the best is perhaps simply minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and it offers a high number of additional compiler hints and constraints the user can specify.
+What differs the approach of \cmm from other C-like languages is that it has call statements instead of call expressions. This is an important distinction, as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. Not allowing side effects inside expressions is another desirable feature of a systems programming language if we strive maximum code transparency.
 
-What differs the approach of \cmm from other C-like languages is that it has call statements instead of call expressions. This is an important distinction as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. This follows a similar philosophy to people like Linus Torvalds, for example, who oppose quite popular modern features like operator overloading and C\# accessors. \xxx{link torvals}, \xxx{link the cis language?}.
+It is important to note that \cmm, while being minimalistic, is not minimalistic in all of its aspects. \cmm, in contrast to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
 
-It is important to note that \cmm it is not minimalistic in all aspects as it, as opposed to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation and, opposed to regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed.
-
-It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers.
-
-\todo{put focus on the general specifics}
-
+It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers. Same would apply for any assumptions that this implements some kind of error handling.
 
 \section{Used extensions to the language}
 
-\todo{how it is extended to achieve our goals}
+We extended the language with new syntactic constructs: \li{class}es, \li{instance}s, \li{struct}s, \li{new} specifications, \li{dropped} statements and \li{[ptr]} generic dereference.
+
+And then with \li{auto} anonymous type variables, \li{auto(<name>)} named type variables, \li{ptr(<type>)} pointer types, \li{label} types, and few other types.
+
+And semantically, we extended the language with more intricate type system supporting subtyping, RAII features that define automatic function calls on procedure exits, and class instance (method instance) resolution.
 
 \subsection{Type classes and instances}
 
-Syntactically, we extended the language with \li{class}es and their \li{instance}s to showcase the solution to the problems identified in our previous work. \xxx{explain, link}
+\li{class}es and their \li{instance}s are implemented in a similar fashion to the previous work, and unlike in the previous work, we clearly define functional dependencies.
 
-\xxx{example for classes and motivation}
+\li{class} definitions define the user-defined type classes with some superclasses and functional dependencies and then contain list of function declaration defining the methods of the type class.
 
+Superclasses are requirements that specify that each instance of the class has to correspond to some instances of the superclass; best example of this would be \li{class Eq a => Ord a} in haskell, which specifies that all comparable types have to also be equatable.
+
+\begin{ex}[Classes]
+    The following code snippet shows a definition of a \li{C} class with an \li{m} method:
+
+    \begin{lstlisting}
+        class C a {
+            m (auto (a) x) -> auto (a);
+        }
+    \end{lstlisting}
+
+    The \li{m} method takes an argument of type \li{a} and returns a result of the same type. All instances of this method then have to follow this type scheme.
+\end{ex}
+
+\li{instance} definitions then define the instances of their corresponding type classes under some assumptions on existence of some other instances (arbitrary instances, not necessarily instances of superclasses).
+
+\begin{ex}[Instance]
+    The following code snippet then shows a possible instance definition.
+
+    \begin{lstlisting}
+        instance C bits32 {
+            m (auto x) {
+                auto y;
+                y = x * 5;
+
+                return (y);
+            }
+        }
+    \end{lstlisting}
+\end{ex}
+
+We will often call instances proofs, when discussing them in theory. We require them to be non-overlapping, as, if we allowed them to overlap, the resulting system would be unsolvable. List of overlapping instances can be shown to be equivalent to a CNF we might know from general SAT-solving.
 
 \subsection{Structures and member fields}
 
-And then we added \li{struct}s (a record structure syntax known from other C-like languages) as they are not a part of the \cmm language and we also added \li{new} specifiers for their instances to implement our RAII goal. For these RAII features see the subsection \ref{RAII}
+We added \li{struct}s, a record structure syntax for a feature known from other C-like languages.
 
 Structures use the syntax derived from regular data specialization for maximum consistency.
 
-\xxx{an example for structs and motivation}
-
 One of the side-effects of this approach is that one field can have various name aliases. This might seem inconsequential, but it can have very interesting consequences in polymorphic programming.
 
-\xxx{more rambling?}
+\begin{ex}
+    \label{list}
+    The following example shows a possible implementation of a common linked list.
 
-\xxx{one of the good features or just an interesting tid-bit of trivia?}
+    \begin{lstlisting}
+        struct list a {
+            next: ptr(list auto(a));
+            value: data: auto(a);
+        }
+    \end{lstlisting}
 
+    The last field showcases that the list can be used in both, any function that expects it to carry a value, and in any function that expects it to store some data.
+\end{ex}
 
-In our previous work, we discussed that the standard Damas-Milner approach to inference does not cover so called ``functional dependencies'', more on that in \xxx{somewhere in the first section}, there we discuss why these functional dependencies are an important topic in the scope of this thesis.
+They allow us to pack more, related, data together (in the example \ref{list}, some item and a pointer to the next item) and thus abstract away the specific data layout from the implementations. This then allows us to write functions passing the data or references to it once and then not reimplement them every time the specific data layout changes.
 
-Our example implementation, albeit incomplete demonstrates the effects on programming convenience within type-safety, which comes from using functional dependencies $\text{structure} \to \text{field}$. As we discussed in the previous work, the best work-around without this inference feature would be requiring some special structure of the code: either requiring all field to have unique names; requiring all field of the same name be of the same type as well; or have the same dependencies on the structures-type arguments.
+The reason basic \cmm does not require structs is that it does not support polymorphism nor it enforces type safety. Instead of passing a pointer to a record and then, in the consumer, using a set of field accessors, it can pass an untyped pointer and a set of integer constants representing the offsets of the data.
 
-\todo{rename to records?}
+Since we infer the types and multiple types can have the fields implemented differently, the above approach is no longer desirable. It is also very error-prone.
+
+And we also added \li{new} specifiers for \li{struct} objects to implement our RAII goal. For these RAII features see the subsection \ref{RAII}
 
 \subsection{Generic dereference and typed labels}
 
-On the semantic level, we extended the language to have typed labels. All data labels have the type derived from the object stored at the label's location, and the code labels have a distinct type from data labels as they do not point to any such object.
+On the semantic level, we extended the language to have typed labels. All data labels have the type derived from the object stored at the label's location, and the code (branch) labels have a distinct type from data labels as they do not point to any such object.
 
-This typing of labels allowed us to make quite subtle, but very useful syntactic extension of allowing the type be omitted in pointer dereference expressions.
+This typing of labels allowed us to make quite subtle, but very useful syntactic extension of allowing the type be omitted in pointer dereference expressions, thus introducing a generic dereference.
 
-\xxx{example here}
+\begin{ex}[Generic dereference]
+    This example showcases that we do not need to specify the type when dereferencing a pointer and the type is automatically inferred.
 
-This combines well with structures and their fields.
+    \begin{lstlisting}
+        stackdata {
+            p: bits32;
+        }
 
+        [p] = 5; // stores 5 to 'p'
+    \end{lstlisting}
+\end{ex}
 
-\xxx{example here, more text}
+\begin{ex}[Generic dereference with structs]
+    This example shows that the generic dereference combines well with structures and their fields.
+
+    \begin{lstlisting}
+        struct X {
+            x: bits32;
+        }
+
+        ...
+
+        stackdata {
+            p: X;
+        }
+
+        [p->x] = 5; // stores 5 to the 'x' field of 'p'
+    \end{lstlisting}
+\end{ex}
 
 \subsection{Extensions to the type system}
 
 We extended the language with the HM-like type system with type classes. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it served as a side goal in exploring type systems and type inference.
 
-This turned out to be a very significant decision as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible guides on best practices. \xxx{we will offer such a guide in our conclusions}.
+This turned out to be a decision significantly affecting the implementation process as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible guides on best practices. \xxx{we will offer such a guide in our conclusions}.
 
-We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types of registers a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value.
+As a result, the demonstrational implementation does not currently cover the whole type system space. The type system was refined incrementally during our implementation and some assumptions the implementation was design around were either swapped for stronger versions, or completely removed. The implementation was then changed to reflect these refinements in the theory, but it was later concluded, that a complete redesign would be preferable.
 
-This subtyping mechanism was designed to model an orthogonal space where each dimension is a bounded semilattice and we do not consider constraints with sharp inequalities. Sharp inequalities would be very easy way to design an incomputable system, and also, they do not make any sense when we want to determine just the minimal ``run-timeness'' \xxx{i cannot think of anything better to name the idea of being a run-time variable} or the minimal set of registers a value can be received on, from an assignment.
+We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types of registers a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value. This has many implications, amongst which is the possibility of enforcing compile-time evaluation we might know from C++, for example.
 
-We represent the various subtype dimensions of the type variables with so-called ``subtype variables''. We will use these two representation synonymously.
+This subtyping mechanism was designed to model an orthogonal space of ``subtype dimensions'', where each dimension is a lattice with a bottom and we do not consider constraints with sharp inequalities. Sharp inequalities would be very easy way to design an ambiguous system, and also, they do not make any sense when we want to determine just the minimal ``run-timeness'' or the minimal set of registers a value can be received on from an assignment.
+
+We represent the various subtype dimensions of the type variables with so-called ``subtype variables''. We will use these two representations (set of dimensions of a type and a set of variables representing a type's subtyping) synonymously.
+
+\begin{remark}[Type systems without subtyping]
+    We consider the HM type system and all its variations we assumed so far a type system with only one dimension, the typing dimension. It is important to note, that the typing dimension is separate from the type, as having the same typings does not imply the types are necessarily the same.
+\end{remark}
+
+\begin{defn}[Subtyping system]
+    We define the subtyping system as a minimization problem, where we first minimize the ``typing dimension'' and then the mutually orthogonal ``subtype dimensions''.
+
+    We will introduce these two concepts shortly.
+\end{defn}
 
 
 \begin{defn}[Typing dimension]
     \label{typing_def}
-    The typing dimension is a semilattice with instantiation \xxx{ref to instantiation} serving as the $\leq_T$ operation and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables \xxx{mention de bruijn notation? Are types $\forall a . \forall b . a \to b$ and $\forall b . \forall a . a \to b$ equivalent? Not really if assuming type applications, and at the same time yes they are if we are talking HM}).
+    The typing dimension is a lattice with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation - notice the similarity of concepts: \tit{lowest upper bound} and \tit{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables \xxx{mention de bruijn notation? Are types $\forall a . \forall b . a \to b$ and $\forall b . \forall a . a \to b$ equivalent? Not really, if assuming type applications, and at the same time yes they are if we are talking HM}).
 
-    Note that, apart from other, subtype, dimensions, the equality in typing dimension is congruent with type applications, type substitutions, and, if we are not considering type functions, all type operations are bijective.
+    In our proposed type system, we perform the type class resolution using only this dimension. Notice how it is easily specifiable using the language of lattices: $C t \GetsTo \exists C t' \in \Gamma . t \geq_T t'$.
 \end{defn}
 
-\begin{defn}[Types]
-    Types follow the same rules as the typing dimension, see the previous definition (\ref{typing_def}).
-\end{defn}
+\begin{remark}
+    Note that the unification failure is the top element of the typing lattice. And it is also the top typing. But, inferring the unification failure is similar to deriving a contradiction in a logic theory. We report such input as wrong.
+\end{remark}
+
+\begin{remark}
+    Note that, unlike other, subtype, dimensions (generally; will apply to the ones introduced), the equality in typing dimension is congruent with type applications and type substitutions, and, if we are not considering type functions, all the type operations are bijective.
+\end{remark}
 
 \begin{defn}[Subtype dimension]
-    Each subtype dimension $s$ is required to be a bounded semilattice orthogonal to other dimensions and non-affecting typeclass instantiation.
-    
-    It is defined by $\leq_s$ operation and a set of distinct subtyping constants specific to each subtype dimension. This set is nonempty for each dimension and it contains a bottom $\bot_s$.
-    
+    Each subtype dimension $s$ is required to be a lattice with a bottom element, orthogonal to other dimensions, and non-affecting type class instantiation. Again, the top element is allowed to be a failure.
+
+    It is defined by the $\leq_s$ operation (or the $\lor$ operation) and a set of distinct subtyping constants specific to the subtype dimension. This set is nonempty, always containing the bottom $\bot_s$.
+
     We can then simply extend the definition to apply to user-defined subtype dimensions, but that is not within the scope of this thesis.
 
-    In the type system specific to this thesis, we use two subtype dimensions: \textit{data kinds} and \textit{constnesses}.
+    In the type system specific to this thesis, we use two subtype dimensions: \textit{data kinds} and \textit{constnesses}. We will specify them in \xxx{the algorithm}.
 \end{defn}
 
 \begin{defn}[Subtype constraints]
-    We define the set of constraints $t \leq_s t'$ where $t$ and $t'$ are two types and $\leq_s$ is ordering of $t$ and $t'$ in the subtype dimension $s$
+    We define the set of constraints as $t \leq_s t'$, where $t$ and $t'$ are two types and $\leq_s$ is ordering of $t$ and $t'$ in the subtype dimension $s$.
 \end{defn}
 
 \begin{defn}[Equality of types implies equality of their subtype dimensions]
-    If two types $t$ and $t'$ are equal, then $t =_s t$ for every subtype dimension $s$. Note that it does not the other way.
+    If two types $t$ and $t'$ are equal, then $t =_s t$ for every subtype dimension $s$. We specifically do not define this relation as equivalence. This is why we still use the term type to describe the objects and we do not refer just to their typings and subtype dimensions.
 \end{defn}
 
 \begin{defn}[(Direct) subtype]
-    We call $t$ a (direct) subtype of $t'$, if $t \leq_s t'$ in subtype dimensions and $t =_T t'$ (their typings are the same).
+    We call a type $t$ a (direct) subtype of a type $t'$, if $t' \leq_s t$ in each subtype dimension $s$ and also $t =_T t'$ (their typings are the same).
 \end{defn}
 
 \begin{defn}[Subtype variable]
-    A subtype variable of a type variable $t$ is a variable $s$ such that $t =_s s$ and, for every other type $t' \neq t$ and a corresponding subtype variable $s'$, $t' =_s t \To s =_s s'$.
+    A subtype variable of a type $t$ is a variable $s$, such that $t =_s s$, and, for every other type $t'$, such that $t' \neq t$, and its corresponding subtype variable $s'$, it holds that $t' =_s t \To s = s'$.
 \end{defn}
 
-Lattice-constrained subtyping is efficiently computable if it is orthogonal to the mechanism of deciding type class instances. For each topological component of the code (a part of code, that has cyclic references), it is a simple minimization problem on a semilattice structure defined by some fixed constants.
+Lattice-constrained subtyping is efficiently computable at least if every subtype dimension is orthogonal to the mechanism of deciding type class instances. For each topological component of the code (a part of code, that has cyclic references), it is a simple minimization problem on a lattice structure defined by some fixed constants.
 
-\begin{cor}
-    We say that there is an inequality (or equality) constraint between two values if such constraint is given by the input to the algorithm, is in a set of base assumptions (relations between subtyping constants, definition of bottom), or comes from transitivity, reflexivity, and weak antisymmetry.
+\begin{remark}[Inequality closure convention]
+    We say that there is an inequality (or equality) between two (type or subtype) variables if it is specified by a constraint given in the input to the algorithm, it is in a set of base assumptions (relations between subtyping constants, definition of bottom), or comes from transitivity, reflexivity, and (weak) antisymmetry.
 
-    We will always assume generated closure over transitivity, reflexivity and weak antismymmetry as that simplifies many statements and lemmata.
-\end{cor}
+    This convention allows us to use more succinct statements when describing the type system.
+\end{remark}
 
 \begin{ex}
 \label{subtyping-idea}
 
-Let us explain this on a simple procedure with arguments' constnesses $a$ and $b$ and a return value's $c$, and let there be a constant $K$ that represents a concrete constness (perhaps, it can be a link-expr requirement).
+Let us explain the idea of the subtyping system on the following example of inferring the constnesses of a simple procedure.
 
-If there is a constness value $x$ and then another two constness values $y, w$ and the system contains constraints: (we will omit saying more-or-equal in order to make the statements shorter; it is good for clarity to read ``more constant'' as ``more specific'')
+The procedure's arguments' constnesses are represented by the constness variables $a$ and $b$ and a return value's $c$, and let there be a constant $K$ that represents a concrete constness (perhaps, it can be a link-expr requirement).
+
+If there is a constness variable $x$ coming from some internal variable and then another two constness values $y, w$ and the system contains the following constraints: (we will omit saying more-or-equal in order to make the statements shorter; also, for clarity, it is always better to think in terms ``more constant'' as ``more specific'', rather than, ``more general'')
 
 \begin{itemize}
-    \item $x$ is more constant than $y$ (perhaps, because we assign $x$ to $y$, an easy exercise is to show that for these types of subtyping, assignment targets have to be more general than the source operand)
+    \item $x$ is more constant than $y$ (perhaps, because we assign $x$ to $y$. An easy exercise is to show that for these types of subtyping, assignment targets have to be less specific than the source operands)
     \item $y$ is more constant than $c$
     \item $x$ is more constant than $K$
     \item $w$ is more constant than $x$
     \item $a$ and $b$ are more constant than $w$
-\end {itemize}
+\end{itemize}
 
 \centerline{\includegraphics[width=\linewidth / 2]{img/out/subtyping-idea.pdf}}
 
-If those are the only subtyping constraints in the given component (in this dimension, since they are required to be orthogonal), we can safely unify the constness variables $x$ and $w$ as they are limited by the same fixed values (upper-bouned by $c$ and $K$ and lower-bouned by $a$ and $b$). And we can clearly see that the minimal $x$ will be always equal to $w$ regardless of constnesses of $a$, $b$ and $c$ in various outside contexts. Less obvious is whether we can safely unify $x$ and $y$. And since the system is based on minimization, the minimal $y$ will be, again, always equal to $x$ (with an exception of cases where $x$ is not solvable; but we are interested in solving the whole constraint space and not single values, so separating them does not make sense - yet still, in practice, we can keep some outside meta-information about the bounds of the original variables for better error messages).
+If those are the only subtyping constraints in the given component (we can consider just this subtyping dimension, since they are required to be orthogonal), we can safely unify the constness variables $x$ and $w$ as they are limited by the same fixed values (upper-bounded by $c$ and $K$ and lower-bounded by $a$ and $b$). And we can clearly see that the minimal $x$ will be always equal to $w$ regardless of constnesses of $a$, $b$ and $c$ bound by outside contexts. Less obvious is, whether we can safely unify $x$ and $y$. And since the system is based on minimization, the minimal $y$ will be, again, always equal to $x$ (with an apparent exception of cases where $x$ is not solvable because of $K$; but we are interested in solving the whole program and not single values, so separating them does not make sense - yet still, in practice, this is a good reason for keeping some outside meta-information about the bounds of the original variables for better error messages).
 
-So, to clearly conclude the example. We are interested in an algorithm that unifies variables $x$, $y$ and $w$ and annotated the type of the function with constraints $c \geq a, c \geq b, K \geq a, K \geq b$ for the outside subtype information and $c \geq x, K \geq x, x \geq a, x \geq b$ for the inside subtype information. We then will go even further and state that $x = \sup \{a, b\}$ and that $x \leq c, x\leq K$ ($x$ is defined by its lower-bounds), notice the equality in the former constraint. We then can completely remove the constraint $x \leq c, x \leq K$ as it is redundant (can be shown via transitivity).  We then will use a notation similar to the latter constraint for more understandable outside subtype information for each variable. For $c$, that would be $c \geq \sup \{a, b\}$. Fixing the subtype variables to suprema of their lower-bounds has an effect of not having any free variables in the constraints for the procedure.
+So, to clearly conclude the example. We are interested in an algorithm that unifies variables $x$, $y$ and $w$ and annotates the type of the function with constraints $c \geq a, c \geq b, K \geq a, K \geq b$ for the ``outside subtype information'' and $c \geq x, K \geq x, x \geq a, x \geq b$ for the ``inside subtype information'' (note that the other two variables are not mentioned, as they are unified with $x$).
+
+We then will go even further and state that $x = \sup \{a, b\}$ (and that $x \leq \inf \{c, K\}$), in other words, $x$ is defined by its fixed lower-bounds. Notice the equality in the former constraint. We then can completely remove the latter constraint $x \leq \inf \{c, K\}$ as it is redundant (can be shown via transitivity from the outside subtype information).  We then will use a similar notation for more understandable outside subtype information for each variable. For $c$, that would be $c \geq \sup \{a, b\}$. Fixing the subtype variables to suprema of their fixed lower-bounds has an effect of not having any free variables in the constraints for the procedure.
 
 If the theory contained constraints with sharp inequalities, we could not separate the outside subtype information from the inside subtype information, nor have such liberty in unifying the variables.
 
@@ -166,11 +269,17 @@ This example demonstrates that the minimal subtypes within a space of fixed valu
 
 We are using the term ``fixed values'', but we have not yet introduced its meaning. They are some constants that are not to be optimized by the subtyping inference mechanism. In the most simple version of this system, if we do not consider type classes (only the HM type system with type constructors), the fixed values consist of subtyping dimension constants (in the example \ref{subtyping-idea}, that would be $K$); and then the subtype dimensions of skolem constants (again, in the example \ref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
 
-\begin{defn}[fixed value in subtyping without type classes]
+\begin{defn}[fixed value in the subtyping system without type classes]
     Each subtype variable of a skolem constant or subtyping dimension constant is a fixed value.
 \end{defn}
 
-If the type is a monotype (and thus it is a valid type for a program), it has no skolem constants and that means we can safely define all the subtype variables as suprema of their lower bounds.
+\begin{defn}[(Closest) fixed lower bounds]
+    We will call ``(closest) fixed lower bounds'' of a subtype variable $v$ in a subtype dimension $s$ such fixed values $c$ in the dimension $s$, that $c \leq_s v$ and there is no other $c'$, such that $c \leq_s c' \leq_s v$ would be in the closer of the known inequalities.
+\end{defn}
+
+\begin{remark}[Monotypes in the subtyping system]
+    If the type is a monotype (and thus it is a valid type for a program), it has no skolem constants and that means we can safely define all the subtype variables as suprema of their fixed lower bounds.
+\end{remark}
 
 \begin{lemma}[Each subtype variable can be set to a suprema of its lower bounds, where each such bound is the first fixed value on each path from this variable towards the bottom; this will give us the minimimal solution to the constraints]
     \label{suprema-subtyping}
@@ -182,26 +291,31 @@ The validity of this simplification can be shown in toplogical order of the vari
 If a set $X$ denotes the set of all the lower bounds of a variable $x$ and it is the variable with the lowest topological order. That means that if a variable $y$ constrained by $x$, then the constraint is $x \leq y$. If $x^\star$ is equal to the supremum of its lower bounds, then for every other $x'$ such that $x' \geq x^\star$, if $y \geq x'$, then also $y \geq x^\star$. This means that $x^\star$ is at least as good as $x'$ for all the constraints regarding $x$, while it also minimizes $x$ itself.
 \end{proof}
 
-\begin{defn}[Outside subtype information (of a function)]
-    The outside subtype information consists of subtype constraints between all fixed values. And the bindings to their respective types. All subtype variables appearing in a strongly connected component are unified. 
+\begin{defn}[Suprema subtype constructor]
+    The suprema subtype constructor $\sup_s$ is defined as a function from a set of values of a subtype dimension $s$ to a value from this dimension. It is defined by the suprema operation on the lattice defining the subtyping dimension.
 
-    It can be reduced under transitivity and reflexivity.
+    Therefore it holds the following identity: $\sup \{v\} = v$. Note that because of this, it is not equivalent to a type constructor. But, just like a type constructor, it defines a value, albeit nonuniquely.
 \end{defn}
 
-\begin{cor}[Outside subtype information]
+\begin{defn}[Outside subtype information (of a function)]
+    The outside subtype information in a subtyping dimension $s$ consists of subtype constraints between all fixed values in the subtyping dimension $s$. And the bindings to their respective types. All subtype variables appearing in a strongly connected component are unified.
+
+    It can be reduced under transitivity and reflexivity for acquiring a canonical form.
+\end{defn}
+
+\begin{remark}[Outside subtype information]
     The bindings of types to their corresponding subtype variables are $1 \to \star$.
-\end{cor}
+\end{remark}
 
 \begin{defn}[Inside subtype information]
-    The inside subtype information consists of a set of statements in the form $x = \sup X$.
+    The inside subtype information consists of a set of statements in the form $x = \sup X$ and the bindings to their respective types. It is not a part of the type signature of the function.
 
     Validity of this is described by lemma \ref{suprema-subtyping}.
 \end{defn}
 
-\begin{cor}[Typechecker for user-code that contains blackbox function does not need inside subtype information]
-
+\begin{remark}[Typechecker for user-code that contains blackbox function does not need the inside subtype information]
     Another direct consequence of lemma \ref{suprema-subtyping}.
-\end{cor}
+\end{remark}
 
 If we extend this mechanism to the type system with typeclasses, we have to regard the subtype dimensions of variables constrained in a type class constraints.
 
@@ -210,28 +324,82 @@ If we extend this mechanism to the type system with typeclasses, we have to rega
 \end{defn}
 
 
-The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context. \xxx{see ch1}
+The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context  \ref{constness_level}. This applies to their subtype dimensions as well
 
 \begin{defn}[fixed value in subtyping with type classes and context levels]
-    Each subtype variable of a skolem constant, subtyping dimension constant, a subtype variable of a type variable appearing in a type class constraint, or a variable with a lower context level than that of the solver is a fixed value.
+    Each subtype variable of a skolem constant, subtyping dimension constant, a subtype variable of a type variable appearing in a type class constraint, or a subtype variable with a lower context level than that of the solver (or equivalently, scope) is a fixed value.
 \end{defn}
 
-We did not strive for representing existentials as there has to be runtime type information included with them, so we will ignore such system.
+We did not strive for representing existentials, as there has to be runtime type information included with them, so we will not consider such system throughout this thesis. Yet, we specify it for any such extensions.
 
-\xxx{the folllowing is obsolete}
+% \xxx{the folllowing is obsolete}
 
-As our algorithm was based on \textit{deferring inference} algorithm which assumes an equality theory of the types and not lattice structures, the implementation progressed for a long time with some modifications to the general idea of the original algorithm, but met many obstacles and there was a lot of time spent on resolving those. It then seemed necessary to offer a better, working alternative, which we will in the \xxx{reference}.
+% As our algorithm was based on \textit{deferring inference} algorithm which assumes an equality theory of the types and not lattice structures, the implementation progressed for a long time with some modifications to the general idea of the original algorithm, but met many obstacles and there was a lot of time spent on resolving those. It then seemed necessary to offer a better, working alternative, which we will in the \xxx{reference}.
 
-We eventually designed a simpler and much easier to implement primitives for this type system. 
+% We eventually designed a simpler and much easier to implement primitives for this type system.
 
 \subsection{RAII}
 
 \label{RAII}
 
-\xxx{example for structs and motivation; why RAII, what is RAII, why is RAII, how RAII differs in the context of a procedural language}
+\xxx{\url{https://www.appinf.com/download/C++BetterDeviceSoftware.pdf}}
+\xxx{\url{https://www.stroustrup.com/bs_faq2.html\#finally}}
 
+The RAII (Resource acquisition is initialization) is a mechanism and a design pattern, which can be used for automatic execution of a code (commonly referred to as ``resource release''), which is meant to be run ``in every case''. It is usually used with locks (so-called ``mutexes'') and various ``smart'' pointers and containers.
 
-\todo{reference something about RAII}
+In the language the term is coined by, is characterized by tying this action (resource) to a certain object's lifetime and the action then, through the reference to the object, usually frees a lock, or deallocates a memory, decrements a counter, etc.
 
-\section{Modelling C-{}-}
+It is directly tied to the ``try - finaly'' \xxx{ref stroustrup} construct, but it requires less code with less nesting in the scope it is used in, and also, it allows for more flexibility. Which we will point out in the conclusion \xxx{ref}.
 
+The statement that this construct requires less code is supported by the claim that there are usually far more resources than the kinds of these resources.
+
+We extend the type system by introducing the \li{new} specifier, which signifies, that an stack object is to be tied to some predefined RAII action. This RAII action is defined by the \li{drop} function, which takes a pointer to the RAII object. This function is called with every RAII object on every exit point of the procedure.
+
+We also introduce the \li{dropped} statement, which specifies, that the resource is to be considered ``dropped`` on all exit points following this statement.
+
+\begin{ex}[Trivail use of RAII]
+    This example shows a common use of a RAII object, \li{X} can be, for example, some mutex
+    \begin{lstlisting}
+stackdata {
+    new X;
+}
+
+...
+
+// implicitly calls drop(ptr(X) _); on the anonymous object
+return();
+    \end{lstlisting}
+\end{ex}
+
+\begin{remark}[Explicit initialization]
+    Note, that the resource initialization is to be called explicitly.
+
+    The reason for this design choice is that the resource release much more often does not require any extra arguments, which would specify, how it should be performed.
+
+    And, at the same time, the resource initialization very often requires a different behavior on each occurrence. Consider, for example opening and closing a file.
+\end{remark}
+
+\begin{ex}
+    This example then shows more complex use of the RAII pattern, where we specify a part of the current scope, where the resource release is to be done explicitly or not at all.
+
+    \begin{lstlisting}
+stackdata {
+    x: new X;
+    // notice that, because of the dropped statement,
+    // we named the RAII object.
+}
+
+if a == 5 {
+    dropped x;
+
+    // here, the user can explicitly call drop(x)
+    // if they want
+
+    // does not call drop(x);
+    return ();
+} else {
+    // implicitly calls drop(x);
+    return();
+}
+    \end{lstlisting}
+\end{ex}
