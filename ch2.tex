@@ -16,22 +16,14 @@ Before we talk about the specifics of \cmm, let us explain our choice of this pa
 Cmm (a variant of \cmm) is used as a backend intermediate representation for GHC, the most popular haskell compiler. \cmm is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
 
 \begin{remark}
-    The \cmm language has two major revision, which are differ quite significantly. So it is important to note that, by saying just \cmm, we will always refer to the second revision of the language.
+    The \cmm language has two major revisions, which differ quite significantly.
+
+    It is important to note that, by referring to just \cmm, we will always refer to the second revision of the language, \cmm 2.0.
 \end{remark}
 
-Just like Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register.
+Just like Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular function call, which does not constitute stack manipulation.
 
 The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent in the context of \cmm.
-
-The way \cmm distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' or ``data-kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
-
-Note that these data kinds are usually strictly separated from each other in many languages (by so-called ``aliasing rules'' \xxx{link aliasing rules for c++ (perhaps C)? or for some asssembler if such exist?}).
-
-By specifying a kind, a user can give constraints on which type of physical registers is the value allowed to be stored (or expected to) and then this constraint can be even more tightly constraint by specifying a specific register by its name.
-
-This can be modelled well with a very limited notion of lattice-based subtyping where we consider the empty set of possible registered the bottom and all registers the top.
-
-\xxx{\url{http://boole.stanford.edu/cs353/handouts/book1.pdf}}
 
 This was one of the main motivations for choosing this language for our exploration as it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers, offering these features that can be easily tied to type inference.
 
@@ -39,7 +31,7 @@ It is due to the above reasons, it is usually categorized as pseudo-assembler.
 
 The algorithm our experimental approach is based on, so called ``deferred inference'' or the ``French approach'' (described in the section \ref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
 
-\section{\cmm specification}
+\section{Syntax and properties of \cmm}
 
 What characterizes \cmm perhaps the best is simply: minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only two control flow statements it supports are if statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
 
@@ -49,7 +41,17 @@ It is important to note that \cmm, while being minimalistic, is not minimalistic
 
 It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers. Same would apply for any assumptions that this implements some kind of error handling.
 
-\section{Used extensions to the language}
+As we discussed earlier \cmm does not distinguish between different register types in the type system. The way \cmm distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
+
+Note that these data kinds are usually strictly separated from each other in many languages (by so-called ``aliasing rules'' \xxx{link aliasing rules for c++ (perhaps C)? or for some asssembler if such exist?}).
+
+By specifying a kind, a user can give constraints on which type of physical registers is the value allowed to be stored (or expected to) and then this constraint can be even more tightly constraint by specifying a specific register by its name.
+
+This can be modelled well with a very limited notion of lattice-based subtyping we introduce in the next section, where we consider the empty set of possible registered the bottom and all registers the top.
+
+\xxx{\url{http://boole.stanford.edu/cs353/handouts/book1.pdf}}
+
+\section{Extending \cmm for type inference}
 
 We extended the language with new syntactic constructs: \li{class}es, \li{instance}s, \li{struct}s, \li{new} specifications, \li{dropped} statements and \li{[ptr]} generic dereference.
 
@@ -170,11 +172,15 @@ This turned out to be a decision significantly affecting the implementation proc
 
 As a result, the demonstrational implementation does not currently cover the whole type system space. The type system was refined incrementally during our implementation and some assumptions the implementation was design around were either swapped for stronger versions, or completely removed. The implementation was then changed to reflect these refinements in the theory, but it was later concluded, that a complete redesign would be preferable.
 
+\subsubsection{Subtyping system introduction}
+
 We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types of registers a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value. This has many implications, amongst which is the possibility of enforcing compile-time evaluation we might know from C++, for example.
 
 This subtyping mechanism was designed to model an orthogonal space of ``subtype dimensions'', where each dimension is a lattice with a bottom and we do not consider constraints with sharp inequalities. Sharp inequalities would be very easy way to design an ambiguous system, and also, they do not make any sense when we want to determine just the minimal ``run-timeness'' or the minimal set of registers a value can be received on from an assignment.
 
 We represent the various subtype dimensions of the type variables with so-called ``subtype variables''. We will use these two representations (set of dimensions of a type and a set of variables representing a type's subtyping) synonymously.
+
+\subsubsection{Subtyping system dimensions}
 
 \begin{remark}[Type systems without subtyping]
     We consider the HM type system and all its variations we assumed so far a type system with only one dimension, the typing dimension. It is important to note, that the typing dimension is separate from the type, as having the same typings does not imply the types are necessarily the same.
@@ -212,6 +218,9 @@ We represent the various subtype dimensions of the type variables with so-called
     In the type system specific to this thesis, we use two subtype dimensions: \textit{data kinds} and \textit{constnesses}. We will specify them in \xxx{the algorithm}.
 \end{defn}
 
+
+\subsubsection{Subtyping system constraints and variables}
+
 \begin{defn}[Subtype constraints]
     We define the set of constraints as $t \leq_s t'$, where $t$ and $t'$ are two types and $\leq_s$ is ordering of $t$ and $t'$ in the subtype dimension $s$.
 \end{defn}
@@ -228,7 +237,13 @@ We represent the various subtype dimensions of the type variables with so-called
     A subtype variable of a type $t$ is a variable $s$, such that $t =_s s$, and, for every other type $t'$, such that $t' \neq t$, and its corresponding subtype variable $s'$, it holds that $t' =_s t \To s = s'$.
 \end{defn}
 
-Lattice-constrained subtyping is efficiently computable at least if every subtype dimension is orthogonal to the mechanism of deciding type class instances. For each topological component of the code (a part of code, that has cyclic references), it is a simple minimization problem on a lattice structure defined by some fixed constants.
+\begin{lemma}
+    Lattice-constrained subtyping is efficiently computable at least if every subtype dimension is orthogonal to the mechanism of deciding type class instances.
+\end{lemma}
+
+\begin{proof}
+    For each topological component of the code (a part of code, that has cyclic references) it is a simple minimization problem on a lattice structure defined by some fixed constants.
+\end{proof}
 
 \begin{remark}[Inequality closure convention]
     We say that there is an inequality (or equality) between two (type or subtype) variables if it is specified by a constraint given in the input to the algorithm, it is in a set of base assumptions (relations between subtyping constants, definition of bottom), or comes from transitivity, reflexivity, and (weak) antisymmetry.
@@ -236,7 +251,7 @@ Lattice-constrained subtyping is efficiently computable at least if every subtyp
     This convention allows us to use more succinct statements when describing the type system.
 \end{remark}
 
-\begin{ex}
+\subsubsection{Subtyping system exploration}
 \label{subtyping-idea}
 
 Let us explain the idea of the subtyping system on the following example of inferring the constnesses of a simple procedure.
@@ -261,13 +276,15 @@ So, to clearly conclude the example. We are interested in an algorithm that unif
 
 We then will go even further and state that $x = \sup \{a, b\}$ (and that $x \leq \inf \{c, K\}$), in other words, $x$ is defined by its fixed lower-bounds. Notice the equality in the former constraint. We then can completely remove the latter constraint $x \leq \inf \{c, K\}$ as it is redundant (can be shown via transitivity from the outside subtype information).  We then will use a similar notation for more understandable outside subtype information for each variable. For $c$, that would be $c \geq \sup \{a, b\}$. Fixing the subtype variables to suprema of their fixed lower-bounds has an effect of not having any free variables in the constraints for the procedure.
 
-If the theory contained constraints with sharp inequalities, we could not separate the outside subtype information from the inside subtype information, nor have such liberty in unifying the variables.
-
 This example demonstrates that the minimal subtypes within a space of fixed values can be transformed into an equality theory.
 
-\end{ex}
+\begin{remark}[Sharp inequalities]
+    If the theory contained constraints with sharp inequalities, we could not separate the outside subtype information from the inside subtype information, nor have such liberty in unifying the variables.
+\end{remark}
 
-We are using the term ``fixed values'', but we have not yet introduced its meaning. They are some constants that are not to be optimized by the subtyping inference mechanism. In the most simple version of this system, if we do not consider type classes (only the HM type system with type constructors), the fixed values consist of subtyping dimension constants (in the example \ref{subtyping-idea}, that would be $K$); and then the subtype dimensions of skolem constants (again, in the example \ref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
+\subsubsection{Subtyping system inference}
+
+We are using the term ``fixed values'' in the example \ref{subtyping-idea}, but we have not yet introduced its meaning. They are some constants that are not to be optimized by the subtyping inference mechanism. In the most simple version of this system, if we do not consider type classes (only the HM type system with type constructors), the fixed values consist of subtyping dimension constants (in the example \ref{subtyping-idea}, that would be $K$); and then the subtype dimensions of skolem constants (again, in the example \ref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
 
 \begin{defn}[fixed value in the subtyping system without type classes]
     Each subtype variable of a skolem constant or subtyping dimension constant is a fixed value.
@@ -338,8 +355,7 @@ We did not strive for representing existentials, as there has to be runtime type
 
 % We eventually designed a simpler and much easier to implement primitives for this type system.
 
-\subsection{RAII}
-
+\subsection{Automated resource management extensions}
 \label{RAII}
 
 \xxx{\url{https://www.appinf.com/download/C++BetterDeviceSoftware.pdf}}
