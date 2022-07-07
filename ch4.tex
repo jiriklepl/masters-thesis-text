@@ -39,13 +39,15 @@ One possible improvement over the \li{goto cleanup} pattern is that this can eas
 
 There are multiple constructs that implement the RAII mechanism. We will look into two: \xxx{C++ RAII constructor/destructor} and \xxx{C\# try{}finally{...}}.
 
-\section{A guide for the compiler capable of modeling the proposed language model}
+\section{A guide for a practical compiler capable of inferring the proposed language system}
 
-We do not recommend the implementation shown in the \xxx{ref to chap 3}. Instead, the definition of this implementation, with little modification, can serve as a theoretic model for describing various invariants on an inference algorithm that implements the type system \xxx{ref to chap 2; add the things about 5 name spaces and that 4 of them can be quantified in schemes (implication constraints)}.
+We do not recommend following the prototype implementation shown in the \xxx{ref to chap 3}. Instead, the definition of this implementation, with little modification, can serve as a theoretic model for describing various invariants on an inference algorithm that implements the type system \xxx{ref to chap 2; add the things about 5 name spaces and that 4 of them can be quantified in schemes (implication constraints)}.
+
+First, we will go through the various aspects of the prototype implementation and the type system and we will specify how the practical compiler should differ in that aspect, and then, finally, we will describe its algorithm.
 
 \subsection{Inferring programs by components}
 
-The nature of the proposed type system greatly benefits from performing the type inference in topological order on strongly connected components of the program defined by explicit references (function calls, types in declarations of variables, etc.) and implicit references (eg., a class instance implicitly references the corresponding class definition, each struct implicitly references the implicitly defined field accessor instances, which then implicitly reference their method definitions).
+For the nature of the proposed type system (it turns into a minimization problem for each subprogram), the type inference greatly benefits from being performed in topological order on strongly connected components of the program defined by explicit references (function calls, types in declarations of variables, etc.) and implicit references (eg., a class instance implicitly references the corresponding class definition, each struct implicitly references the implicitly defined field accessor instances, which then implicitly reference their method definitions).
 
 \begin{remark}
     If the user explicitly specifies the type scheme for an object, we ignore any references to its definition and we store this scheme as if it came from an component defining it, the component containing such an object then just type-checks the provided definition, reporting any errors. We do the same for any blackbox bindings specified as imports.
