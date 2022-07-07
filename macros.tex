@@ -56,11 +56,15 @@
 % listings and default lstlisting config (remove if unused)
 \DeclareNewFloatType{listing}{}
 \floatsetup[listing]{style=ruled}
+\DeclareNewFloatType{lang}{}
+\floatsetup[lang]{style=Boxed}
 
 \DeclareCaptionStyle{thesis}{style=base,font={small,sf},labelfont=bf,labelsep=quad}
+\DeclareCaptionStyle{thesisbox}{style=boxed,font={small,sf},labelfont=bf,labelsep=quad}
 \captionsetup{style=thesis}
 \captionsetup[algorithm]{style=thesis,singlelinecheck=off}
 \captionsetup[listing]{style=thesis,singlelinecheck=off}
+\captionsetup[lang]{style=thesis, singlelinecheck=off}
 
 % Uncomment for table captions on top. This is sometimes recommended by the
 % style guide, and even required for some publication types.
@@ -83,6 +87,9 @@
 
 \ifEN\floatname{listing}{Listing}
 \else\floatname{listing}{Výpis kódu}\fi
+\ifEN\floatname{lang}{Language}
+\else\floatname{lang}{Jazyk}\fi
+
 \lstset{ % use this to define styling for any other language
   language=C++,
   tabsize=2,
@@ -118,10 +125,10 @@
 \newcommand{\crefrangeconjunction}{ a~}
 \fi
 
-
-\newenvironment{grammar}[2]
- {\begin{tabular}{@{\qquad}>{$}l<{$}@{\qquad}p{.75\linewidth}@{}}
-  \multicolumn{1}{@{}l@{}}{$#1$}&\multicolumn{1}{l@{}}{\hspace{-2em}#2}\\}
- {\end{tabular}}
-
 \providecommand{\vect}[1]{\overrightharp{#1}}
+
+% grammar tuning
+\def\grammarP{0.666}
+\def\firstcasesubtilP#1#2#3{\firstcasesubtil{#1}{#2}{\parbox[t]{\grammarP\linewidth}{#3}}}
+\def\firstcaseP#1#2#3{\firstcase{#1}{#2}{\parbox[t]{\grammarP\linewidth}{#3}}}
+\def\otherformP#1#2{\otherform{#1}{\parbox[t]{\grammarP\linewidth}{#2}}}

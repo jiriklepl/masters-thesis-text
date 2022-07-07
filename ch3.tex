@@ -92,21 +92,26 @@ In our solution, the type inferencer keeps track of the type definitions of all 
     We will call the variables not being renamed to another variable by the algorithm ``alive variables''. Renaming is performed every time two distinct variables are to be unified.
 \end{defn}
 
+The representation of types follows the one introduced in the definition \ref{typing_def}, but extended by the necessary extra constructions.
+
 \begin{defn}[Typings]
     \label{typing_gram}
-    We represent the space $\mathbb{T}$  of typings, which have been introduced in the definition \ref{typing_def}, in the terms of the following grammar:
-
-    \begin{table}[H]
-        \begin{grammar}{\mathbb{T} \Rightarrow }{Typing}
-            \mathbb{V} & Variable (usually if the typing depends on a quantified variable of it is not fully resolved)\\
-            \left[\mathbb{T}\right] \to \mathbb{T} & Function (each function takes a certain number of argument and returns a type - usually a tuple)\\
-            \mid \left[\mathbb{T}\right] & Tuple (function return type)\\
-            \mid \mathbb{T}\ \mathbb{T} & Type application (for structs and for constraints)\\
-            \mid \mtt{Addr}\ \mathbb{T} & address type (representing a pointer) \\
-            \cdots & Primitive types (for example, $bits_n$)
-        \end{grammar}
-    \end{table}
+    $\mathbb{T}$ is a space of typings defined inductively by \cref{lang:typing}.
 \end{defn}
+
+\begin{lang}
+  \def\grammarP{0.6}
+  \begin{grammar}
+    \firstcaseP{\mathbb{T}}{\mathbb{V}}{Variable}
+    \otherformP{\left[\mathbb{T}\right] \to \mathbb{T}}{Function (each function takes a certain number of argument and returns a type - usually a tuple)}
+    \otherformP{\left[\mathbb{T}\right]}{Tuple (function return type)}
+    \otherformP{\mathbb{T}\ \mathbb{T}}{Type application (for structs and for constraints)}
+    \otherformP{\mtt{Addr}\ \mathbb{T}}{address type (representing a pointer) }
+    \otherformP{\cdots}{Primitive types (such as \texttt{bits\_n})}
+  \end{grammar}
+  \caption{The language $\mathbb{T}$ of flat typings and the basic semantics of types.}
+  \label{lang:typing}
+\end{lang}
 
 \begin{defn}[Primitive patterns]
     Primitive patterns $\mathbb{P}$ follow the same grammar as typings, see the definition \ref{typing_gram} but, without the very first grammar case and with type variables ($\mbb{V}$) appearing in the grammar cases in place of typings ($\mbb{T}$).
@@ -145,13 +150,11 @@ In our solution, the type inferencer keeps track of the type definitions of all 
     \begin{itemize}
         \item  The constness dimension, represented by space of constness constants $\mathbb{C}$ represents the bounds of constraints on when the value of each variable has to be known, and, when it can be known. The constness constants are defined as follows:
 
-        \begin{table}[H]
-            \begin{grammar}{\mathbb{C} \Rightarrow }{Constness constant}
-                \mathtt{Regular} & \textit{for regular runtime variables} \\
-                \mid \mathtt{Linkexpr} & \textit{for variables that are to be known during linkage} \\
-                \mid \mathtt{Constexpr} & \textit{for variables that are to be known during compilation}
-            \end{grammar}
-        \end{table}
+\begin{center}\begin{grammar}
+  \firstcase{\mathbb{C}}{\mathtt{Regular}}{regular runtime variables}
+  \otherform{\mathtt{Constexpr}}{variables known at compilation}
+  \otherform{\mathtt{Linkexpr}}{variables known at linkage}
+\end{grammar}\end{center}
 
         We define the ordering on constnesses: $\bot = \mathtt{Constexpr} < \mathtt{Linkexpr} < \mathtt{Regular} = \top$. And the whole system of constnesses follows a linear ordering.
 
@@ -170,22 +173,26 @@ In our solution, the type inferencer keeps track of the type definitions of all 
 \subsubsection{Modifications to the constraints language of deferred inference}
 
 \begin{defn}[Constraints]
-    With $\mbb{W}$ standing for a flat constraint or an implication constraint, $\mathbb{F}$ is the space of flat constraints given as follows:
-
-    \begin{table}[H]
-        \begin{grammar}{\mathbb{F} \Rightarrow }{Flat constraints}
-            \mathbb{T} \sim \mathbb{T} & Equality constraint: \textit{specifies that the types are identical} \\
-            \mathbb{T} \sim_T \mathbb{T} & Typing equality: \textit{specifies that the types are identical in the typing dimension} \\
-            \mathbb{T} \leq_K \mathbb{T} & SubKind: \textit{specifies that the right-hand operand has more general data kind than the left-hand operand} \\
-            \mathbb{T} \leq_C \mathbb{T} & SubConst: \textit{specifies that the right-hand operand has more general constness than the left-hand operand} \\
-            \mathbb{K} \leq_K \mathbb{T} \leq_K \mathbb{K} & Kind bounds: \textit{specifies that the type has a data kind from the given range} \\
-            \mathbb{C} \leq_C \mathbb{T} \leq_C \mathbb{C} & Const bounds: \textit{specifies that the type has a constness from the given range} \\
-            C?\ \mathbb{T} & Class constraint: \textit{specifies that the given constraint type (application of a class constraint constructor to a certain number of types - unless nullary) has to be instantiable} \\
-            C!\ \mathbb{T} & Class fact: \textit{specifies that the given constraint type (application of a class constraint constructor to a certain number of types - unless nullary) is instantiable} \\
-            \mathbb{T} \sqsupseteq_M \mathbb{T} & Instantiation constraint: \textit{specifies that the left-hand operand is monotype instance of the polytype right-hand operand; note: this is satisfiable only if the right-hand operand is indeed a polytype} \\
-        \end{grammar}
-    \end{table}
+    With $\mbb{W}$ standing for a flat constraint or an implication constraint, the space of flat constraints $\mathbb{F}$ is defined inductively by a grammar as \cref{lang:flat}.
 \end{defn}
+
+\begin{lang}
+  \def\grammarP{0.6}
+  \def\arraystretch{1.4}
+  \begin{grammar}
+    \firstcaseP{\mathbb{F}}{\mathbb{T} \sim \mathbb{T}}{Equality constraint (the types are identical)}
+    \otherformP{\mathbb{T} \sim_T \mathbb{T}}{Typing equality (the types are identical in the typing dimension)}
+    \otherformP{\mathbb{T} \leq_K \mathbb{T}}{SubKind (the right-hand operand has more general data kind than the left-hand operand)}
+    \otherformP{\mathbb{T} \leq_C \mathbb{T}}{SubConst (the right-hand operand has more general constness than the left-hand operand)}
+    \otherformP{\mathbb{K} \leq_K \mathbb{T} \leq_K \mathbb{K}}{Kind bounds (the type has a data kind from the given range)}
+    \otherformP{\mathbb{C} \leq_C \mathbb{T} \leq_C \mathbb{C}}{Const bounds (the type has a constness from the given range)}
+    \otherformP{C?\ \mathbb{T}}{Class constraint (the constraint in the type has to be instantiable)}
+    \otherformP{C!\ \mathbb{T}}{Class fact (the given constraint is known to be instantiable)}
+    \otherformP{\mathbb{T} \sqsupseteq_M \mathbb{T}}{Instantiation constraint (the left-hand operand is a monotype instance of the polytype right-hand operand)}
+  \end{grammar}
+  \caption{The language $\mathbb{F}$ of flat constraints and their basic semantics.}
+  \label{lang:flat}
+\end{lang}
 
 \begin{remark}[Derived constraints]
     Sometimes we will use derived constraints like $\mathbb{T} \leq_K \mathbb{K}$, $\mathbb{T} =_K \mathbb{T}$, etc. These are either special cases of the aforementioned constraints, or compositions of multiple constraints. The most complicated derived constraint we will use is the ``SubType'' constraint, $\mathbb{T} \leq \mathbb{T}$, which is a combination of $\mathbb{T} \sim_T \mathbb{T}$, $\mathbb{T} \leq_K \mathbb{T}$ and $\mathbb{T} \leq_C \mathbb{T}$.

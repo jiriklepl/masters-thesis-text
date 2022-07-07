@@ -147,30 +147,30 @@ It also simplifies the notion of type assignments in such a way that all types c
 
 \subsection{Constraint language}
 
+The language of constraints is an extension of traditional type language with type variables annotated by ``context levels'', giving a language of flat and nested constraints:
 \begin{defn}[Language of constraints]
-    The language of constraints is an extension of traditional type language with type variables annotated with ``context levels'' extended by the following two constructs, flat constraints and nested constraints.
+  Language $F$ of \emph{flat constraints} is defined inductively as follows:
 
-    \begin{grammar}{F \Rightarrow }{Flat constraint}
-        d: C \vect \tau & Class constraint \\
-        \mid g : \tau_1 \sim \tau_2 & Equality constraint \\
-    \end{grammar}
+    \begin{center}\begin{grammar}
+      \firstcasesubtil{$F$}{d: C \vect \tau}{Class constraint}
+      \otherform{g : \tau_1 \sim \tau_2}{Equality constraint}
+    \end{grammar}\end{center}
 
-    $d$ and $g$ are witnesses of the constraint, they represent the instances that prove the given constraints
+  The language $W$ of \emph{nested constraints} is defined inductively as follows:
 
-    \begin{grammar}{W \Rightarrow }{Nested constraint}
-        F & Flat constraint \\
-        W_1, W_2 & Conjunction \\
-        \forall \vect \alpha . \{F\} \To W & Implication constraint \\
-    \end{grammar}
+    \begin{center}\begin{grammar}
+      \firstcasesubtil{$W$}{F}{Flat constraint}
+      \otherform{W_1, W_2}{Conjunction}
+      \otherform{\forall \vect \alpha . \{F\} \To W}{Implication constraint}
+    \end{grammar}\end{center}
 
     \label{constraint_language}
 \end{defn}
 
-\begin{remark}[Witnesses]
-    Note that the witnesses are isomorphic to the rest of their respective constraint, unless we allow overlapping proofs. For example, given two constraints $d_1: C \vect \tau_1$, $d_2: C \vect \tau_1$, then $d_1 = d_2 \GetsTo \tau_1 = \tau_2$.
-\end{remark}
+Usually, we call $d$ and $g$ \emph{witnesses} of the constraint, because they represent the instances that prove the given constraints.
+Notably, the witnesses are isomorphic to the rest of their respective constraint, unless we allow overlapping proofs. For example, given two constraints $d_1: C \vect \tau_1$, $d_2: C \vect \tau_1$, then $d_1 = d_2 \GetsTo \tau_1 = \tau_2$.
 
-Apart from the already described equality constraints and class constraints, the constraint language also considers so-called ``implication constraints'', which are constraint schemes. They represent typings, both explicit and implicit. If a programmer declares a function definition with a typing, it is then represented by an implication constraint. If a function takes an existential as an argument, it is represented by an implication constraint as well.
+Additionally to the already described equality constraints and class constraints, the constraint language also contains ``implication constraints'', which are constraint schemes. They represent typings, both explicit and implicit, of functions declared by the programmer. Existentials contained in function types (e.g., parameters with run-time type binding) are represented by their own implication constraint.
 
 \begin{defn}[Naming]
     \begin{itemize}
