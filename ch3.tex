@@ -1,13 +1,17 @@
 
 
-\chapter{Design of the demonstrational implementation}
+\chapter{Design of the prototype compiler}
 \label{chap3}
 
+\begin{figure}
 \includegraphics[width=\linewidth]{img/out/arch.pdf}
+\caption{Overview schema of the architecture of the prototype compiler.}
+\label{fig:arch}
+\end{figure}
 
 \section{Overview}
 
-The overall architecture of the demonstrational implementation is shown \xxx{ref img}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each somehow transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error information (depicted by, slightly darker, orange parallelograms).
+The overall architecture of the demonstrational implementation is shown in \cref{fig:arch}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each somehow transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error information (depicted by, slightly darker, orange parallelograms).
 
 In this chapter, we will describe the purpose and function of each of the components separately.
 
