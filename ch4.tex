@@ -51,7 +51,7 @@ The nature of the proposed type system greatly benefits from performing the type
     If the user explicitly specifies the type scheme for an object, we ignore any references to its definition and we store this scheme as if it came from an component defining it, the component containing such an object then just type-checks the provided definition, reporting any errors. We do the same for any blackbox bindings specified as imports.
 \end{remark}
 
-A similar component analysis to this is already showcased by the demonstrational inference layer. The approach we propose for future work constitutes moving this component analysis even before the type inference preprocessor itself.
+A similar component analysis to this is already showcased by the prototype inference layer. The approach we propose for future work constitutes moving this component analysis even before the type inference preprocessor itself.
 
 And then we propose performing the both phases on much smaller subprograms (the singular strongly connected components) with some blackbox schemes for any outside references. \xxx{we then can make an option to the compiler which uses this phase for refactoring}
 
@@ -59,7 +59,7 @@ And then we propose performing the both phases on much smaller subprograms (the 
 
 Inferring single components in their topological order has an effect of making the ``instantiation constraint'' completely obsolete as the type inference preprocessor already knows what types are to be instantiated, as they are part of one of the already solved components, and what types are to be subjected to the replacement of the instantiation constraints with equality constraints \xxx{already described in chap 3}.
 
-An another significant improvement would be a great decrease in the complexity (both developmental and computational) of closing the currently solved component, since the demonstrated implementation has to analyze the space of type variables for any type variables relevant to the current component \xxx{explain this in chap 3}.
+An another significant improvement is a great decrease in the complexity (both developmental and computational) of closing the currently solved component, since the demonstrated implementation has to analyze the space of type variables for any type variables relevant to the current component \xxx{explain this in chap 3}.
 
 In this proposed topological approach, after a component is closed, we can forget all the variables and constraints after we make sure that there is no information lost by removing them from the current state. This is done by generating the schemes  corresponding to the definitions in the currently closed component (these definitions are then equivalent to arbitrary blackboxes annotated with quantified and constrained type signatures), storing them in the state of the inferencer.
 
@@ -95,14 +95,16 @@ We propose extending the constraint language with the following constraints (for
 
 \subsubsection{Elaborating AST with (qualified) types and schemes directly}
 
-We recommend elaborating the AST nodes with types, schemes and qualified types (schemes for polytyped top level definitions; qualified types, if the corresponding node requires some witness - in other words, if it has at least one unsolved constraint assumption; qualified types are instantiated schemes with constraints not removed from the type signature) and not just type variables, the semantics of which have to be retrieved from the inferencer state.
+We recommend elaborating the AST nodes with types, schemes and qualified types (schemes for polytyped top level definitions; qualified types, if the corresponding node requires some witness; qualified types are instantiated schemes with constraints not removed from the type signature) and not just type variables, the semantics of which have to be retrieved from the inferencer state.
 
-This approach would then reduce the number of generated constraints as we do not need to generate a constraint for every single subterm (A trivial example: if we generate a type \li{bits32} for a \li{TBits 32} node, we already can generate a type \li{ptr (bits32)} for the parent node \li{TPtr (TBits 32)}). This also allows the preprocessor to directly solve some types without the need for more complicated type inference (this comes to design decisions and there are more possible ways to implement this - \xxx{comparing them is a possible concern for a future work}).
+This approach then reduces the number of generated constraints as we do not need to generate a constraint for every single subterm (A trivial example: if we generate a type \li{bits32} for a \li{TBits 32} node, we can already generate a type \li{ptr (bits32)} for the parent node \li{TPtr (TBits 32)}).
 
-Another benefit would be that passing the inferencer state to monomorphization and other components of the compiler would not be necessary as all type information would be directly accessible from the elaborated AST alone.
+This allows the preprocessor to directly solve some types without the need for more complicated type inference (this comes to design decisions and there are more possible ways to implement this - \xxx{comparing them is a possible concern for a future work}).
+
+Another benefit is that passing the inferencer state to monomorphization and other components of the compiler is then made unnecessary as all type information is directly accessible from the elaborated AST alone.
 
 \begin{remark}
-    In the demonstrational implementation, the only reason for passing the inferencer state to subsequent compiler components is the incompleteness of type information without its interpretation of the type variables. \xxx{ref how the type variables are interpreted}
+    In the prototype implementation, the only reason for passing the inferencer state to subsequent compiler components is the incompleteness of type information without its interpretation of the type variables. \xxx{ref how the type variables are interpreted}
 \end{remark}
 
 \subsection{Revised inference algorithm}
@@ -121,7 +123,7 @@ We propose the following type inference pipeline:
     \begin{enumerate}
         \item We generate the constraints that capture the semantics of the current component, while elaborating each node of AST with its corresponding type.
 
-        For all references within this component, we generate equality constraints (instead of instantiation constraints used in the demonstrational implementation); then we do the same for references to any monotyped objects from the previously solved components, otherwise, we directly instantiate the schemes of the polytyped objects with fresh type variables (note that, for any qualified object (for example, methods), we elaborate the references to them with these qualifications).
+        For all references within this component, we generate equality constraints (instead of instantiation constraints used in the prototype implementation); then we do the same for references to any monotyped objects from the previously solved components, otherwise, we directly instantiate the schemes of the polytyped objects with fresh type variables (note that, for any qualified object (for example, methods), we elaborate the references to them with these qualifications).
 
         \item For any constraint containing at least one type $t$, and for each subtyping dimension $s$, we generate a constraint $t \to_s s_1$, where $s_1$ is a fresh subtype variable.
 
@@ -135,17 +137,17 @@ We propose the following type inference pipeline:
 
         \item Then, for each dimension $s$, we rewrite any constraints of the form $t_1 \leq_s t_2$ for any two types $t_1$ and $t_2$ into constraints $t_1 \to_s s_1, t_2 \to_s s_2, s_1 \leq_s s_2$, where $s_1, s_2$ are fresh subtype variables in the space of $s$. Similarly for any constraints of the form $t_1 \sim_s t_2$.
 
-        This models the various steps regarding subtypes in the demonstrational algorithm.
+        This models the various steps regarding subtypes in the prototype algorithm.
 
         \item Then, we perform rewrites of the constraints according to type equality constraints, typing equality constraints, and attempting to lookup proofs for any class constraints (by instantiating the respective matching proof schemes). Note that if the classes have any functional dependency sets defined, we perform the replacement  \xxx{defined where?}. But since we require explicit witnesses, we should state the new constraints carry the same witness as the original constraint for the trivial rule and fresh witnesses for other rules (in both cases of the replacement; in proofs, the witnesses are constant).
 
         If we find a matching proof, we unify the constraint's witnesses with the proof's witness. It should be noted that the proof witnesses are constants as they serve to identify the respective instances.
 
-        This does not differ from the demonstrational algorithm.
+        This does not differ from the prototype algorithm.
 
         \item Then, we determine the skolem constants of the functions (or other definitions in the component; WLOG, we will assume them to be functions) by retrieving the free variables from each function's type (stored in the AST), and then quantifying them. Note that the skolem constants for each function might be explicitly requested by the user and thus the constraint are already quantified, then we just check whether such functions have any free variables, and if so, we report errors (or we store the errors to be reported later, quantifying the free variables so the inferring continues as if the user patched this problem by including them in the skolems for each  respective function) \label{func_skolem}
 
-        This step is in the demonstrational algorithm done by just collecting all free variables parented by the function.
+        This step is in the prototype algorithm done by just collecting all free variables parented by the function.
 
         \item If we generated new skolem constants, we perform the step \ref{gen_subskolem} on these skolem constants.
 
@@ -185,7 +187,7 @@ We propose the following type inference pipeline:
     \item We then mangle all the names that do not appear in \li{C_symbols}.
 \end{enumerate}
 
-\subsection{Benefits of the revised algorithm over the demonstrational implementation}
+\subsection{Benefits of the revised algorithm over the prototype implementation}
 
 This different approach only applies to the part of the pipeline which is directly linked to the type inference. It does not require any significant change to the tokenizing, parsing, flattening nor blockifying phase. Only some, not very significant changes, to the translation (codegen) phase reflecting the change from storing the type information in the state of the inferencer to storing the type information directly in the annotations corresponding to each node.
 
@@ -197,7 +199,7 @@ We believe that the significance of the primitives used in this design surpass t
 
 \section{Subtype-dependent class constraint resolution}
 
-In our design, in the demonstrational implementation just as well as in the proposed design for the practical implementation, we disconnected the concept of subtyping from the mechanism of class constraint resolution.
+In our design, in the prototype implementation just as well as in the proposed design for the practical implementation, we disconnected the concept of subtyping from the mechanism of class constraint resolution.
 
 This is due to the unsolvability or nonconfluence of such a system, if these two concept were not disconnected.
 
@@ -208,7 +210,7 @@ This is due to the unsolvability or nonconfluence of such a system, if these two
 \end{ex}
 
 \section{The promises and futures}
-Our demonstrational implementation, albeit incomplete, demonstrates the effects on programming convenience within type-safety, which comes from using functional dependencies $\text{structure} \to \text{field}$. As we discussed in the previous work, the best work-around without this inference feature would be requiring some special structure of the code: either requiring all field to have unique names; requiring all field of the same name be of the same type as well; or have the same dependencies on the structures-type arguments.
+Our prototype implementation, albeit incomplete, demonstrates the effects on programming convenience within type-safety, which comes from using functional dependencies $\text{structure} \to \text{field}$. As we discussed in the previous work, the best work-around without this inference feature would be requiring some special structure of the code: either requiring all field to have unique names; requiring all field of the same name be of the same type as well; or have the same dependencies on the structures-type arguments.
 
 
 \section{\xxx{Things discovered along the way}}
