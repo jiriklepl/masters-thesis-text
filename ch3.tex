@@ -1,5 +1,3 @@
-
-
 \chapter{Design of the demonstrational implementation}
 \label{chap3}
 
@@ -259,10 +257,10 @@ The result of type inference preprocessing is the list of constraints and the an
 The main idea of the inferencer state is that it keeps a representation of 2 mappings and 2 graphs representing the relationships between the type variables:
 
 \begin{itemize}
-    \item mapping for renames from variables ``forgotten'' due to unification to their ``alive'' representants
-    \item bijective mapping from some type variables representing a type to the primitive pattern defining the type in terms of immediate subterms of the respective type.
-    \item graph with edges from each variable representing a constness of some types to the variables representing the types with higher (more restricting) constnesses
-    \item graph with edges from each variable representing a data kind of some types to the variables representing the types with higher (more restricting) data kinds
+    \item a mapping for renames from variables ``forgotten'' due to unification to their ``alive'' representants
+    \item a bijective mapping from some type variables representing a type to the primitive pattern defining the type in terms of immediate subterms of the respective type.
+    \item a graph with edges from each variable representing a constness of some types to the variables representing the types with higher (more restricting) constnesses
+    \item a graph with edges from each variable representing a data kind of some types to the variables representing the types with higher (more restricting) data kinds
 \end{itemize}
 
 We represent the 4 structures and some other information about each type, along with the input constraints, by the following finite variables, which we will use when discussing the algorithm's invariants:
