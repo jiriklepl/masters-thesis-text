@@ -11,7 +11,7 @@ PDFS=$(NAME).pdf $(ABSTRACT)-en.pdf $(ABSTRACT)-cz.pdf
 
 all: $(NAME).pdf $(ABSTRACT)-cz.pdf $(ABSTRACT)-en.pdf
 
-$(NAME).pdf: thesis.tex macros.tex metadata.tex intro.tex ch1.tex ch2.tex ch3.tex conclusion.tex bibliography.tex refs.bib $(IMGDIR)/out/subtyping-idea.pdf $(IMGDIR)/out/arch.pdf 
+$(NAME).pdf: thesis.tex macros.tex metadata.tex intro.tex ch1.tex ch2.tex ch3.tex ch4.tex conclusion.tex bibliography.tex refs.bib $(IMGDIR)/out/subtyping-idea.pdf $(IMGDIR)/out/arch.pdf
 	$(LATEXMK) $(NAME)
 
 $(ABSTRACT)-cz.pdf: abstract-cz.tex metadata.tex

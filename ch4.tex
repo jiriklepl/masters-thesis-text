@@ -57,7 +57,7 @@ And then we propose performing the both phases on much smaller subprograms (the 
 
 \subsection{Effects of component-oriented approach to inference}
 
-Inferring single components in their topological order would have an effect of making the ``instantiation constraint'' completely obsolete as the type inference preprocessor already knows what types are to be instantiated, as they are part of one of the already solved components, and what types are to be subjected to the replacement of the instantiation constraints with equality constraints \xxx{already described in chap 3}.
+Inferring single components in their topological order has an effect of making the ``instantiation constraint'' completely obsolete as the type inference preprocessor already knows what types are to be instantiated, as they are part of one of the already solved components, and what types are to be subjected to the replacement of the instantiation constraints with equality constraints \xxx{already described in chap 3}.
 
 An another significant improvement would be a great decrease in the complexity (both developmental and computational) of closing the currently solved component, since the demonstrated implementation has to analyze the space of type variables for any type variables relevant to the current component \xxx{explain this in chap 3}.
 
@@ -88,7 +88,7 @@ We propose extending the constraint language with the following constraints (for
 \end{enumerate}
 
 \begin{remark}
-    It should be clear this models the various mapping functions and sets with very complicated variables \xxx{described in where}. For example, the $t \to_K s_K$ models the $k$ type property. Similarly for other properties, then the $s_1 \leq_s s_2$ form, for data kinds, models the $\mcal{K}$ graph, and similarly for $\mcal{C}$.
+    It should be clear this models the various mapping functions and sets with very complicated variables \xxx{described in where}. For example, the $t \to_K s_K$ models the $k$ type property. Similarly for other properties. Then, the $s_1 \leq_s s_2$ form, for data kinds, models the $\mcal{K}$ graph, and similarly for $\mcal{C}$.
 
     Type explanation $p$ is completely unnecessary and the result renaming $u$ as well.
 \end{remark}
