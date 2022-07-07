@@ -2,7 +2,7 @@
 \providecommand{\dom}[1]{\mtt{Dom} (#1)}
 \providecommand{\ran}[1]{\mtt{Ran} (#1)}
 
-\providecommand{\bmath}[1]{\boldsymbol{#1}}
+\providecommand{\vect}[1]{\boldsymbol{#1}}
 
 \chapter{The French approach to type inference}
 \label{chap1}
@@ -27,7 +27,7 @@ Throughout this section, we will show that the Algorithm W provides a good basis
 
 The Algorithm W, which we used in the , assumed no recursion in the code and thus any real program with any trivial or nontrivial recursion had to be rewritten into a form where recursive functions were represented by the \lstinline{fix} operator applied to some argument. Type of the \lstinline{fix} operator is $\forall \alpha . \pars {\alpha \to \alpha} \to \alpha$.
 
-The algorithm for preprocessing trivial recursions is the following (derived from \xxx{fixed point theorem}): a function represented as $f \bmath{x} = \calC[f, \bmath{x}]$, where $C$ is a lambda term such that $\{f\} \cup \bmath{x} \subseteq \free \calC$, is simply rewritten into $f = \mathit{fix}\ \lambda F \bmath{X} .\calC[f := F, \bmath{x} := \bmath{X}]$.
+The algorithm for preprocessing trivial recursions is the following (derived from \xxx{fixed point theorem}): a function represented as $f \vect{x} = \calC[f, \vect{x}]$, where $C$ is a lambda term such that $\{f\} \cup \vect{x} \subseteq \free \calC$, is simply rewritten into $f = \mathit{fix}\ \lambda F \vect{X} .\calC[f := F, \vect{x} := \vect{X}]$.
 
 For a nontrivial recursion (which we can identify using an algorithm for finding strongly connected components of the call graph), we use a generalization of the double fixed-point \xxx{reference it} theorem, describes how to construct this rewriting for a component of size two.
 
@@ -79,7 +79,7 @@ So we have to address this issue in the type inference itself.
 
 \subsubsection*{Using the Algorithm W in the type system with functional dependencies}
 
-If we want to simply modify the Algorithm W so it solves principal types even in the case of functional dependencies and other such constructs, we can easily observe that in order to function properly, it has to, on each subprogram (strongly connected component of the program's call-graph; we perform type inference on these subprograms in topological order, beginning with the leaf components), first perform the usual unifications on the syntactic structure of the subprogram, returning a type assignment in the form: $\mtt{name} :: \forall \bmath \alpha . P  \To t$, where $P$ is a set of constraints, each having a form $C \bmath \tau$, where $C$ is a predicate on the types $\bmath \tau$, propagated from the subexpressions of $\mtt {name}$, under some $\bmath \alpha = \free t$. And then it has to solve the constraints in $P$ according to some extended constraint solving mechanism.
+If we want to simply modify the Algorithm W so it solves principal types even in the case of functional dependencies and other such constructs, we can easily observe that in order to function properly, it has to, on each subprogram (strongly connected component of the program's call-graph; we perform type inference on these subprograms in topological order, beginning with the leaf components), first perform the usual unifications on the syntactic structure of the subprogram, returning a type assignment in the form: $\mtt{name} :: \forall \vect \alpha . P  \To t$, where $P$ is a set of constraints, each having a form $C \vect \tau$, where $C$ is a predicate on the types $\vect \tau$, propagated from the subexpressions of $\mtt {name}$, under some $\vect \alpha = \free t$. And then it has to solve the constraints in $P$ according to some extended constraint solving mechanism.
 
 Here we see the first hints at deferred solving.
 
@@ -151,7 +151,7 @@ It also simplifies the notion of type assignments in such a way that all types c
     The language of constraints is an extension of traditional type language with type variables annotated with ``context levels'' extended by the following two constructs, flat constraints and nested constraints.
 
     \begin{grammar}{F \Rightarrow }{Flat constraint}
-        d: C \bmath \tau & Class constraint \\
+        d: C \vect \tau & Class constraint \\
         \mid g : \tau_1 \sim \tau_2 & Equality constraint \\
     \end{grammar}
 
@@ -160,14 +160,14 @@ It also simplifies the notion of type assignments in such a way that all types c
     \begin{grammar}{W \Rightarrow }{Nested constraint}
         F & Flat constraint \\
         W_1, W_2 & Conjunction \\
-        \forall \bmath \alpha . \{F\} \To W & Implication constraint \\
+        \forall \vect \alpha . \{F\} \To W & Implication constraint \\
     \end{grammar}
 
     \label{constraint_language}
 \end{defn}
 
 \begin{remark}[Witnesses]
-    Note that the witnesses are isomorphic to the rest of their respective constraint, unless we allow overlapping proofs. For example, given two constraints $d_1: C \bmath \tau_1$, $d_2: C \bmath \tau_1$, then $d_1 = d_2 \GetsTo \tau_1 = \tau_2$.
+    Note that the witnesses are isomorphic to the rest of their respective constraint, unless we allow overlapping proofs. For example, given two constraints $d_1: C \vect \tau_1$, $d_2: C \vect \tau_1$, then $d_1 = d_2 \GetsTo \tau_1 = \tau_2$.
 \end{remark}
 
 Apart from the already described equality constraints and class constraints, the constraint language also considers so-called ``implication constraints'', which are constraint schemes. They represent typings, both explicit and implicit. If a programmer declares a function definition with a typing, it is then represented by an implication constraint. If a function takes an existential as an argument, it is represented by an implication constraint as well.
@@ -327,7 +327,7 @@ The most basic requirements for confluence and termination are: (for example, us
     \item All assumptions for witness proofs have to be of the form $d : C a$, where $C a$ is the assumed constraint, $d$ is its witness, and $a$ is a type variable. \label{triv_assump}
     \item All type variables appearing in assumptions of witness proofs have to be free in the proven constraint \label{free_free}
     \item Witness proofs have to be non-overlapping, the proven constraints of two distinct proofs cannot be unifiable. \label{noover}
-    \item Witness proof schemes have to be of the form $\forall \bmath \alpha . P \bmath \alpha \To d : C (T \bmath \alpha)$, where $P \bmath \alpha$ is a set of assumptions, $C (T \bmath \alpha)$ is the proven constraint, and $T$ is a type constructor and $d$ is the witness \label{lookup_t}
+    \item Witness proof schemes have to be of the form $\forall \vect \alpha . P \vect \alpha \To d : C (T \vect \alpha)$, where $P \vect \alpha$ is a set of assumptions, $C (T \vect \alpha)$ is the proven constraint, and $T$ is a type constructor and $d$ is the witness \label{lookup_t}
     \item Ambiguous schemes are not allowed (universally)
 \end{enumerate}
 

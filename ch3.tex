@@ -216,13 +216,13 @@ In our solution, the type inferencer keeps track of the type definitions of all 
 \begin{defn}[Functional dependency set]
     We define a space $\mbb {FD}$ of functional dependency sets $FD$.
 
-    Functional dependency set $FD$ on a sequence of type variables $V :: [\mbb V]$ is a set of rules $R$, each of the form $V \to \{\mtt {FROM}, \mtt {TO}, \mtt {UNDEFINED}\}$. This set of rules always contains a ``trivial'' rule $r_0$ such that $r_0(v) = \mtt{FROM}$, this trivial rule is implicit and can be omitted when defining a functional dependency set. If a constraint $C \bmath \alpha$ (where $\bmath \alpha = V$) follows a functional dependency set $FD$, then, for each proof $C \bmath t$ of this constraint and for every corresponding rule $r$ in its set of rules $R$, we generate a new proof of the form $\forall \{v \pipe v \gets \bmath \alpha, r(v) = \mtt {TO}\} . \{v \sim t \pipe (v, t) \gets (\mtt {zip}\ \bmath \alpha\ \bmath t), r(v) = \mtt {TO} \} \To C_r [\mtt {if}\ r(v) = \mtt {FROM}\ \mtt {then}\ t\ \mtt {else}\ v \pipe (v, t) \gets (\mtt {zip}\ \bmath \alpha\ \bmath t), r(v) \neq \mtt {UNDEFINED}]$. (we borrowed haskell syntax for more succinct definition) This new constraint proof for the variables with $\mtt {FROM}$ variables replaced by types generates new equality constraints on $\mtt {TO}$ variables. We then remove the proof $C \bmath t$.
+    Functional dependency set $FD$ on a sequence of type variables $V :: [\mbb V]$ is a set of rules $R$, each of the form $V \to \{\mtt {FROM}, \mtt {TO}, \mtt {UNDEFINED}\}$. This set of rules always contains a ``trivial'' rule $r_0$ such that $r_0(v) = \mtt{FROM}$, this trivial rule is implicit and can be omitted when defining a functional dependency set. If a constraint $C \vect \alpha$ (where $\vect \alpha = V$) follows a functional dependency set $FD$, then, for each proof $C \vect t$ of this constraint and for every corresponding rule $r$ in its set of rules $R$, we generate a new proof of the form $\forall \{v \pipe v \gets \vect \alpha, r(v) = \mtt {TO}\} . \{v \sim t \pipe (v, t) \gets (\mtt {zip}\ \vect \alpha\ \vect t), r(v) = \mtt {TO} \} \To C_r [\mtt {if}\ r(v) = \mtt {FROM}\ \mtt {then}\ t\ \mtt {else}\ v \pipe (v, t) \gets (\mtt {zip}\ \vect \alpha\ \vect t), r(v) \neq \mtt {UNDEFINED}]$. (we borrowed haskell syntax for more succinct definition) This new constraint proof for the variables with $\mtt {FROM}$ variables replaced by types generates new equality constraints on $\mtt {TO}$ variables. We then remove the proof $C \vect t$.
 
-    We then replace each constraint $C \bmath t$ with constraints $C_r \bmath t_r$ for each corresponding rule $r$, where $t_r$ are subsequences of $t$ generated in a fashion similar to the constraint generation. And we then remove the constraint $C \bmath t$.
+    We then replace each constraint $C \vect t$ with constraints $C_r \vect t_r$ for each corresponding rule $r$, where $t_r$ are subsequences of $t$ generated in a fashion similar to the constraint generation. And we then remove the constraint $C \vect t$.
 
     In practice, we always simplify the functional dependency sets to minimize the number of constraints. \xxx{fundep simplification}
 
-    The written notation for defining a functional dependency set is a list of statements of the form $\bmath \alpha_1 \to \bmath \alpha_2$ where $\bmath \alpha_1, \bmath \alpha_2 \subseteq V$. Each such statement then corresponds to a new rule $r$, where $r(v) := \mtt {FROM}$ if $v \in \alpha_1$, otherwise if $v \in \alpha_2$, then $r(v) := \mtt {TO}$, for each variable $v \in V$.
+    The written notation for defining a functional dependency set is a list of statements of the form $\vect \alpha_1 \to \vect \alpha_2$ where $\vect \alpha_1, \vect \alpha_2 \subseteq V$. Each such statement then corresponds to a new rule $r$, where $r(v) := \mtt {FROM}$ if $v \in \alpha_1$, otherwise if $v \in \alpha_2$, then $r(v) := \mtt {TO}$, for each variable $v \in V$.
 \end{defn}
 
 \subsection{Type inference preprocessing}
@@ -332,11 +332,11 @@ We represent the 4 structures and some other information about each type, along 
 
     \item Class schemes: $cs :: C_{cs} \to [\mathbb{W}]; C_{cs} :: \{\mbb C\}$
 
-    The schemes of the known classes, each of the form $\bmath \alpha . F \To C \alpha$, where $C?  \bmath \alpha$ is a class constraint and $F :: [\mbb F]$ is a list of superclasses
+    The schemes of the known classes, each of the form $\vect \alpha . F \To C \alpha$, where $C?  \vect \alpha$ is a class constraint and $F :: [\mbb F]$ is a list of superclasses
 
     \item Class facts: $cf :: C_{cf} \to [\mathbb{W}]; C_{cf} \subseteq C_{cs}$
 
-    The known proofs for each class constraint. Each proof has the form $\bmath \alpha . F \To C \bmath t$, where $C! \bmath t$ $F$ is a class fact and $F :: [\mcal F]$ is the list of assumptions of the corresponding proof.
+    The known proofs for each class constraint. Each proof has the form $\vect \alpha . F \To C \vect t$, where $C! \vect t$ $F$ is a class fact and $F :: [\mcal F]$ is the list of assumptions of the corresponding proof.
 
     \item Functional dependencies: $fd :: C_{fd} \to \mathbb{FD}; C_{fd} \subseteq C_{cs}$
 
@@ -489,15 +489,15 @@ In the scope of this algorithm we distinguish 4 types of unification. The algori
 
         \item If $f \equiv c_1 \leq_C t \leq_C c_2$, we update the bounds for $c(t)$ in the variable $b_C$ in such a way that given $b_C(c(t)) = [c_1', c_2']$, we set $b_C$ to $b_C[ c(t) := [\max (c_1, c_1'), \min (c_2,  c_2')] ]$.
 
-        \item If $f \equiv C?\ \bmath t$. Then if $C$ has a functional dependency set defined in $fd$, we perform rewrites of the constraint according to \xxx{add ref}.
+        \item If $f \equiv C?\ \vect t$. Then if $C$ has a functional dependency set defined in $fd$, we perform rewrites of the constraint according to \xxx{add ref}.
 
         Otherwise we lookup the class scheme proofs for $C$ in $cf(C)$ for a proof such that $t(t) \sqsupseteq t(cf(C))$ (checked by unification algorithm which always prefers substituting the right-hand variables, otherwise it fails, trying the next proof).
 
-        If we successfully lookup a proof for $C \bmath t$, then we simply replace the constraint by assumptions of the proof, otherwise we put it aside and continue with the next constraint.
+        If we successfully lookup a proof for $C \vect t$, then we simply replace the constraint by assumptions of the proof, otherwise we put it aside and continue with the next constraint.
 
         Since we require all proofs to be disjunctive on their results, we can stop the lookup at the first successful find.
 
-        \item If $f \equiv C!\ \bmath t$, we store the proof $C \bmath t$ to the list of proofs $cf(C)$.
+        \item If $f \equiv C!\ \vect t$, we store the proof $C \vect t$ to the list of proofs $cf(C)$.
 
         \item If $f \equiv t_1 \supseteq t_2$, we check whether we have a scheme present for $t_1$. If so, we instantiate the scheme, replacing all its quantified variables.
 
