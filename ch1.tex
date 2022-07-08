@@ -147,7 +147,7 @@ It also simplifies the notion of type assignments in such a way that all types c
 
 The language of constraints is an extension of traditional type language with type variables annotated by ``context levels'', giving a language of flat and nested constraints:
 \begin{defn}[Language of constraints]
-  Language $F$ of \emph{flat constraints} is defined inductively as follows:
+  Language $F$ of \emph{flat constraints} is defined as follows:
 
     \begin{center}\begin{grammar}
       \firstcasesubtil{$F$}{d: C \vect \tau}{Class constraint}
@@ -158,8 +158,7 @@ The language of constraints is an extension of traditional type language with ty
 
     \begin{center}\begin{grammar}
       \firstcasesubtil{$W$}{F}{Flat constraint}
-      \otherform{W_1, W_2}{Conjunction}
-      \otherform{\forall \vect \alpha . \{F\} \To W}{Implication constraint}
+      \otherform{\forall \vect \alpha . \vect F \To \vect W}{Implication constraint}
     \end{grammar}\end{center}
 
     \label{constraint_language}
@@ -275,45 +274,56 @@ Existentials are typically constrained by some class, which then means, they car
 
 The inference is performed by rewriting the set of constraints into an equivalent set of constraints in each step. The Algorithm works as follows:
 
-\begin{enumerate}
-    \item We choose a constraint and continue with the step \ref{true_constraint},if there are none to choose from, with the step \ref{false_constraint} \label{choose_constraint}
-
-    \item \label{true_constraint}
-    \begin{itemize}
-        \item If it is a class constraint
-
-        \begin{itemize}
-            \item If the witness is already solved, we remove the constraint.
-
-            \item If the witness is not solved, but the constraint is proven by the assumptions of the current context, we unify the witnesses and remove the constraint.
-
-            \item If not, we attempt to lookup a proof scheme for the constraint and, if successful, we instantiate it, adding its assumptions to the current context, and we unify the witnesses.
-
-            \item Otherwise, we set the constraint aside and choose a different constraint.
-        \end{itemize}
-
-        \item If it is an equality constraint
-
-        \begin{itemize}
-            \item If the quantified variables in the closest enclosing implication constraint don't appear free in the equality, we ``float'' the equality into the enclosing context by moving it and we ``promote'' the unification variables of the current scope appearing in the equality, changing their context level to that of the enclosing scope.
-
-            \item If neither of the operands is a unification variable, we break the equality in more granular equalities, or, if it contains unresolved type functions, we set aside the constraint until we know more. If the unification cannot be broken up as it contains different type constructors at the top, we report failure.
-
-            \item Otherwise, WLOG, let us assume that it contains a unification variable on the left side (if both sides contain a unification variable, let us assume it is the one with the higher context level, if they differ).
-
-            If the unification variable has context level of the current scope, we perform the unification (after performing an occurs check, which can stop the algorithm) and rewrite other constraints accordingly, removing the equality constraint.
-
-        \end{itemize}
-
-        \item If it is an implication constraint, we increment the context level of the solver (if it doesn't infer the context level from the scope) and choose a constraint from the current scope level.
-
-        If the implication constraint is empty (has no nested constraints; on the right side of the implication), we erase it.
-    \end{itemize}
-
-    \item We continue to the step \ref{choose_constraint}
-
-    \item \label{false_constraint} If there are no more constraints (put aside), we report success and stop the algorithm, otherwise, if we have solved any constraints since we put aside the first one, we restore the put aside constraints and continue with the step \ref{choose_constraint}, otherwise, we report failure.
-\end{enumerate}
+\begin{algorithmic}
+    \While{There are some unsolved constraints}
+        \If{all constraints are postponed}
+            \If {remembered to continue with postponed constraints}
+                \State unpostpone all postponed constraints
+                \State forget to continue with postponed constraints
+            \Else
+                \State report a residual list of constraints and return the postponed constraints
+            \EndIf
+        \EndIf
+        \State $c \gets $ choose constraint which is not postponed (according to an arbitrary heuristic)
+        \If{$c \equiv d : C \vect t$ is a class constraint}
+            \If{$d$ is a witness of a concrete assumption or proof}
+                \State remove the redundant constraint $c$
+            \ElsIf{$C \vect t$ is proven by some assumption $d' : C \vect t'$}
+                \State unify $d$ and $d'$ and rewrite all constraints accordingly
+                \State remove the constraint $c$, consider it being just solved
+            \ElsIf{$C \vect t$ matches some proof scheme $s \equiv \forall \vect \alpha . P \To d' : C \vect t'$}
+                \State instantiate $s$ into $s' \equiv P' \To d' : C \vect t$
+                \State add $P'$ to the current context
+                \State unify $d$ and $d'$ and rewrite all constraints accordingly
+                \State remove the constraint $c$, consider it being just solved
+            \Else
+                \State postpone the constraint $c$
+            \EndIf
+        \ElsIf{$c \equiv a \sim b$ is an equality constraint}
+            \If{$a$ and $b$ are the same}
+                \State remove the redundant constraint $c$
+            \ElsIf{The context is not global and neither of $a$ and $b$ contains the skolem constants of the current context and}
+                \State ``promote'' the unification variables of the current context appearing in $c$, decreasing their context level
+                \State ``float'' the constraint $c$, moving it into the enclosing context
+            \ElsIf{Neither of $a$ and $b$ is a unification variable}
+                \If{$a$ and $b$ contain the same type constructor $T$ at the top}
+                    \State break the equality constraint $c$ into more equality constraints with corresponding immediate subterms of $a$ and $b$
+                \ElsIf{$a$ and $b$ contain different type constructors at the top}
+                    \State report failure and return the unsolved constraints
+                \Else \Comment{Two skolems, type functions, etc.}
+                    \State postpone the constraint $c$
+                \EndIf
+            \EndIf
+        \ElsIf{$c \equiv \forall \vect \alpha . P \To \vect W$ is an implication constraint}
+            \If{$\vect W$ is empty}
+                \State remove the constraint $c$, consider it being just solved
+            \Else
+                \State attempt to solve a constraint in $\vect W$ with context level of the solver being incremented by one
+            \EndIf
+        \EndIf
+        \State If solved a constraint, remember to continue with postponed constraints
+    \EndWhile
+\end{algorithmic}
 
 \begin{remark}\label{defer_properties}
     The algorithm is confluent and terminating \xxx{reference to the essence of ML TI} under some requirements on the allowed constraints. Confluence is the property of the inference system that it gives the same result regardless of reordering of the input.
@@ -333,7 +343,7 @@ The rules \ref{triv_assump}, \ref{free_free} and \ref{lookup_t} together ensure 
 
 The rule \ref{lookup_t} also ensures the proof schemes can be looked up efficiently, as the lookup can be implemented via a lookup table indexed by the $T$ type constructor.
 
-\section{Improvements over the Algorithm W}
+\subsection{Improvements over the Algorithm W}
 
 \begin{itemize}
     \item  The solving can be performed in an arbitrary order as long as the modifications preserve its confluence property, see the remark \ref{defer_properties}.
