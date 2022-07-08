@@ -68,7 +68,7 @@ In the THIH variation, this can be expressed, and the algorithm is strong enough
 
 \subsection{Tackling the limitations of Algorithm W}
 
-In the subsection \ref{ex_structs}, the inability to capture functional dependencies could be possibly solved during subsequent monomorphization phase, which would know that the type of a record type determines the types of its fields but in a general case, this would mean that the subsequent monomorphization phase would have to be unnecessarily complex and it would function as a second type inference.
+In the \cref{ex_structs}, the inability to capture functional dependencies could be possibly solved during subsequent monomorphization phase, which would know that the type of a record type determines the types of its fields but in a general case, this would mean that the subsequent monomorphization phase would have to be unnecessarily complex and it would function as a second type inference.
 
 So we have to address this issue in the type inference itself.
 
@@ -101,13 +101,13 @@ THIH describes the constraint propagation through the syntactic structure of the
 
 \subsection{The challenges of the modified W, rise to a two-phase algorithm}
 
-In the example \ref{chaining}, we show that each constraint can generate more constraints, and the Algorithm W as described by THIH, then solves each of theses chains separately. And often, they can break into trees. This then requires a significant amount of work and progressively more complicated code, which resolves each of the cases.
+In the \cref{chaining}, we show that each constraint can generate more constraints, and the Algorithm W as described by THIH, then solves each of theses chains separately. And often, they can break into trees. This then requires a significant amount of work and progressively more complicated code, which resolves each of the cases.
 
 \begin{observe}[Hints of a two-phase approach to type inference]
     The modified Algorithm W with recursion being present in the language alongside functional dependencies we deduced from the record types, is then very complicated ,and it should be obvious from the previous examples the modified algorithm, regardless of modifications, deconstructs into a two-phase process where the first generates some constrained type assignments and then the second resolves the constraints.
 \end{observe}
 
-Using the Algorithm W requires some nontrivial preprocessing and mapping the subprogram to the resulting type, and then, the subsequent constraint solving has the limitation of performing the type inference strictly in topological order dictated by the call graph, and in very inefficient chains of nested proofs, again, show by the example \ref{chaining}.
+Using the Algorithm W requires some nontrivial preprocessing and mapping the subprogram to the resulting type, and then, the subsequent constraint solving has the limitation of performing the type inference strictly in topological order dictated by the call graph, and in very inefficient chains of nested proofs, again, shown by the \cref{chaining}.
 
 We will describe a two-phase algorithm, which does not require the described difficult preprocessing, and introduces ``so-called'' witnesses, which simplify solving multiple class constraints.
 
@@ -174,7 +174,7 @@ Additionally to the already described equality constraints and class constraints
 
         \item We use scopes to describe a context level of a constraint. For a constraint, a \textbf{context level} is the maximum length of implications leading to it.
 
-        \item \textbf{Context level} of the unbound type variables introduced in some scope in the previous definition (\ref{constraint_language}) have the context level which is equal to the context level of the scope. \label{constness_level}
+        \item \textbf{Context level} of the unbound type variables introduced in some scope in the \cref{constraint_language} have the context level which is equal to the context level of the scope. \label{constness_level}
 
         All the appearances of a certain type variable have the same context level.
 
@@ -343,11 +343,11 @@ The rule \ref{lookup_t} also ensures the proof schemes can be looked up efficien
 \subsection{Improvements over the Algorithm W}
 
 \begin{itemize}
-    \item  The solving can be performed in an arbitrary order as long as the modifications preserve its confluence property, see the remark \ref{defer_properties}.
+    \item  The solving can be performed in an arbitrary order as long as the modifications preserve its confluence property, see the \cref{defer_properties}.
 
     \item The solving is completely independent on the specifics of the typed language structure, this is achieved via the elaboration it with placeholders for types and witnesses, then expressing the input for inference via those placeholders alone, and then finally filling in the placeholders back to the language.
 
-    \item The notion of witnesses allows us to compress the many proof chains we explored in the example \ref{chaining}.
+    \item The notion of witnesses allows us to compress the many proof chains we explored in the \cref{chaining}.
 \end{itemize}
 
 
@@ -356,13 +356,13 @@ The rule \ref{lookup_t} also ensures the proof schemes can be looked up efficien
 
 In this thesis, we use an algorithm based on the deferred inference algorithm is because it provides a very easy to extend formalisms which require only small number of modifications to it to achieve the coverage of the desired set of typing capabilities.
 
-In our type system, we do not support existentials, as we want the maximal transparency of the resulting code for possible use in systems programming. Existentials generate irremovable witnesses we introduced in \ref{defer_solve} and further explained in \ref{existentials}, because the actual type of the input existentials is known only in run-time. This approach guarantees type-safety as it ensures the witnesses are passed properly, but it does so at a cost we would like to not have.
+In our type system, we do not support existentials, as we want the maximal transparency of the resulting code for possible use in systems programming. Existentials generate irremovable witnesses we introduced in the \cref{defer_solve} and further explained in the \cref{existentials}, because the actual type of the input existentials is known only in run-time. This approach guarantees type-safety as it ensures the witnesses are passed properly, but it does so at a cost we would like to not have.
 
 The lack of existential types is why they are described only briefly. They are still important to mention as one of the main motivations for the design of the deferred solving algorithm and as one of its supported features. They then provide good insight into the meaning of witnesses, which are still used for class constraint resolution.
 
-The type system we use is much more extended compared to the type system we assumed so far in a special limited version of subtyping added to the system, which will provide us the necessary means of type-checking and type-inferring whether a variable is semantically a compile time constant and also what is its data kind (we will introduce those in the chapter \ref{chap2}, which describes the language specifics).
+The type system we use is much more extended compared to the type system we assumed so far in a special limited version of subtyping added to the system, which will provide us the necessary means of type-checking and type-inferring whether a variable is semantically a compile time constant and also what is its data kind (we will introduce those in the \cref{chap2}, which describes the language specifics).
 
-Then, we also introduce functional dependencies. These are implemented via a rewriting scheme that takes precedence over the class constraint resolution. It simply replaces the given class constraint with a different set of constraints depending on the defined functional dependencies. We will specify the details in the chapter \ref{chap3}.
+Then, we also introduce functional dependencies. These are implemented via a rewriting scheme that takes precedence over the class constraint resolution. It simply replaces the given class constraint with a different set of constraints depending on the defined functional dependencies. We will specify the details in the \cref{chap3}.
 
 As we do not use existentials in our type system, we do not need the context levels, which then allows us to solve all equality constraints eagerly, as the solvability of such constraints is limited only by the context levels.
 

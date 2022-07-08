@@ -91,7 +91,7 @@ In our solution, the type inferencer keeps track of the type definitions of all 
     We will call the variables not being renamed to another variable by the algorithm ``alive variables''. Renaming is performed every time two distinct variables are to be unified.
 \end{defn}
 
-The representation of types follows the one introduced in the definition \ref{typing_def}, but extended by the necessary extra constructions.
+The representation of types follows the one introduced in the \cref{typing_def}, but extended by the necessary extra constructions.
 
 \begin{defn}[Typings]
     \label{typing_gram}
@@ -113,7 +113,7 @@ The representation of types follows the one introduced in the definition \ref{ty
 \end{lang}
 
 \begin{defn}[Primitive patterns]
-    Primitive patterns $\mathbb{P}$ follow the same grammar as typings, see the definition \ref{typing_gram} but, without the very first grammar case and with type variables ($\mbb{V}$) appearing in the grammar cases in place of typings ($\mbb{T}$).
+    Primitive patterns $\mathbb{P}$ follow the same grammar as typings, see the \cref{typing_gram} but, without the very first grammar case and with type variables ($\mbb{V}$) appearing in the grammar cases in place of typings ($\mbb{T}$).
 
     Primitive patterns represent the definition of types broken up into single applications of type constructors.
 \end{defn}
