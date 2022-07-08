@@ -1,7 +1,7 @@
 % Metadata to be stored in PDF, see documentation of the pdfx package for more details.
 
-\Author{Name Surname}
-\Title{Thesis title}
-\Keywords{keywords\sep more such\sep yet another}
+\Author{Jiří Klepl}
+\Title{Inference-driven resource managemenent and polymorphism in systems programming}
+\Keywords{programming languages \sep type systems \sep compilers \sep systems programming \sep resource management}
 \Subject{Abstract of thesis}
 \Publisher{Charles University}

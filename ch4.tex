@@ -2,7 +2,7 @@
 
 \section{The general possible use-cases for the RAII design pattern}
 
-The main reason we propose the RAII features in the extended \cmm language is that all functions usually have just one entry point, but multiple exit points. Especially if we are trying to abide to more functional structure of the code.
+The main reason we propose the RAII features in the extended \cmm{} language is that all functions usually have just one entry point, but multiple exit points. Especially if we are trying to abide to more functional structure of the code.
 
 And with the multiple exits, there often comes an action, we want to perform on each of them. Perhaps, the function was writing to a file and we want to close it.
 
@@ -25,13 +25,13 @@ The kernel coding style guide proposes the following convention:
   The goto statement comes in handy when a function exits from multiple locations and some common work such as cleanup has to be done. If there is no cleanup needed then just return directly.
 \end{quotation}
 
-We propose the RAII features of the extended \cmm as more clear alternative to this convention.
+We propose the RAII features of the extended \cmm{} as more clear alternative to this convention.
 
 In order to fully serve as an alternative to the \li{goto cleanup} pattern, we also propose a special instruction \xxx{dropped}. Which takes a named alias to the RAII object and removes the implicit calls an all function exits following this instruction, then allowing for explicit calls whenever the user specifies.
 
 This can be easily ensured by the flow analysis algorithm which is already demonstrated in the implementation. The way we propose this should be implemented is that the \xxx{dropped} instruction is illegal if there exist alternative paths in the control flow to its corresponding function exits (function exits encountered by a dfs search beginning in this instruction) which do not encounter this instruction.
 
-With the proposed type system, it can be ensured, that the whole object is represented only during compilation and thus if the code generation generates a tail call instead of a regular call, which can be ensured in the \cmm language, this abstraction can have zero cost on the runtime.
+With the proposed type system, it can be ensured, that the whole object is represented only during compilation and thus if the code generation generates a tail call instead of a regular call, which can be ensured in the \cmm{} language, this abstraction can have zero cost on the runtime.
 
 One possible improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple RAII objects, each such action then possibly being prevented by a separate \xxx{dropped} instruction on some subset of control flow paths.
 
@@ -195,7 +195,7 @@ This different approach only applies to the part of the pipeline which is direct
 
 The benefit of this approach is that it, apart from much easier implementation and have more space for performance optimization, allows for type-guided constant propagation and all violations to constexpr-related and linkexpr-related constraints are reported as type errors. \xxx{It also allows for writing algorithm akin to \li{template<int N> int f(int &args[N]) \{ ... \}}}.
 
-The other, more significant benefit, is that, instead of defaulting to some default value whenever a data kind is omitted in the \cmm code, it is inferred.
+The other, more significant benefit, is that, instead of defaulting to some default value whenever a data kind is omitted in the \cmm{} code, it is inferred.
 
 We believe that the significance of the primitives used in this design surpass the significance of the proposed implementation. \xxx{maybe move to the very front}
 

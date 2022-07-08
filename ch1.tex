@@ -1,8 +1,5 @@
-\providecommand{\free}[1]{\mtt{free} (#1)}
-\providecommand{\dom}[1]{\mtt{Dom} (#1)}
-\providecommand{\ran}[1]{\mtt{Ran} (#1)}
-
 \chapter{The French approach to type inference}
+
 \label{chap1}
 
 \section{The Algorithm W and how it connects to deferred solving}
@@ -119,7 +116,7 @@ We will describe a two-phase algorithm, which does not require the described dif
 
 The idea of using this algorithm is ``elaborating'' the source program with special variables (elaborations), then running the inference on the specific constraints derived from the source program, but independent on the syntactic specifics of the source program, and then, after the inference successfully finishes, by inserting the inferred information back in the source program in place of the special variables.
 
-elaborations consist of type variables, and then \textit{dictionaries} and \textit{coercions} that then help the subsequent monomorphization decide the concrete instances that have to be used at each referring site. In the deferred solving algorithm they serve as proofs for each constraint. \textbf{Dictionaries} represent type class instances that prove class constraints. And \textbf{coercions} prove type identities. We call dictionaries and coercions, collectively, \textbf{witnesses}.
+elaborations consist of type variables, and then \emph{dictionaries} and \emph{coercions} that then help the subsequent monomorphization decide the concrete instances that have to be used at each referring site. In the deferred solving algorithm they serve as proofs for each constraint. \emph{Dictionaries} represent type class instances that prove class constraints. And \emph{coercions} prove type identities. We call dictionaries and coercions, collectively, \emph{witnesses}.
 
 The deferred solving, or deferred inference, is very similar to the idea of modified Algorithm W we presented earlier but it does not require each of the objects appearing in the type-inferred subprogram be directly syntactically mapped to a certain type. It just requires a set of constraints that capture the semantics of the program. These, in the basic version, consist of type equalities between types that have to be equal and class constraints put on certain types that require a proof of the given tuple of types belonging to the given class (these proofs are usually isomorphic to class instances defined in the type inferred language).
 
@@ -299,7 +296,7 @@ The inference is performed by rewriting the set of constraints into an equivalen
             \Else
                 \State postpone the constraint $c$
             \EndIf
-        \ElsIf{$c \equiv a \sim b$ is an equality constraint}
+        \ElsIf{$c \equiv g : a \sim b$ is an equality constraint}
             \If{$a$ and $b$ are the same}
                 \State remove the redundant constraint $c$
             \ElsIf{The context is not global and neither of $a$ and $b$ contains the skolem constants of the current context and}

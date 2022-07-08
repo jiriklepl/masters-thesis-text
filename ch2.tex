@@ -1,6 +1,4 @@
-\providecommand{\cmm}[0]{ C-{}- }
-
-\chapter{\cmm extension with type inference and RAII features}
+\chapter{\cmm{} extension with type inference and RAII features}
 
 \label{chap2}
 
@@ -8,21 +6,21 @@
 
 \xxx{man2}
 
-\section{\cmm history and significance}
+\section{\cmm{} history and significance}
 
-Before we talk about the specifics of \cmm, let us explain our choice of this particular language for our demonstration of using type inference and RAII in a systems-programming context.
+Before we talk about the specifics of \cmm{}, let us explain our choice of this particular language for our demonstration of using type inference and RAII in a systems-programming context.
 
-Cmm (a variant of \cmm) is used as a backend intermediate representation for GHC, the most popular haskell compiler. \cmm is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
+Cmm (a variant of \cmm{}) is used as a backend intermediate representation for GHC, the most popular haskell compiler. \cmm{} is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
 
 \begin{remark}
-    The \cmm language has two major revisions, which differ quite significantly.
+    The \cmm{} language has two major revisions, which differ quite significantly.
 
-    It is important to note that, by referring to just \cmm, we will always refer to the second revision of the language, \cmm 2.0.
+    It is important to note that, by referring to just \cmm{}, we will always refer to the second revision of the language, \cmm{} 2.0.
 \end{remark}
 
-Just like Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular function call, which does not constitute stack manipulation.
+Just like Cmm, \cmm{} is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular function call, which does not constitute stack manipulation.
 
-The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent in the context of \cmm.
+The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent in the context of \cmm{}.
 
 This was one of the main motivations for choosing this language for our exploration as it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers, offering these features that can be easily tied to type inference.
 
@@ -30,17 +28,17 @@ It is due to the above reasons, it is usually categorized as pseudo-assembler.
 
 The algorithm our experimental approach is based on, so called ``deferred inference'' or the ``French approach'' (described in the section \ref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
 
-\section{Syntax and properties of \cmm}
+\section{Syntax and properties of \cmm{}}
 
-What characterizes \cmm perhaps the best is simply: minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only two control flow statements it supports are if statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
+What characterizes \cmm{} perhaps the best is simply: minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only two control flow statements it supports are if statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
 
-What differs the approach of \cmm from other C-like languages is that it has call statements instead of call expressions. This is an important distinction, as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. Not allowing side effects inside expressions is another desirable feature of a systems programming language if we strive maximum code transparency.
+What differs the approach of \cmm{} from other C-like languages is that it has call statements instead of call expressions. This is an important distinction, as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. Not allowing side effects inside expressions is another desirable feature of a systems programming language if we strive maximum code transparency.
 
-It is important to note that \cmm, while being minimalistic, is not minimalistic in all of its aspects. \cmm, in contrast to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
+It is important to note that \cmm{}, while being minimalistic, is not minimalistic in all of its aspects. \cmm{}, in contrast to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
 
 It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers. Same would apply for any assumptions that this implements some kind of error handling.
 
-As we discussed earlier \cmm does not distinguish between different register types in the type system. The way \cmm distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
+As we discussed earlier \cmm{} does not distinguish between different register types in the type system. The way \cmm{} distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
 
 Note that these data kinds are usually strictly separated from each other in many languages (by so-called ``aliasing rules'' \xxx{link aliasing rules for c++ (perhaps C)? or for some asssembler if such exist?}).
 
@@ -50,7 +48,7 @@ This can be modelled well with a very limited notion of lattice-based subtyping 
 
 \xxx{\url{http://boole.stanford.edu/cs353/handouts/book1.pdf}}
 
-\section{Extending \cmm for type inference}
+\section{Extending \cmm{} for type inference}
 
 We extended the language with new syntactic constructs: \li{class}es, \li{instance}s, \li{struct}s, \li{new} specifications, \li{dropped} statements and \li{[ptr]} generic dereference.
 
@@ -121,7 +119,7 @@ One of the side-effects of this approach is that one field can have various name
 
 They allow us to pack more, related, data together (in the example \ref{list}, some item and a pointer to the next item) and thus abstract away the specific data layout from the implementations. This then allows us to write functions passing the data or references to it once and then not reimplement them every time the specific data layout changes.
 
-The reason basic \cmm does not require structs is that it does not support polymorphism nor it enforces type safety. Instead of passing a pointer to a record and then, in the consumer, using a set of field accessors, it can pass an untyped pointer and a set of integer constants representing the offsets of the data.
+The reason basic \cmm{} does not require structs is that it does not support polymorphism nor it enforces type safety. Instead of passing a pointer to a record and then, in the consumer, using a set of field accessors, it can pass an untyped pointer and a set of integer constants representing the offsets of the data.
 
 Since we infer the types and multiple types can have the fields implemented differently, the above approach is no longer desirable. It is also very error-prone.
 
@@ -163,9 +161,9 @@ This typing of labels allowed us to make quite subtle, but very useful syntactic
     \end{lstlisting}
 \end{ex}
 
-\subsection{Extensions to the type system}
+\subsection{Type system extensions for \cmm{} subtypes}
 
-We extended the language with the HM-like type system with type classes. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it served as a side goal in exploring type systems and type inference.
+We extended the language with the HM-like type system with type classes. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm{} language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it served as a side goal in exploring type systems and type inference.
 
 This turned out to be a decision significantly affecting the implementation process as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible guides on best practices. \xxx{we will offer such a guide in our conclusions}.
 
@@ -194,7 +192,7 @@ We represent the various subtype dimensions of the type variables with so-called
 
 \begin{defn}[Typing dimension]
     \label{typing_def}
-    The typing dimension is a lattice with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation - notice the similarity of concepts: \tit{lowest upper bound} and \tit{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables \xxx{mention de bruijn notation? Are types $\forall a . \forall b . a \to b$ and $\forall b . \forall a . a \to b$ equivalent? Not really, if assuming type applications, and at the same time yes they are if we are talking HM}).
+    The typing dimension is a lattice with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation - notice the similarity of concepts: \emph{lowest upper bound} and \emph{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables \xxx{mention de bruijn notation? Are types $\forall a . \forall b . a \to b$ and $\forall b . \forall a . a \to b$ equivalent? Not really, if assuming type applications, and at the same time yes they are if we are talking HM}).
 
     In our proposed type system, we perform the type class resolution using only this dimension. Notice how it is easily specifiable using the language of lattices: $C t \GetsTo \exists C t' \in \Gamma . t \geq_T t'$.
 \end{defn}
@@ -214,7 +212,7 @@ We represent the various subtype dimensions of the type variables with so-called
 
     We can then simply extend the definition to apply to user-defined subtype dimensions, but that is not within the scope of this thesis.
 
-    In the type system specific to this thesis, we use two subtype dimensions: \textit{data kinds} and \textit{constnesses}. We will specify them in \xxx{the algorithm}.
+    In the type system specific to this thesis, we use two subtype dimensions: \emph{data kinds} and \emph{constnesses}. We will specify them in \xxx{the algorithm}.
 \end{defn}
 
 
@@ -250,7 +248,7 @@ We represent the various subtype dimensions of the type variables with so-called
     This convention allows us to use more succinct statements when describing the type system.
 \end{remark}
 
-\subsubsection{Subtyping system exploration}
+\subsection{Properties of the subtype system}
 \label{subtyping-idea}
 
 Let us explain the idea of the subtyping system on the following example of inferring the constnesses of a simple procedure.
@@ -281,7 +279,7 @@ This example demonstrates that the minimal subtypes within a space of fixed valu
     If the theory contained constraints with sharp inequalities, we could not separate the outside subtype information from the inside subtype information, nor have such liberty in unifying the variables.
 \end{remark}
 
-\subsubsection{Subtyping system inference}
+\subsubsection{Inference of subtypes}
 
 We are using the term ``fixed values'' in the example \ref{subtyping-idea}, but we have not yet introduced its meaning. They are some constants that are not to be optimized by the subtyping inference mechanism. In the most simple version of this system, if we do not consider type classes (only the HM type system with type constructors), the fixed values consist of subtyping dimension constants (in the example \ref{subtyping-idea}, that would be $K$); and then the subtype dimensions of skolem constants (again, in the example \ref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
 
@@ -350,7 +348,7 @@ We did not strive for representing existentials, as there has to be runtime type
 
 % \xxx{the folllowing is obsolete}
 
-% As our algorithm was based on \textit{deferring inference} algorithm which assumes an equality theory of the types and not lattice structures, the implementation progressed for a long time with some modifications to the general idea of the original algorithm, but met many obstacles and there was a lot of time spent on resolving those. It then seemed necessary to offer a better, working alternative, which we will in the \xxx{reference}.
+% As our algorithm was based on \emph{deferring inference} algorithm which assumes an equality theory of the types and not lattice structures, the implementation progressed for a long time with some modifications to the general idea of the original algorithm, but met many obstacles and there was a lot of time spent on resolving those. It then seemed necessary to offer a better, working alternative, which we will in the \xxx{reference}.
 
 % We eventually designed a simpler and much easier to implement primitives for this type system.
 
