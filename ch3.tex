@@ -16,7 +16,9 @@ In this chapter, we will describe the purpose and function of each of the compon
 
 \section{Flattening and blockifying}
 
-Flattening and blockifying phase convert a possibly nested \cmm{} source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the target output of LLVM basic blocks \xxx{todo ref}). The output blocks form a semi-sequential representation of the code, where the basic blocks are organized in a graph structure that reflects the program flow control between the blocks. Later, this allows for a straightforward compilation to SSA form of LLVM.
+Flattening and blockifying phase convert a possibly nested \cmm{} source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks \xxx{todo ref}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward compilation to the SSA form of LLVM.
+
+It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource-representing object (see \xxx{ref the RAII}) and these calls' types then have to be type-inferred in order to perform the desired resource management actions.
 
 \xxx{\url{https://llvm.org/doxygen/classllvm_1_1BasicBlock.html}}
 
@@ -26,7 +28,9 @@ For \cmm{}, we work with even more restricted definition of a basic block that o
 
 \subsection{Flattening}
 
-Flattening phase replaces all nested statements by trivial single-command statements that are simpler to convert into basic blocks. In case of \cmm{}, this is achieved by transforming all \li{if} statements into labels and \li{goto} statements. An example of the transformation is shown in \cref{lst:flat}.
+Flattening phase transforms all nested statements into trivial single-command statements that are simpler to convert into LLVM basic blocks.
+
+An example of the flattening phase transformation is shown in \cref{lst:flat}.
 
 \begin{listing}
 \begin{center}
@@ -66,30 +70,59 @@ F_fi_1:
 \label{lst:flat}
 \end{listing}
 
-In the result, the \li{if} statements only contain a single branch expression, which may be easily translated to LLVM conditional branches. We perform the transformation similarly for \li{switch} statements. Although \cmm{} does not specify any other control flow statements with nested bodies, the flattening would be applicable even for \li{while} statements and other, more complex conditional execution.
+Flattening moves the nested bodies of each \li{if} statement to the same level as the \li{if} statement, replacing them with a single \li{goto} statement and adding other \li{goto}s where needed to preserve the semantics. Deeply nested code is flattened recursively. For consistency in subsequent processing, it also generates an explicit \li{goto} for each fallthrough.
+
+The resulting code structure can be directly transcribed into LLVM, with \li{if} statements containing nested bodies with just a single branch expression directly relating to LLVM conditional branches. We perform the transformation similarly for \li{switch} statements. Although \cmm{} does not specify any other control flow statements with nested bodies, the flattening would be applicable even for \li{while} statements and other, more complex conditional execution.
 
 After transforming all function bodies into flat forms, the flattening phase also reorders the bodies of functions so that all declarations are at the top. This is not necessary, but it improves the readability of the generated code for programmers, and also simplifies the implementation of several other parts of the compiler pipeline.
 
-\subsubsection{Filling in calls to drop functions}
+\subsubsection{Filling in calls to the \li{drop} function}
 
-One more work for the flattening phase in the scope of this programming language is that it studies the presence of any RAII contracts and puts calls to drop functions accordingly. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough.
+One more task for the flattening phase in the scope of this programming language is that it studies the presence of any resource-representing objects (stack allocated objects carrying \li{new} specification, see \xxx{ref ref ref}) and puts calls to the \li{drop} function accordingly to the function's exit points. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough, so there was no necessity for an extra phase.
 
 \subsection{Blockifying}
 
-The blockifying phase follows the flattening phase and it annotated the nodes of AST with annotations stating whether the node starts a basic block, is part of a certain basic block, or that it is not a part of any basic block (is trivially unreachable). It then gives warnings for encountering these unreachable statements.
+The blockifying phase follows the flattening phase and it annotates the statements of functions with annotations stating whether the node starts a basic block, is part of a certain basic block, or that it is not a part of any basic block (and for such, generates warnings). A statement is not a part of any basic block, for example, when it follows a \li{goto} statement and is not preceded by any label. For the identified basic blocks, there is generated an accompanying control-flow graph. And for each block and each variable, the blockifier remembers whether the variable is read before the first write to it and whether it is written to.
 
-It also analyzes illegal fallthroughs (fallthroughs to continuation statements and fallthroughs outside of the procedure).
+\begin{ex}
+    An example of blockifying:
+    \begin{lstlisting}
+while: // starts 1
+if x == 0 { goto _then; } // p. of 1; reads "x"; cf += (1, 2)
+else      { goto _else; } // ... cf += (1, 3)
+_then: // starts 2
+x = 5; // part of 2; writes "x"
+y = x; // part of 2; writes "y" (does not read "x" before w.)
+goto _fi; // part of 2; cf += (2, 4)
+_else: // starts 3
+x = x + 5; // part of 3; writes "x", reads "x"
+goto _fi; // part of 3; cf += (3, 4)
+_fi: // starts 4
+... // part of 4
+    \end{lstlisting}
+
+    The control flow graph contains: $\{(1,2), (1,3), (2,4), (3,4)\}$
+
+\end{ex}
 
 
-\xxx{move this to the next subsection}
+Blockifying is performed by reading the code sequentially and marking each label as a start of a new basic block and each \li{goto} and \li{return} as end of a basic block. The blockifier keeps track of the current basic block in its inner state. If the blockifier identifies a branch from one basic block to another, it adds an edge to the control-flow graph.
 
-After the blockifier annotates all basic blocks in a procedure, it then measures live ranges of all variables and gives errors for uninitialized variables \xxx{link bednarek}. It also finds out unreachable labels (and thus finds nontrivially unreachable code as well).
+Blockifying also identifies illegal fallthroughs (fallthroughs to continuation statements and fallthroughs outside of the procedure) and generates errors for such.
 
-The state it keeps is usable for translating the code into an SSA form. For each basic block, it keeps the list of the basic blocks it is preceded by in the control flow of the corresponding procedure and for each variable present in the block or alive in its scope, it contains whether the variable is required to be alive at the basic block's entry, whether it is written to, and whether it is being read from.
+\subsubsection{Live range analysis}
 
-The SSA form can be trivially generated by a two-phase algorithm where the first phase prepares the relevant phi nodes with placeholders for variables being exported from the preceding basic blocks and then the second phase fills in these placeholders with actual names of the exported variables (they will likely not match the original names of the variables as we have to distinguish between different writes to them).
+After the blockifier annotates all basic blocks in a procedure and builds the whole control-flow graph, it then measures live ranges of all variables and gives errors for uninitialized variables \xxx{link bednarek}. It also finds out unreachable labels and generates warnings for such.
 
-\section{Flow analysis and how it connects to RAII}
+\subsubsection{Blockifier state uses by other compiler components}
+
+The state the blockifier keeps is usable for translating the code into an SSA form. After the blockifying is finished, for each basic block, it keeps the list of the basic blocks it is preceded by in the control flow of the corresponding procedure, and for each variable present relevant to the basic block, it contains whether the variable is required to be alive at the basic block's entry and whether it is written to (note that the variable can be requested alive even if it is never referred to in the scope of the basic block).
+
+\begin{remark}[Blocks table]
+    Note that each basic block is referred to using an unique integer identifier and therefore the blockifier's state also contains a \emph{blocks table}, which translates the identifier back into names. This will be important in \xxx{ref translation}.
+\end{remark}
+
+The SSA form then can be generated by a two-phase algorithm where the first phase prepares the relevant phi nodes with placeholders for variables being exported from the preceding basic blocks and then the second phase fills in these placeholders with actual names of the exported variables (they will likely not match the original names of the variables as we have to distinguish between different writes to them). \xxx{connect it to translation}
 
 \section{Type System}
 
@@ -166,7 +199,7 @@ The representation of types follows the one introduced in the \cref{typing_def},
     \begin{itemize}
         \item reconstruct a type represented by a variable (recursively)
         \item lookup the variables representing each subterm of a type
-        \item lookup the variable which represents the given type \xxx{`simplify' function}
+        \item lookup the variable which represents the given type
     \end{itemize}
 
     Keeping a consistent mapping of primitive patterns is quite costly, but it allows for many experiments in type inference and it can also help in debugging.
@@ -423,19 +456,22 @@ The algorithm is designed to have the following intrastate invariants:
 
 \subsubsection{Interstate invariants}
 
-The algorithm is designed to have the following interstate invariants: (we use the indices to distinguish a successor state variable from its predecessor, we will always assume $n < m \in \mathbb{N}$, we then use these indices in all derived functions too).
+The algorithm is designed to have the following interstate invariants: (we use the indices to distinguish a successor state variable from its predecessor, we will always assume $n < m \in \mathbb{N}$, we then use these indices in all derived functions too; the list is not exhaustive, these are the ones important to consider when studying the algorithm)
 
-\begin{enumerate}
-    \item Forgotten variables stay forgotten: $v \in \mathcal{G}_n \Rightarrow v \in \mathcal{G}_m$.
-    \item Forgotten variables used to be alive: $v \in \mathcal{G}_m \Rightarrow \exists n . v \in \mathcal{V}_n$.
-    \item All free variables from constraints are considered by the algorithm: $v \in \mathrm{free} (\mathcal{F}_0) \Rightarrow v \in \mathcal{V}_0$. And $v \in \mathrm{free} (\mathcal{F}_n) \Rightarrow v \in \mathcal{V}_n$.
-    \item Assumed subtype constraints are monotonically getting restricted. For kinds: $v \in {\mathcal{V}}_n \Rightarrow {b_K}_m (k_m(u_m(v))) \subseteq {b_K}_n (k_n(v))$ and for constnesses: $v \in {\mathcal{V}}_n \Rightarrow {b_C}_m (c_m(u_m(v))) \subseteq {b_C}_n (c_n(v))$.
-    \item Typings do not get forgotten: $v \in {\mathcal{V}}_n \Rightarrow \exists s . s(t_n(v)) = t_m(u_m (v))$, where $s$ is a substitution
-    \item Explanations do not get forgotten: $v \in {\mathcal{V}_p}_n \Rightarrow \exists s . s(p_n(v)) = p_m(u_m (v))$.
-    \item Results are results of results: $u_m = u_m (u_n)$.
-    \item Schemes do not get forgotten: $fs_n \subseteq fs_m, cs_n \subseteq cs_m, cf_n \subseteq  cf_m, fd_n \subseteq  fd_m$. Note the lack of applying $u$.
-    % TODO: add more constraints
-\end{enumerate}
+\begin{description}
+    \item[Forgotten variables stay forgotten] $v \in \mathcal{G}_n \Rightarrow v \in \mathcal{G}_m$.
+    \item[Forgotten variables used to be alive] $v \in \mathcal{G}_m \Rightarrow \exists n . v \in \mathcal{V}_n$.
+    \item[All free variables from constraints are considered by the algorithm] $v \in \free {\mathcal{F}_n} \Rightarrow v \in \mathcal{V}_n$.
+    \item[Assumed subtype constraints are monotonically restricted] \quad
+    \begin{itemize}
+        \item For kinds: $v \in {\mathcal{V}}_n \Rightarrow {b_K}_m (k_m(u_m(v))) \subseteq {b_K}_n (k_n(v))$
+        \item For constnesses: $v \in {\mathcal{V}}_n \Rightarrow {b_C}_m (c_m(u_m(v))) \subseteq {b_C}_n (c_n(v))$.
+    \end{itemize}
+    \item[Typings do not get forgotten] $v \in {\mathcal{V}}_n \Rightarrow \exists s . s (t_n(v)) = t_m(u_m (v))$, where $s$ is a substitution
+    \item[Explanations do not get forgotten] $v \in {\mathcal{V}_p}_n \Rightarrow \exists s . s(p_n(v)) = p_m(u_m (v))$.
+    \item[Results are results of results] $u_m = u_m (u_n)$.
+    \item[Schemes do not get forgotten] $fs_n \subseteq fs_m, cs_n \subseteq cs_m, cf_n \subseteq  cf_m, fd_n \subseteq  fd_m$. Note the lack of applying $u$.
+\end{description}
 
 \subsubsection{Unifications}
 
@@ -581,9 +617,9 @@ Note that, in the included implementation, this is part of the monomorphization 
 The monomorphization algorithm is a two-phase processes which is performed on type-inferred code with type handles present in an annotation of each node of the AST.
 
 \begin{enumerate}
-    \item In the first phase, we go through the top level definitions in the program and identify which ones are monomorphic. We add them to the queue of code to be instantiated.
+    \item In the first phase, we go through the top level definitions in the program and identify which ones are monomorphic. We add them to the queue of code to be instantiated. If we encounter any polymorphic functions marked \li{foreign "C"}, we report an error.
 
-    \item We remove the first top level definition to be instantiated from the queue, prepending it to the resulting program, and then we add all statements causing instantiations to the queue. We repeat this step as long as the queue is not empty or we do not reach some predefined monomorphization limit.
+    \item We remove the first top level definition to be instantiated from the queue, prepending it to the resulting program, and then we add all references to  definitions not yet instantiated to the desired type to the queue. We repeat this step as long as the queue is not empty or we do not reach some predefined monomorphization limit.
 \end{enumerate}
 
 \xxx{add example for monomorphization}
@@ -645,25 +681,50 @@ This phase renames all functions not marked with the \li{foreign "C"} specializa
 
 \section{Translation}
 
-The final translation of the code (or code generation) is performed on the postprocessed code with type annotations. It uses \xxx{reference} llvm-hs-pure as a framework for llvm AST generation.
+The final translation of the code (or code generation) is performed on the postprocessed code with type annotations. It uses \xxx{reference} llvm-hs-pure as a framework for llvm AST generation. The output of translation is then a code interpretable by the low-level virtual machine compiler llc. for an example, see \cref{lst:transl}.
+
+\begin{listing}
+    \label{lst:transl}
+    \caption{Example source code before and after the translation to llvm.}
+    \begin{center}
+    %\begin{minipage}[t]{0.5\linewidth}
+    \begin{minipage}{0.5\linewidth}
+    \begin{lstlisting}
+// original code
+foreign "C" f(bits32 x,
+              bits32 y) {
+  x, y = y, x;
+  return (x, y);
+}
+    ...\end{lstlisting}
+    \end{minipage}%
+    \begin{minipage}{0.5\linewidth}
+    \begin{lstlisting}
+// translated code
+define external ccc
+<{i32, i32}> @f(i32  %x_0,
+                i32  %y_0) {
+LR$procedure0:
+  %0 = insertvalue <{i32, i32}>
+            undef, i32 %y_0, 0
+  %1 = insertvalue <{i32, i32}>
+            %0, i32 %x_0, 1
+  ret <{i32, i32}> %1
+}
+    ...\end{lstlisting}
+    \end{minipage}
+    \end{center}
+\end{listing}
 
 Apart from the postprocessed code, it takes three variables from the blockifier:
 
-
-\xxx{define the variables in the blockifier}
 \begin{enumerate}
     \item Control flow: The edges of the control flow graph
-    \item Block data: The mapping from each block's index and variable name appearing in the context of the corresponding block to a three-valued tuple \linebreak \li{(reads, writes, requests alive) where each entry is a boolean}
+    \item Block data: The mapping from each block's index and variable name relevant in the context of the corresponding block to a two-valued tuple \linebreak \li{(writes, requests alive)} where each entry is a boolean
     \item Blocks table: The mapping from each block's index to its name so we can use the blocks' actual names in the generated code.
 \end{enumerate}
 
-The output of translation is then a code interpretable by the low-level virtual machine compiler llc.
-
-It first restructures the code so that all the struct definitions (since they do not ever call any procedures) are at the top and the procedures are at the bottom.
-
-Then it collects the definitions of all structs and represents them in the pairs \linebreak \li{([(field_alias, field_index)], [field_type])}. The second field then corresponds to how llvm-hs-pure represents the structures.
-
-After the translator collects all the struct definitions, it starts translating the procedures:
+The translator first restructures the code so that all the struct definitions (since they do not ever call any procedures) are at the top and the procedures are at the bottom. Then it collects the definitions of all structs and represents them in the pairs \li{([(field_alias, field_index)], [field_type])}. The second value in each pair corresponds to how llvm-hs-pure represents the structures, while the first maps each field accessor to the corresponding index, again, usable when generating the relevant llvm instructions. After the translator collects all the struct definitions, it starts translating the procedures:
 
 \begin{enumerate}
     \item It generates argument variables for all formal arguments
@@ -703,3 +764,7 @@ After the translator collects all the struct definitions, it starts translating 
 
     \item We collect the \li{exports} lists of each block into one list and zip the collected list with the list of \li{placeholders} \xxx{lemma: they have the same length} and from this we create a mapping \li{(placeholder, export)}. We then use this mapping to replace all placeholders in phi nodes with the actual operands that are to be exported from the corresponding blocks. \xxx{lemma: the placeholders appear only in phi nodes}
 \end{enumerate}
+
+\section{Interaction with external calling conventions}
+
+The program interacts with the external world through functions marked with the \li{foreign "C"} specification. This makes a function follow the "C" calling convention. In the context of type system, it puts a constraint on all arguments and return values that they have to be runtime values (constraint on their constness dimensions) and their data kinds are constrained by the specifications of the call convention.

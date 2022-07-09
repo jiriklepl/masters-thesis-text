@@ -1,4 +1,4 @@
-\chapter{\cmm{} extension with type inference and RAII features}
+\chapter{\cmm{} extension with type inference and automatic resource management}
 
 \label{chap2}
 
@@ -8,14 +8,14 @@
 
 \section{\cmm{} history and significance}
 
-Before we talk about the specifics of \cmm{}, let us explain our choice of this particular language for our demonstration of using type inference and RAII in a systems-programming context.
+Before we talk about the specifics of \cmm{}, let us explain our choice of this particular language for our demonstration of using type inference and automatic resource management features in a systems-programming context.
 
 Cmm (a variant of \cmm{}) is used as a backend intermediate representation for GHC, the most popular haskell compiler. \cmm{} is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
 
 \begin{remark}
-    The \cmm{} language has two major revisions, which differ quite significantly.
+    The \cmm{} language has two major versions, which differ quite significantly.
 
-    It is important to note that, by referring to just \cmm{}, we will always refer to the second revision of the language, \cmm{} 2.0.
+    It is important to note that, by referring to just \cmm{}, we will always refer to the second version of the language, \cmm{} 2.0.
 \end{remark}
 
 Just like Cmm, \cmm{} is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular function call, which does not constitute stack manipulation.
@@ -32,7 +32,21 @@ The algorithm our experimental approach is based on, so called ``deferred infere
 
 What characterizes \cmm{} perhaps the best is simply: minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only two control flow statements it supports are if statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
 
-\xxx{example here}
+\begin{ex}[\cmm{} syntax example]
+    \li{sp1} computes the tuple $\pars{\dfrac{n(n+1)}{2}, n!}$ with 32-bit integers
+    \begin{lstlisting}
+sp1(bits32 n) {
+    bits32 s, p;
+
+    if n != 1 {
+        s, p = sp1(n - 1);
+        return (s + n, p * n);
+    }
+
+    return (1, 1);
+}
+    \end{lstlisting}
+\end{ex}
 
 \subsection{\cmm{}: no side-effects in expressions}
 
@@ -52,7 +66,7 @@ Note that these data kinds are usually strictly separated from each other in man
 
 By specifying a kind, a user can give constraints on which type of physical registers is the value allowed to be stored (or expected to) and then this constraint can be even more tightly constraint by specifying a specific register by its name.
 
-This can be modelled well with a very limited notion of lattice-based subtyping we introduce in the next section, where we consider the empty set of possible registered the bottom and all registers the top.
+This can be modelled efficiently with a very limited notion of lattice-based subtyping we introduce in the next section, where we consider the empty set of possible registered the bottom and all registers the top.
 
 \xxx{\url{http://boole.stanford.edu/cs353/handouts/book1.pdf}}
 
@@ -62,7 +76,7 @@ We extended the language with new syntactic constructs: \li{class}es, \li{instan
 
 And then with \li{auto} anonymous type variables, \li{auto(<name>)} named type variables, \li{ptr(<type>)} pointer types, \li{label} types, and few other types.
 
-And semantically, we extended the language with more intricate type system supporting subtyping, RAII features that define automatic function calls on procedure exits, and class instance (method instance) resolution.
+And semantically, we extended the language with more intricate type system supporting subtyping, automatic resource management features that define automatic function calls on procedure exits, and class instance (method instance) resolution.
 
 \subsection{Type classes and instances}
 
@@ -73,7 +87,7 @@ And semantically, we extended the language with more intricate type system suppo
 Superclasses are requirements that specify that each instance of the class has to correspond to some instances of the superclass; best example of this would be \li{class Eq a => Ord a} in haskell, which specifies that all comparable types have to also be equatable.
 
 \begin{ex}[Classes]
-    The following code snippet shows a definition of a \li{C} class with an \li{m} method:
+    The following code snippet shows a definition of a class \li{C} with an method \li{m}:
 
     \begin{lstlisting}
         class C a {
@@ -81,7 +95,7 @@ Superclasses are requirements that specify that each instance of the class has t
         }
     \end{lstlisting}
 
-    The \li{m} method takes an argument of type \li{a} and returns a result of the same type. All instances of this method then have to follow this type scheme.
+    The method \li{m} takes an argument of type \li{a} and returns a result of the same type. All instances of this method then have to follow this type scheme.
 \end{ex}
 
 \li{instance} definitions then define the instances of their corresponding type classes under some assumptions on existence of some other instances (arbitrary instances, not necessarily instances of superclasses).
@@ -131,7 +145,7 @@ The reason basic \cmm{} does not require structs is that it does not support pol
 
 Since we infer the types and multiple types can have the fields implemented differently, the above approach is no longer desirable. It is also very error-prone.
 
-And we also added \li{new} specifiers for \li{struct} objects to implement our RAII goal. For these RAII features see the \cref{RAII}
+And we also added \li{new} specifiers for \li{struct} objects to implement our automatic resource management goal. For these automatic resource management features see the \cref{RAII}
 
 \subsection{Generic dereference and typed labels}
 
@@ -192,7 +206,7 @@ We represent the various subtype dimensions of the type variables with so-called
 \end{remark}
 
 \begin{defn}[Subtyping system]
-    We define the subtyping system as a minimization problem, where we first minimize the ``typing dimension'' and then the mutually orthogonal ``subtype dimensions''.
+    We define the subtyping system as a minimization problem, where we first minimize the ``typing dimension'' (principal types \xxx{ref DM}) and then the mutually orthogonal ``subtype dimensions''.
 
     We will introduce these two concepts shortly.
 \end{defn}
@@ -235,7 +249,7 @@ We represent the various subtype dimensions of the type variables with so-called
 \end{defn}
 
 \begin{defn}[(Direct) subtype]
-    We call a type $t$ a (direct) subtype of a type $t'$, if $t' \leq_s t$ in each subtype dimension $s$ and also $t =_T t'$ (their typings are the same).
+    We call a type $t$ a (direct) subtype of a type $t'$, if $t' \geq_s t$ in each subtype dimension $s$ and also $t =_T t'$ (their typings are the same).
 \end{defn}
 
 \begin{defn}[Subtype variable]
@@ -300,7 +314,7 @@ We are using the term ``fixed values'' in the \cref{subtyping-idea}, but we have
 \end{defn}
 
 \begin{remark}[Monotypes in the subtyping system]
-    If the type is a monotype (and thus it is a valid type for a program), it has no skolem constants and that means we can safely define all the subtype variables as suprema of their fixed lower bounds.
+    If the type is a monotype (and thus it is a valid type for a program), it has no skolem constants and that means we can safely define all the free subtype variables as suprema of their fixed lower bounds.
 \end{remark}
 
 \begin{lemma}[Each subtype variable can be set to a suprema of its lower bounds, where each such bound is the first fixed value on each path from this variable towards the bottom; this will give us the minimimal solution to the constraints]
@@ -354,17 +368,15 @@ The algorithm we based our type inference on uses context levels that measure ho
 
 We did not strive for representing existentials, as there has to be runtime type information included with them, so we will not consider such system throughout this thesis. Yet, we specify it for any such extensions.
 
-% \xxx{the folllowing is obsolete}
-
-% As our algorithm was based on \emph{deferring inference} algorithm which assumes an equality theory of the types and not lattice structures, the implementation progressed for a long time with some modifications to the general idea of the original algorithm, but met many obstacles and there was a lot of time spent on resolving those. It then seemed necessary to offer a better, working alternative, which we will in the \xxx{reference}.
-
-% We eventually designed a simpler and much easier to implement primitives for this type system.
 
 \subsection{Automated resource management extensions}
 \label{RAII}
 
 \xxx{\url{https://www.appinf.com/download/C++BetterDeviceSoftware.pdf}}
 \xxx{\url{https://www.stroustrup.com/bs_faq2.html\#finally}}
+
+
+\xxx{check this}
 
 The RAII (Resource acquisition is initialization) is a mechanism and a design pattern, which can be used for automatic execution of a code (commonly referred to as ``resource release''), which is meant to be run ``in every case''. It is usually used with locks (so-called ``mutexes'') and various ``smart'' pointers and containers.
 
@@ -374,12 +386,12 @@ It is directly tied to the ``try - finaly'' \xxx{ref stroustrup} construct, but 
 
 The statement that this construct requires less code is supported by the claim that there are usually far more resources than the kinds of these resources.
 
-We extend the type system by introducing the \li{new} specifier, which signifies, that an stack object is to be tied to some predefined RAII action. This RAII action is defined by the \li{drop} function, which takes a pointer to the RAII object. This function is called with every RAII object on every exit point of the procedure.
+We extend the type system by introducing the \li{new} specifier, which signifies, that an stack object is to be tied to some predefined automatic resource management action. This action is defined by the \li{drop} function, which takes a pointer to the resource-representing object. This function is called with every resource-representing object on every exit point of the procedure.
 
 We also introduce the \li{dropped} statement, which specifies, that the resource is to be considered ``dropped`` on all exit points following this statement.
 
-\begin{ex}[Trivail use of RAII]
-    This example shows a common use of a RAII object, \li{X} can be, for example, some mutex
+\begin{ex}[Trivail use of automatic resource management]
+    This example shows a common use of a resource-representing object, \li{X} can be, for example, some mutex
     \begin{lstlisting}
 stackdata {
     new X;
@@ -401,13 +413,13 @@ return();
 \end{remark}
 
 \begin{ex}
-    This example then shows more complex use of the RAII pattern, where we specify a part of the current scope, where the resource release is to be done explicitly or not at all.
+    This example then shows more complex use of automatic resource management, where we specify a part of the current scope, where the resource release is to be done explicitly or not at all.
 
     \begin{lstlisting}
 stackdata {
     x: new X;
     // notice that, because of the dropped statement,
-    // we named the RAII object.
+    // we named the resource-representing object.
 }
 
 if a == 5 {
