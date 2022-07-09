@@ -24,13 +24,54 @@ The result of the combination of these two phases is semi-sequential representat
 
 \subsection{Flattening}
 
-Flattening phase is much simpler and it just transcribes the function bodies and other nested control flow structures into flat forms. Flat forms are characterized by all if statements being of the form:
+Flattening phase is much simpler and it just transcribes the function bodies and other nested control flow structures into flat forms. Flat forms are characterized by all \li{if} statements being transformed in the following manner:
 
-\xxx{write a trivial if statement}.
+\begin{ex}[Before and after flattening]
+    \xxx{fix this issue}
 
-This if statements directly relates to conditional branches. And then similarly for switch statements and other similar structures (switch statements would be a little bit more complicated, but we still first want them be in this flattened form). Since \cmm{} does not have other control flow statements with nested bodies, the principle ends here, but a similar principle would apply to them as well.
+    \begin{center}
+        \begin{tabular}{l|l}
+            Before flattening & After flattening \\
+            \hline
+            \begin{lstlisting}
+while:
+if w != 0 {
+    r = w;
+    w = u % w;
+    u = r;
+goto while;
+}
 
-It then reorders the bodies of functions so that all declarations are at the very top, this is unnecessary, but it improves the readability of the functions in case of any compiler debugging being necessary and allows for easier implementation of other parts of the compiler pipeline.
+...
+            \end{lstlisting} &
+            \begin{lstlisting}
+while:
+if w != 0 {
+    goto F$then_1;
+} else {
+    goto F$fi_1;
+}
+F$then_1:
+r = w;
+w = u % w;
+u = r;
+goto while;
+goto F$fi_1;
+F$fi_1:
+
+...
+            \end{lstlisting}
+        \end{tabular}
+    \end{center}
+\end{ex}
+
+These \li{if} statements then directly relate to conditional branches. We perform a similar transformation for \li{switch} statements and other similar structures (switch statements would be a little bit more complicated, but we still first want them be in this flattened form). Since \cmm{} does not have other control flow statements with nested bodies, the principle ends here, but a similar principle would apply to them as well.
+
+\subsubsection{Reoreding procedure bodies}
+
+The flattening phase, after transforming all bodies into flat forms, then reorders the bodies of functions so that all declarations are at the very top. This is unnecessary, but it improves the readability of the functions in case of any compiler debugging being necessary, and also allows for easier implementation of other parts of the compiler pipeline.
+
+\subsubsection{Filling in calls to drop functions}
 
 One more work for the flattening phase in the scope of this programming language is that it studies the presence of any RAII contracts and puts calls to drop functions accordingly. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough.
 
