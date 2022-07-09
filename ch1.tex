@@ -267,60 +267,105 @@ Existentials are typically constrained by some class, which then means, they car
     Unification variable is any type variable which is not bound in an implication constraint quantification (in other words, is not a skolem constant of a given scope).
 \end{defn}
 
-\subsection{Deferred inference algorithm}
+\subsection{Deferred Inference algorithm}
 
-The inference is performed by rewriting the set of constraints into an equivalent set of constraints in each step. The Algorithm works as follows:
+The inference is performed by rewriting the set of constraints into an equivalent set of constraints in each step. The Algorithm works as laid out in the \cref{deferred_loop}.
 
-\begin{algorithmic}
-    \While{There are some unsolved constraints}
-        \If{all constraints are postponed}
-            \If {remembered to continue with postponed constraints}
-                \State unpostpone all postponed constraints
-                \State forget to continue with postponed constraints
-            \Else
-                \State report a residual list of constraints and return the postponed constraints
-            \EndIf
-        \EndIf
-        \State $c \gets $ choose constraint which is not postponed (according to an arbitrary heuristic)
-        \If{$c \equiv d : C \vect t$ is a class constraint}
-            \If{$d$ is a witness of a concrete assumption or proof}
-                \State remove the redundant constraint $c$
-            \ElsIf{$C \vect t$ is proven by some assumption $d' : C \vect t'$}
-                \State unify $d$ and $d'$ and rewrite all constraints accordingly
-                \State remove the constraint $c$, consider it being just solved
-            \ElsIf{$C \vect t$ matches some proof scheme $s \equiv \forall \vect \alpha . P \To d' : C \vect t'$}
-                \State instantiate $s$ into $s' \equiv P' \To d' : C \vect t$
-                \State add $P'$ to the current context
-                \State unify $d$ and $d'$ and rewrite all constraints accordingly
-                \State remove the constraint $c$, consider it being just solved
-            \Else
-                \State postpone the constraint $c$
-            \EndIf
-        \ElsIf{$c \equiv g : a \sim b$ is an equality constraint}
-            \If{$a$ and $b$ are the same}
-                \State remove the redundant constraint $c$
-            \ElsIf{The context is not global and neither of $a$ and $b$ contains the skolem constants of the current context and}
-                \State ``promote'' the unification variables of the current context appearing in $c$, decreasing their context level
-                \State ``float'' the constraint $c$, moving it into the enclosing context
-            \ElsIf{Neither of $a$ and $b$ is a unification variable}
-                \If{$a$ and $b$ contain the same type constructor $T$ at the top}
-                    \State break the equality constraint $c$ into more equality constraints with corresponding immediate subterms of $a$ and $b$
-                \ElsIf{$a$ and $b$ contain different type constructors at the top}
-                    \State report failure and return the unsolved constraints
-                \Else \Comment{Two skolems, type functions, etc.}
-                    \State postpone the constraint $c$
+
+
+\begin{algorithm}
+    \caption{Main loop of Deferred Inference (simplified version \xxx{ref SPJ})}
+    \label{deferred_loop}
+    \begin{algorithmic}
+        \Require $\mtt {Ctx} \equiv \cdots \forall \vect \alpha_2 . A_2 \To \forall \vect \alpha_1 . A_1 \To \mcal W$ is the current context (possibly without the quantifications and corresponding qualifications; or with more)
+        \State \Comment $A_1, A_2, \cdots$ are assumptions of the current context $\mtt{Ctx}$
+        \State $\mtt{Level} \gets$ the number of quantifications in $\mtt{Ctx}$
+        \State $P \gets \emptyset$ is a list of postponed constraints
+        \State $\mtt{Continue} \gets \bot$ is a flag signifying whether to continue with postponed constraints
+        \While{$\mcal W$ is not empty} \Comment there are unsolved constraints
+            \If{$\mcal W = P$} \Comment all constraints are postponed
+                \If {$\mtt {Continue} = \top$} \Comment continue with postponed constraints
+                    \State $P \gets \emptyset$
+                    \State $\mtt {Continue} = \bot$
+                \Else
+                    \State \Return $\mcal W$ \Comment residual set of constraints
                 \EndIf
             \EndIf
-        \ElsIf{$c \equiv \forall \vect \alpha . P \To \vect W$ is an implication constraint}
-            \If{$\vect W$ is empty}
-                \State remove the constraint $c$, consider it being just solved
+            \State $c \gets $ choose from $\mcal W \setminus P$ (according to an arbitrary heuristic)
+            \If{$c \equiv d : C \vect t$ is a class constraint}
+                \State perform the \cref{case_class}
+            \ElsIf{$c \equiv g : a \sim b$ is an equality constraint}
+                \State perform the \cref{case_equality}
+            \ElsIf{$c \equiv \forall \vect \beta . P \To \vect W$ is an implication constraint}
+                \If{$\vect W$ is empty}
+                    \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment remove the redundant constraint $c$
+                \Else
+                    \State perform the \cref{deferred_loop} with the context $\forall \vect \alpha . A_1 \To \forall \beta . P \To \vect W$, take the resulting $\vect W'$ and update context accordingly
+                    \If {a failure $F$ is reported}
+                        \State \textbf{propagate failure} $F$
+                        \State \Return $\mcal W$
+                    \EndIf
+                    \State $\mtt{Continue} \gets \mtt{Continue} \lor (\vect W \neq \vect W')$
+                \EndIf
+            \EndIf
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+\begin{algorithm}
+    \caption{Class constraint case}
+    \label{case_class}
+    \begin{algorithmic}
+        \Require {$c \equiv d : C \vect t$}
+        \If{$d$ is a witness of a concrete assumption or proof}
+            \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment remove the redundant constraint $c$
+        \ElsIf{$C \vect t$ is proven by some assumption $d' : C \vect t'$}
+            \State unify $d$ and $d'$ and globally rewrite all constraints accordingly
+            \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment Solved the constraint $c$
+        \ElsIf{$C \vect t$ matches some proof scheme $s \equiv \forall \vect \alpha . A \To d' : C \vect t'$}
+            \State instantiate $s$ into $s' \equiv A' \To d' : C \vect t$
+            \State $\mcal{W} \gets \mcal{W} \cup A'$ \Comment add $A'$ to the current context
+            \State unify $d$ and $d'$ and globally rewrite all constraints accordingly
+            \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment Solved the constraint $c$
+        \Else
+            \State $P \gets P \cup \{c\}$ \Comment the constraint $c$ is postponed
+        \EndIf
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption{Equality constraint case}
+    \label{case_equality}
+    \begin{algorithmic}
+        \Require {$\mtt {Ctx} \equiv \cdots \forall \vect \alpha_2 . A_2 \To \forall \vect \alpha_1 . A_1 \To \mcal W$ is the current context (possibly without the quantifications and corresponding qualifications; or with more)}
+        \Require {$c \equiv g : a \sim b$}
+        \If{$a$ and $b$ are the same}
+        \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment remove the redundant constraint $c$
+        \ElsIf{$\mtt{Level} \geq 1 \land \vect \alpha_1 \cap (\free a \cup \free b) = \emptyset$}
+            \State ``promote'' the unification variables of the current context appearing in $c$, globally decreasing their context level, and ``float'' the constraint $c$, moving it into the enclosing (caller's) context; change all contexts (this and the contexts of enclosing loops) accordingly
+        \ElsIf{Neither of $a$ and $b$ is a unification variable}
+            \If{$a \equiv T \vect s, b \equiv T \vect t, |\vect s| = |\vect t|$} \Comment $a$ and $b$ contain the same type constructor $T$ at the top
+                \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment remove the constraint $c$
+                \State $\mcal W \gets \mcal W \cup \{s_n \sim t_n | 1 \leq n \leq |s|\}$ \Comment more equality constraints with corresponding immediate subterms of $a$ and $b$
+            \ElsIf{$a \equiv S \vect s, b \equiv T \vect t, S \neq T \lor |\vect s| \neq |\vect t|$} \Comment {$a$ and $b$ contain different type constructors at the top}
+                \State \textbf{report unification failure} of $c$
+                \State \Return $\mcal W$
+            \Else \Comment{Two skolems, type functions, etc.}
+            \State $P \gets P \cup \{c\}$ \Comment the constraint $c$ is postponed
+            \EndIf
+        \Else
+            \ {W. L. O. G. Let us assume that $a$ is a unification variable and, if $b$ is one as well, $a$ has an context level greater or equal to $b$'s.}
+            \If {$a \in \free b$ }\Comment{Occurs check}
+                \State \textbf{report occurs failure} of $c$
+                \State \Return $\mcal W$
+            \ElsIf {$\mtt{Level} (a) = \mtt {Level}$}
+                \State unify $a$ and $b$ and globally rewrite all constraints accordingly
+                \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment Solved the constraint $c$
             \Else
-                \State attempt to solve a constraint in $\vect W$ with context level of the solver being incremented by one
+                \State $P \gets P \cup \{c\}$ \Comment the constraint $c$ is postponed
             \EndIf
         \EndIf
-        \State If solved a constraint, remember to continue with postponed constraints
-    \EndWhile
-\end{algorithmic}
+    \end{algorithmic}
+\end{algorithm}
 
 \begin{remark}\label{defer_properties}
     The algorithm is confluent and terminating \xxx{reference to the essence of ML TI} under some requirements on the allowed constraints. Confluence is the property of the inference system that it gives the same result regardless of reordering of the input.
