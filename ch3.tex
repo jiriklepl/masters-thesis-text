@@ -16,24 +16,24 @@ In this chapter, we will describe the purpose and function of each of the compon
 
 \section{Flattening and blockifying}
 
-Flattening phase and blockifying phase together are important parts of the algorithm especially if we are interested either in translating the code into an SSA intermediate form (for example for the llvm backend) or any other form which assumes semi-sequential code (a graph of basic blocks).
+Flattening and blockifying phase convert a possibly nested \cmm{} source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the target output of LLVM basic blocks \xxx{todo ref}). The output blocks form a semi-sequential representation of the code, where the basic blocks are organized in a graph structure that reflects the program flow control between the blocks. Later, this allows for a straightforward compilation to SSA form of LLVM.
 
-Basic blocks are defined as the maximum sequence of consecutive statements such that it starts with a label (or the procedure's entry point) and ends with a (conditional) branch or a return statement (and apart from these two instances, it contains neither label statements nor any control flow statements other than function calls), fallthrough to another basic block is regarded as an implicit branch and is then made explicit by flattening.
+\xxx{\url{https://llvm.org/doxygen/classllvm_1_1BasicBlock.html}}
 
-The result of the combination of these two phases is semi-sequential representation of the code annotated with the information of starts and ends of singular basic blocks and the control flow of the program analyzed.
+LLVM basic block is defined as a sequence of consecutive (non-terminating, if not malformed) statements that starts with a label (or an entry point of a procedure) and ends with a `terminator' statement, such as a branch, a return, an explicitly marked unreachable statement, or an implicit fallthrough to another basic block. Notably, basic blocks can not contain labels other than the initial ones.
+
+For \cmm{}, we work with even more restricted definition of a basic block that only allows branch statements at the end of the basic blocks and we transform the code to specifically this form.
 
 \subsection{Flattening}
 
-Flattening phase is much simpler and it just transcribes the function bodies and other nested control flow structures into flat forms. Flat forms are characterized by all \li{if} statements being transformed in the following manner:
+Flattening phase replaces all nested statements by trivial single-command statements that are simpler to convert into basic blocks. In case of \cmm{}, this is achieved by transforming all \li{if} statements into labels and \li{goto} statements. An example of the transformation is shown in \cref{lst:flat}.
 
-\begin{ex}[Before and after flattening]
-    \xxx{fix this issue}
-
-    \begin{center}
-        \begin{tabular}{l|l}
-            Before flattening & After flattening \\
-            \hline
-            \begin{lstlisting}
+\begin{listing}
+\begin{center}
+%\begin{minipage}[t]{0.5\linewidth}
+\begin{minipage}{0.5\linewidth}
+\begin{lstlisting}
+// original code
 while:
 if w != 0 {
     r = w;
@@ -41,35 +41,34 @@ if w != 0 {
     u = r;
 goto while;
 }
-
-...
-            \end{lstlisting} &
-            \begin{lstlisting}
+...\end{lstlisting}
+\end{minipage}%
+\begin{minipage}{0.5\linewidth}
+\begin{lstlisting}
+// flattened code
 while:
 if w != 0 {
-    goto F$then_1;
+    goto F_then_1;
 } else {
-    goto F$fi_1;
+    goto F_fi_1;
 }
-F$then_1:
+F_then_1:
 r = w;
 w = u % w;
 u = r;
 goto while;
-goto F$fi_1;
-F$fi_1:
+goto F_fi_1;
+F_fi_1:
+...\end{lstlisting}
+\end{minipage}
+\end{center}
+\caption{Example source code before and after the flattening phase.}
+\label{lst:flat}
+\end{listing}
 
-...
-            \end{lstlisting}
-        \end{tabular}
-    \end{center}
-\end{ex}
+In the result, the \li{if} statements only contain a single branch expression, which may be easily translated to LLVM conditional branches. We perform the transformation similarly for \li{switch} statements. Although \cmm{} does not specify any other control flow statements with nested bodies, the flattening would be applicable even for \li{while} statements and other, more complex conditional execution.
 
-These \li{if} statements then directly relate to conditional branches. We perform a similar transformation for \li{switch} statements and other similar structures (switch statements would be a little bit more complicated, but we still first want them be in this flattened form). Since \cmm{} does not have other control flow statements with nested bodies, the principle ends here, but a similar principle would apply to them as well.
-
-\subsubsection{Reoreding procedure bodies}
-
-The flattening phase, after transforming all bodies into flat forms, then reorders the bodies of functions so that all declarations are at the very top. This is unnecessary, but it improves the readability of the functions in case of any compiler debugging being necessary, and also allows for easier implementation of other parts of the compiler pipeline.
+After transforming all function bodies into flat forms, the flattening phase also reorders the bodies of functions so that all declarations are at the top. This is not necessary, but it improves the readability of the generated code for programmers, and also simplifies the implementation of several other parts of the compiler pipeline.
 
 \subsubsection{Filling in calls to drop functions}
 
@@ -110,7 +109,7 @@ This fatal flaw was removed from the system.
 
 \section{Type Inference}
 
-In the modified \cmm language, we do not support existentials (\xxx{ref reasoning}) and all polymorphic definitions have to be at top level (or they are easily representable as such - applies to definitions of methods and their instances). This allows the solver to solve more eagerly, since there are no context levels, deferring the constraints only on two cases (see the \cref{main_loop}).
+In the modified \cmm{} language, we do not support existentials (\xxx{ref reasoning}) and all polymorphic definitions have to be at top level (or they are easily representable as such - applies to definitions of methods and their instances). This allows the solver to solve more eagerly, since there are no context levels, deferring the constraints only on two cases (see the \cref{main_loop}).
 
 \subsection{Type inference preliminaries}
 
@@ -503,7 +502,8 @@ In the scope of this algorithm we distinguish 4 types of unification. The algori
 \end{defn}
 
 \begin{algorithm}
-    \caption{Main loop}
+    \small
+    \caption{\xxx{Main loop}}
     \label{main_loop}
     \begin{algorithmic}
         \Require All state variables of the inference algorithm set to initial values
@@ -554,7 +554,7 @@ In the scope of this algorithm we distinguish 4 types of unification. The algori
 
 \subsection{Type inference algorithm pipeline}
 
-Because of not supporting nested constraints (see the introduction of this section), we use implication constraints solely for expressing schemes: function schemes, class schemes and class facts. We will then present the algorithm in a simplified form without considering how these schemes are added from the constraint language to the inferencer state as that is an implementation-specific detail not related to the type theory. For a full picture of the algorithm, it is just important to note that $\mcal F$ contains each of the implication constraints representing an \emph{unclosed function}: a function not yet added to the function schemes $fs$.
+Because of not supporting nested constraints (see the introduction of this section), we use implication constraints solely for expressing schemes: function schemes, class schemes and class facts. We present the algorithm in a simplified form without considering how these schemes are added from the constraint language to the inferencer state as that is an implementation-specific detail not related to the type theory. For a full picture of the algorithm, it is just important to note that $\mcal F$ contains each of the implication constraints representing an \emph{unclosed function}: a function not yet added to the function schemes $fs$.
 
 The type inference pipeline then consists of the following steps:
 
