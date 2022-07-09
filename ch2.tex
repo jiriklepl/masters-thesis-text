@@ -32,13 +32,21 @@ The algorithm our experimental approach is based on, so called ``deferred infere
 
 What characterizes \cmm{} perhaps the best is simply: minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only two control flow statements it supports are if statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
 
-What differs the approach of \cmm{} from other C-like languages is that it has call statements instead of call expressions. This is an important distinction, as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. Not allowing side effects inside expressions is another desirable feature of a systems programming language if we strive maximum code transparency.
+\xxx{example here}
+
+\subsection{\cmm{}: no side-effects in expressions}
+
+What differs the approach of \cmm{} from other C-like languages is that it has call statements instead of call expressions. This is an important distinction, as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. Not allowing side effects inside expressions is another desirable feature of a systems programming language if we strive for maximum code transparency.
+
+\subsection{Continuations, special labels in \cmm{}}
 
 It is important to note that \cmm{}, while being minimalistic, is not minimalistic in all of its aspects. \cmm{}, in contrast to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
 
 It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers. Same would apply for any assumptions that this implements some kind of error handling.
 
-As we discussed earlier \cmm{} does not distinguish between different register types in the type system. The way \cmm{} distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
+\subsection{Kinds in \cmm{}, an inspiration for a new type system}
+
+As we discussed earlier, \cmm{} does not distinguish between different register types in the type system. The way \cmm{} distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
 
 Note that these data kinds are usually strictly separated from each other in many languages (by so-called ``aliasing rules'' \xxx{link aliasing rules for c++ (perhaps C)? or for some asssembler if such exist?}).
 
