@@ -18,7 +18,7 @@ In this chapter, we will describe the purpose and function of each of the compon
 
 Flattening phase and blockifying phase together are important parts of the algorithm especially if we are interested either in translating the code into an SSA intermediate form (for example for the llvm backend) or any other form which assumes semi-sequential code (a graph of basic blocks).
 
-Basic blocks are defined as the maximum sequence of consecutive statements such that it starts with a label (or the procedure's entry point) and ends with a (conditional) branch or a return statement (and apart from these two instances, it contains neither label statements nor any control flow statements), fallthrough to another basic block is regarded as an implicit branch.
+Basic blocks are defined as the maximum sequence of consecutive statements such that it starts with a label (or the procedure's entry point) and ends with a (conditional) branch or a return statement (and apart from these two instances, it contains neither label statements nor any control flow statements other than function calls), fallthrough to another basic block is regarded as an implicit branch and is then made explicit by flattening.
 
 The result of the combination of these two phases is semi-sequential representation of the code annotated with the information of starts and ends of singular basic blocks and the control flow of the program analyzed.
 
@@ -109,6 +109,8 @@ We derived the type system from the description in \xxx{ref prev section}. But t
 This fatal flaw was removed from the system.
 
 \section{Type Inference}
+
+In the modified \cmm language, we do not support existentials (\xxx{ref reasoning}) and all polymorphic definitions have to be at top level (or they are easily representable as such - applies to definitions of methods and their instances). This allows the solver to solve more eagerly, since there are no context levels, deferring the constraints only on two cases (see the \cref{main_loop}).
 
 \subsection{Type inference preliminaries}
 
@@ -213,7 +215,7 @@ The representation of types follows the one introduced in the \cref{typing_def},
 \subsubsection{Modifications to the constraints language of deferred inference}
 
 \begin{defn}[Constraints]
-    With $\mbb{W}$ standing for a flat constraint or an implication constraint, the space of flat constraints $\mathbb{F}$ is defined inductively by a grammar as \cref{lang:flat}.
+    With $\mbb{W}$ standing for a flat constraint or an implication constraint \xxx{ref defer}, the space of flat constraints $\mathbb{F}$ is defined inductively by a grammar as \cref{lang:flat}.
 \end{defn}
 
 \begin{lang}
@@ -458,7 +460,7 @@ In the scope of this algorithm we distinguish 4 types of unification. The algori
     This updates the variables $\mcal D, \mcal C, b_C$.
 \end{enumerate}
 
-\subsection{Type inference algorithm}
+\subsection{Type inference algorithm primitives}
 
 \begin{defn}[Fresh variable]
     \label{freshVar}
@@ -500,52 +502,70 @@ In the scope of this algorithm we distinguish 4 types of unification. The algori
     Before the algorithm starts, we introduce the variables encountered in $\mathcal{F}$ according to the definition \ref{introVar} and we update the counter of variables accordingly.
 \end{defn}
 
-\subsubsection{Algorithm steps}
+\begin{algorithm}
+    \caption{Main loop}
+    \label{main_loop}
+    \begin{algorithmic}
+        \Require All state variables of the inference algorithm set to initial values
+        \State $\mcal F_p \gets \emptyset$ \Comment {deferred constraints}
+        \While {$\mcal{F} \neq \emptyset$}
+            \State take an arbitrary constraint $f$ from $\mcal F \setminus \mcal F_p$
+            \State perform the preparation step, see the \cref{presteps}
+            \State $\mcal F \gets \mcal F \setminus \{f\}$ \Comment {$f$ is speculatively removed}
+            \If {$f \equiv t_1 \sim t_2$}
+                \State unify $t_1$ and $t_2$ by the unification \ref{tUni}
+            \ElsIf {$f \equiv t_1 \sim_T t_2$}
+                \State unify the typings $t (d (t_1))$ and $t (d (t_2))$ using the unification \ref{tyUni}
+            \ElsIf {$f \equiv t_1 \leq_K t_2$}
+                \State add an edge $(k(t_1), k(t_2))$ to $\mathcal{K}$
+            \ElsIf {$f \equiv t_1 \leq_C t_2$}
+                \State add an edge $(c(t_1), c(t_2))$ to $\mathcal{C}$
+            \ElsIf {$f \equiv k_1 \leq_K t \leq_K k_2$}
+                \State $b_K \gets b_K[ k(t) := [k_1 \cup k_1', k_2 \cap k_2'] ]$ \textbf{where} $[k_1', k_2'] \gets b_K(k(t))$
+            \ElsIf {$f \equiv c_1 \leq_C t \leq_C c_2$}
+                \State $b_C \gets b_C[ c(t) := [c_1 \cup c_1', c_2 \cap c_2'] ]$ \textbf{where} $[c_1', c_2'] \gets b_C(c(t))$
+            \ElsIf {$f \equiv C?\ \vect t$}
+                \If {$C$ has a functional dependency set defined in $fd$}
+                    \State $f'$ are constraints derived from $C$ according to $fd$
+                    \State $\mcal F \gets \mcal F \cup f'$
+                \ElsIf {Exists $s$: $s \equiv (\forall \vect \alpha . A \To C \vect t') \in cf(C), t(\vect t) \sqsupseteq t(\vect t')$}
+                    \State instantiate $s$ into $s' \equiv A' \To \vect t$ (or \textbf{report unification failure})
+                    \State $\mcal F \gets \mcal F \cup A'$
+                \Else
+                    \State $\mcal F \gets \mcal F \cup \{f\}; \mcal F_p \gets \mcal F_p \cup \{f\}$ \Comment {$f$ is deferred}
+                \EndIf
+            \ElsIf {$f \equiv C!\ \vect t$}
+                \State $cf(C) \gets cf(C) \cup \{\emptyset . \emptyset \To C \vect t\} $
+                \State instantiate $s \equiv (\forall \vect \alpha . A \To C \vect t') \gets cs(C)$ into $s' \equiv A' \To \vect t$
+                \State $\mcal F \gets \mcal F \cup A''$, where $A''$ are the constraints $A'$ changed from $X?$ to $X!$
+            \ElsIf {$f \equiv t_1 \sqsupseteq_M t_2$}
+                \If {$fs(t_2)\ \mtt {is\ defined}$}
+                    \State instantiate $s \equiv (\forall \vect \alpha . A \To t') \gets fs(t_2)$ into $s' \equiv A' \To t_1$
+                    \State $\mcal F \gets \mcal F \cup A'$
+                \Else
+                    \State $ \mcal F \gets \mcal F \cup \{f\}; \mcal F_p \gets \mcal F_p \cup \{f\}$ \Comment {$f$ is deferred}
+                \EndIf
+            \EndIf
+            \State perform a repair step, see the \cref{middlesteps}
+        \EndWhile
+        \State \Return $\mcal F_p$
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{Type inference algorithm pipeline}
+
+Because of not supporting nested constraints (see the introduction of this section), we use implication constraints solely for expressing schemes: function schemes, class schemes and class facts. We will then present the algorithm in a simplified form without considering how these schemes are added from the constraint language to the inferencer state as that is an implementation-specific detail not related to the type theory. For a full picture of the algorithm, it is just important to note that $\mcal F$ contains each of the implication constraints representing an \emph{unclosed function}: a function not yet added to the function schemes $fs$.
+
+The type inference pipeline then consists of the following steps:
 
 \begin{enumerate}
-    \item We perform a preparation step (definition \ref{presteps}) \label{prestep_step}
+    \item We repeatedly perform the \cref{main_loop} while the resulting list $\mcal F_p$ of deferred constraints does not cover the whole $\mcal{F}$.
 
-    \item Constraint solving step: we retrieve the first constraint $f$ of $\mathcal{F}$ and then:
+    \item If there are any instantiation constraints present in $\mcal F$, we know we have an unclosed function. We collect the instantiation constraints and then we construct an ``instantiation'` graph with edges of the form ``(instantiated, instantiated by)''. We then analyze the topological ordering of this graph, identifying the strongly connected components and relations between them.
 
-    \begin{itemize}
-        \item If $f \equiv t_1 \sim t_2$, we unify $t_1$ and $t_2$ by the unification \ref{tUni}
+    \item We then take the functions in the component which does not have any connected edges with the ``instantiated by'' end outside of the component. And we rewrite the instantiation constraints in these functions refering the other functions into equality constraints. We then continue with the \cref{main_loop}. \label{do_inst_graph}
 
-        \item If $f \equiv t_1 \sim_T t_2$, we unify the typings $t (d (t_1))$ and $t (d (t_2))$ using the unification \ref{tyUni}.
-
-        \item If $f \equiv t_1 \leq_K t_2$, we add an edge $(k(t_1), k(t_2))$ to $\mathcal{K}$.
-
-        \item If $f \equiv t_1 \leq_C t_2$, we add an edge $(c(t_1), c(t_2))$ to $\mathcal{C}$.
-
-        \item If $f \equiv k_1 \leq_K t \leq_K k_2$, we update the bounds for $k(t)$ in the variable $b_K$ in such a way that given $b_K(k(t)) = [k_1', k_2']$, we set $b_K$ to $b_K[ k(t) := [k_1 \cup k_1', k_2 \cap k_2'] ]$.
-
-        \item If $f \equiv c_1 \leq_C t \leq_C c_2$, we update the bounds for $c(t)$ in the variable $b_C$ in such a way that given $b_C(c(t)) = [c_1', c_2']$, we set $b_C$ to $b_C[ c(t) := [\max (c_1, c_1'), \min (c_2,  c_2')] ]$.
-
-        \item If $f \equiv C?\ \vect t$. Then if $C$ has a functional dependency set defined in $fd$, we perform rewrites of the constraint according to \xxx{add ref}.
-
-        Otherwise we lookup the class scheme proofs for $C$ in $cf(C)$ for a proof such that $t(t) \sqsupseteq t(cf(C))$ (checked by unification algorithm which always prefers substituting the right-hand variables, otherwise it fails, trying the next proof).
-
-        If we successfully lookup a proof for $C \vect t$, then we simply replace the constraint by assumptions of the proof, otherwise we put it aside and continue with the next constraint.
-
-        Since we require all proofs to be disjunctive on their results, we can stop the lookup at the first successful find.
-
-        \item If $f \equiv C!\ \vect t$, we store the proof $C \vect t$ to the list of proofs $cf(C)$.
-
-        \item If $f \equiv t_1 \supseteq t_2$, we check whether we have a scheme present for $t_1$. If so, we instantiate the scheme, replacing all its quantified variables.
-
-        \item If $f \equiv t_1 \supseteq t_2$, we check whether we have a function scheme present for $t_1$. If so, we instantiate the scheme, replacing all its quantified variables with fresh variables. We then replace this constraint with an equality constraint with the fresh scheme's result type for the left-hand side operand (leaving $t_2$ as the right-hand side operand, unchanged) and the assumptions of the scheme as new constraints. Otherwise, we put it aside.
-
-        Note that since the lookup is dependent on the type, we have to make sure never to change $t_1$ in this constraint. By either providing an exception to the preparation step or by using a special type (variable) not present in other constraints.
-
-        \item \xxx{ nested constraint}
-    \end{itemize}
-
-    \item Then we perform the repair step (definition \ref{middlesteps}) and continue to the next constraint. If no further constraint can be solved we continue with the constraints which have been put aside (recursively), unless it is the same set of constraints as the one before, if it is, we continue to the next step.
-
-    \item If we have put aside any instantiation constraints, then we know we have an unclosed function. Since, if it was closed, there would be a corresponding scheme present in $fs$. We collect the instantiation constraints and we construct an ``instantiation'` graph with edges of the form ``(instantiated, instantiated by)'' and we analyze the topological ordering of this graph, identifying the strongly connected components and relations between them.
-
-    \item If we have constructed the instantiation graph, we then take the functions in the component which does not have any connected edges with the ``instantiated by'' end outside of the component. And we return the instantiation constraints originating in these functions back to their respective nested constraints while rewriting them into equality constraints. We then continue with the step \ref{prestep_step}. \label{do_inst_graph}
-
-    \item We then collect all the type variables free in the currently solved component, we minimize the subtypes according to the principle \xxx{ref prev chap}. We translate the resulting subtype variable definitions by suprema back into constraints (we do not recommend this. Instead, use type-like variable-length constructors that unify by unionization), and then we collect the leftover constraints on the free variables of the component, we then also include the constraints derived from the type descriptions (namely typing constraints, two-way subkind and subconst constraints derived from identical properties) and subtyping bounds, kind-bound and const-bound constraints. We close the component, generating a scheme for each function, quantifying the free variables of the component and assuming all the listed constraints.
+    \item We then collect all the type variables free in the currently solved component, we minimize the subtypes according to the principle \xxx{ref prev chap}. We translate the resulting subtype variable definitions by suprema back into constraints \xxx{we do not recommend this. Instead, use type-like variable-length constructors that unify by unionization}, and then we collect the leftover constraints on the free variables of the component, we then also include the constraints derived from the type descriptions (namely typing constraints, two-way subkind and subconst constraints derived from identical properties) and subtyping bounds, kind-bound and const-bound constraints. We close the component, generating a scheme for each function of this component, quantifying the free variables and assuming all the collected constraints.
 
     \item If there are more components in the instantiation graph, we construct a new instantiation graph by removing the currently closed component, we then continue with the step \ref{do_inst_graph}
 
