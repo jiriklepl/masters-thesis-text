@@ -2,35 +2,29 @@
 
 \label{chap2}
 
-\xxx{\url{https://downloads.haskell.org\/ghc\/latest\/docs\/html\/users_guide\/codegens.html}}
-
-\xxx{man2}
-
 \section{\cmm{} history and significance}
 
 Before we talk about the specifics of \cmm{}, let us explain our choice of this particular language for our demonstration of using type inference and automatic resource management features in a systems-programming context.
 
-Cmm (a variant of \cmm{}) is used as a backend intermediate representation for GHC, the most popular haskell compiler. \cmm{} is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
+Cmm (a variant of \cmm{}) is used as a backend intermediate representation for GHC (see \cite{haskellbackends}), the most popular haskell compiler. \cmm{} is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
 
 \begin{remark}
     The \cmm{} language has two major versions, which differ quite significantly.
 
-    It is important to note that, by referring to just \cmm{}, we will always refer to the second version of the language, \cmm{} 2.0.
+    It is important to note that, by referring to just \cmm{}, we will always refer to the second version of the language, \cmm{} 2.0 (as specified by \cite{ramsey2005c}).
 \end{remark}
 
 Just like Cmm, \cmm{} is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular function call, which does not constitute stack manipulation.
 
-The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent in the context of \cmm{}.
+The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent types in the context of \cmm{}.
 
-This was one of the main motivations for choosing this language for our exploration as it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers, offering these features that can be easily tied to type inference.
+One of the main motivations for choosing this language was that it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers, offering many features, which can be tied to type inference. It is due to the above reasons, it is usually categorized as pseudo-assembler.
 
-It is due to the above reasons, it is usually categorized as pseudo-assembler.
-
-The algorithm our experimental approach is based on, so called ``deferred inference'' or the ``French approach'' (described in the \cref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
+The algorithm our experimental approach is based on, so called ``Deferred Inference'' or the ``French Approach'' (described in the \cref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
 
 \section{Syntax and properties of \cmm{}}
 
-What characterizes \cmm{} perhaps the best is simply: minimalism. The syntax is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only two control flow statements it supports are if statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
+What characterizes \cmm{} perhaps the best is simply: minimalism. The general syntax for statements and expressions is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only three control flow statements (not counting call statements) it supports are if statements, switch statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
 
 \begin{ex}[\cmm{} syntax example]
     \li{sp1} computes the tuple $\pars{\dfrac{n(n+1)}{2}, n!}$ with 32-bit integers
@@ -56,7 +50,7 @@ What differs the approach of \cmm{} from other C-like languages is that it has c
 
 It is important to note that \cmm{}, while being minimalistic, is not minimalistic in all of its aspects. \cmm{}, in contrast to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
 
-It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers. Same would apply for any assumptions that this implements some kind of error handling.
+It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers. Same would apply for any assumptions that this implements some kind of error handling. For more, see \cite{ramsey2005c}
 
 \subsection{Kinds in \cmm{}, an inspiration for a new type system}
 
@@ -66,9 +60,7 @@ Note that these data kinds are usually strictly separated from each other in man
 
 By specifying a kind, a user can give constraints on which type of physical registers is the value allowed to be stored (or expected to) and then this constraint can be even more tightly constraint by specifying a specific register by its name.
 
-This can be modelled efficiently with a very limited notion of lattice-based subtyping we introduce in the next section, where we consider the empty set of possible registered the bottom and all registers the top.
-
-\xxx{\url{http://boole.stanford.edu/cs353/handouts/book1.pdf}}
+This can be modelled efficiently with a very limited notion of lattice-based subtyping we introduce in the next section, where we consider the empty set of possible registered the bottom and all registers the top(this relates to \cite{tiuryn1992subtype}, which shows \texttt{PSPACE}-completeness for a generalization of this idea).
 
 \section{Extending \cmm{} for type inference}
 
@@ -80,11 +72,11 @@ And semantically, we extended the language with more intricate type system suppo
 
 \subsection{Type classes and instances}
 
-\li{class}es and their \li{instance}s are implemented in a similar fashion to the previous work, and unlike in the previous work, we clearly define functional dependencies.
+\li{class}es and their \li{instance}s are implemented in a similar fashion to the previous work (see \cite{klepl2020type}), and unlike in the previous work, we define functional dependencies.
 
-\li{class} definitions define the user-defined type classes with some superclasses and functional dependencies and then contain list of function declaration defining the methods of the type class.
+\li{class} definitions define the user-defined type classes with some superclasses and functional dependencies and then contain list of function declarations defining the methods of the type class. For superclasses and functional dependencies, we borrow Haskell syntax.
 
-Superclasses are requirements that specify that each instance of the class has to correspond to some instances of the superclass; best example of this would be \li{class Eq a => Ord a} in haskell, which specifies that all comparable types have to also be equatable.
+Superclasses are requirements that specify that each instance of the class has to correspond to some instances of the superclass; a good example of this would be \li{Eq a} in \li{class Eq a => Ord a} in Haskell, which specifies that all comparable types have to also be equatable.
 
 \begin{ex}[Classes]
     The following code snippet shows a definition of a class \li{C} with an method \li{m}:
@@ -98,7 +90,7 @@ Superclasses are requirements that specify that each instance of the class has t
     The method \li{m} takes an argument of type \li{a} and returns a result of the same type. All instances of this method then have to follow this type scheme.
 \end{ex}
 
-\li{instance} definitions then define the instances of their corresponding type classes under some assumptions on existence of some other instances (arbitrary instances, not necessarily instances of superclasses).
+\li{instance} definitions then define the instances of their corresponding type classes under some assumptions. For each instance, its assumptions have to satisfy all superclasses of the corresponding class (often, they are the same).
 
 \begin{ex}[Instance]
     The following code snippet then shows a possible instance definition.
@@ -115,15 +107,13 @@ Superclasses are requirements that specify that each instance of the class has t
     \end{lstlisting}
 \end{ex}
 
-We will often call instances proofs, when discussing them in theory. We require them to be non-overlapping, as, if we allowed them to overlap, the resulting system would be unsolvable. List of overlapping instances can be shown to be equivalent to a CNF we might know from general SAT-solving.
+We will often call instances ``proofs'', when discussing them in theory. We require them to be non-overlapping, as, if we allowed them to overlap, the resulting system would be ambiguous (consider, for example, \li{C Int a} and \li{C a Int} in Haskell notation).
 
 \subsection{Structures and member fields}
 
-We added \li{struct}s, a record structure syntax for a feature known from other C-like languages.
+We added \li{struct}s, a record structure syntax for a feature known from other C-like languages (among others).
 
-Structures use the syntax derived from regular data specialization for maximum consistency.
-
-One of the side-effects of this approach is that one field can have various name aliases. This might seem inconsequential, but it can have very interesting consequences in polymorphic programming.
+Structures use the syntax derived from regular data specialization for maximum consistency. One of the side-effects of this approach is that one field can have various name aliases. This might seem inconsequential, but it can have very interesting consequences in polymorphic programming.
 
 \begin{ex}
     \label{list_ex}
@@ -141,20 +131,20 @@ One of the side-effects of this approach is that one field can have various name
 
 They allow us to pack more, related, data together (in the \cref{list_ex}, some item and a pointer to the next item) and thus abstract away the specific data layout from the implementations. This then allows us to write functions passing the data or references to it once and then not reimplement them every time the specific data layout changes.
 
-The reason basic \cmm{} does not require structs is that it does not support polymorphism nor it enforces type safety. Instead of passing a pointer to a record and then, in the consumer, using a set of field accessors, it can pass an untyped pointer and a set of integer constants representing the offsets of the data.
+The reason \cmm{} itself does not require structs is that it does not support polymorphism nor it enforces type safety. Instead of passing a pointer to a record and then, in the consumer, using a set of field accessors, it can pass an untyped pointer and then use a set of integer constants representing the offsets of the data.
 
-Since we infer the types and multiple types can have the fields implemented differently, the above approach is no longer desirable. It is also very error-prone.
+Since we infer the types and multiple record types can have the fields implemented differently (in the case of our modification, the field might even overlap), the above approach is no longer desirable. It is also very error-prone as the offsets may change with every layout adjustment.
 
 And we also added \li{new} specifiers for \li{struct} objects to implement our automatic resource management goal. For these automatic resource management features see the \cref{RAII}
 
 \subsection{Generic dereference and typed labels}
 
-On the semantic level, we extended the language to have typed labels. All data labels have the type derived from the object stored at the label's location, and the code (branch) labels have a distinct type from data labels as they do not point to any such object.
+On the semantic level, we extended the language to have typed labels. All data labels have the type derived from the object stored at the label's location, and the code (branch) labels have a distinct type from all data labels, as they do not point to any such object.
 
-This typing of labels allowed us to make quite subtle, but very useful syntactic extension of allowing the type be omitted in pointer dereference expressions, thus introducing a generic dereference.
+This typing of labels allowed us to make quite subtle, but very useful syntactic extension of allowing the type be omitted in pointer dereference expressions (see \cite{ramsey2005c}), thus introducing a generic dereference.
 
 \begin{ex}[Generic dereference]
-    This example showcases that we do not need to specify the type when dereferencing a pointer and the type is automatically inferred.
+    This example showcases that we do not need to specify the type when dereferencing a pointer, the type is automatically inferred.
 
     \begin{lstlisting}
         stackdata {
@@ -185,19 +175,19 @@ This typing of labels allowed us to make quite subtle, but very useful syntactic
 
 \subsection{Type system extensions for \cmm{} subtypes}
 
-We extended the language with the HM-like type system with type classes. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm{} language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it served as a side goal in exploring type systems and type inference.
+We extended the language with the HM-like type system with multiple-parameter type classes and functional dependencies. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm{} language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it provided many insights into intricacies of type systems.
 
-This turned out to be a decision significantly affecting the implementation process as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible guides on best practices. \xxx{we will offer such a guide in our conclusions}.
+This turned out to be a decision significantly affecting the implementation process as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible materials on primitives that would ensure efficient computability. In this section, we will show the design of such driven by the \cmm{} subtypes as a motivation.
 
-As a result, the prototype implementation does not currently cover the whole type system space. The type system was refined incrementally during our implementation and some assumptions the implementation was design around were either swapped for stronger versions, or completely removed. The implementation was then changed to reflect these refinements in the theory, but it was later concluded, that a complete redesign would be preferable.
+As a result of incrementally building the type system alongside the prototype implementation, the implementation does not currently cover the whole type system space. It required many redesigns and some of its assumptions on the theory had to be either swapped for stronger versions, or completely removed (removed in case of bijections between types and their properties, which we will explore later). The implementation was changed to reflect these refinements in the theory, but it was later concluded, since the theory matured enough, that a complete redesign would be preferable.
 
 \subsubsection{Subtyping system introduction}
 
-We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types of registers a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value. This has many implications, amongst which is the possibility of enforcing compile-time evaluation we might know from C++, for example.
+We developed a constrained subtyping mechanism extending the HM type system with type classes and type constructors, that type-checks and type-infers what types of registers (integer, float, etc.) a variable can be stored to and when, in terms of run-time, link-time and compile-time, the variable can be assigned a value. This has many implications, amongst which is the possibility of enforcing compile-time evaluation we might know from C++.
 
-This subtyping mechanism was designed to model an orthogonal space of ``subtype dimensions'', where each dimension is a lattice with a bottom and we do not consider constraints with sharp inequalities. Sharp inequalities would be very easy way to design an ambiguous system, and also, they do not make any sense when we want to determine just the minimal ``run-timeness'' or the minimal set of registers a value can be received on from an assignment.
+This subtyping mechanism models an orthogonal space of ``subtype dimensions'', where each dimension is a lattice with a bottom and we do not consider constraints with sharp inequalities. Sharp inequalities would be very easy way to design an ambiguous system, and also, they do not make any sense when we want to determine just the minimal ``run-timeness'' or the minimal set of registers a value can be received on from an assignment.
 
-We represent the various subtype dimensions of the type variables with so-called ``subtype variables''. We will use these two representations (set of dimensions of a type and a set of variables representing a type's subtyping) synonymously.
+We represent the various subtype dimensions of types with so-called ``subtype variables''. We will use these two representations (set of dimensions of a type and a set of variables representing a type's subtyping) synonymously.
 
 \subsubsection{Subtyping system dimensions}
 
@@ -206,28 +196,28 @@ We represent the various subtype dimensions of the type variables with so-called
 \end{remark}
 
 \begin{defn}[Subtyping system]
-    We define the subtyping system as a minimization problem, where we first minimize the ``typing dimension'' (principal types \xxx{ref DM}) and then the mutually orthogonal ``subtype dimensions''.
-
-    We will introduce these two concepts shortly.
+    We define the subtyping system as a minimization problem, where we first minimize the ``typing dimension'' (principal types, see \cite{damas1982principal}) and then the mutually orthogonal ``subtype dimensions''. We introduce these two concepts in definitions \ref{typing_def} and \ref{st_dim}.
 \end{defn}
-
 
 \begin{defn}[Typing dimension]
     \label{typing_def}
-    The typing dimension is a lattice with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation - notice the similarity of concepts: \emph{lowest upper bound} and \emph{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables \xxx{mention de bruijn notation? Are types $\forall a . \forall b . a \to b$ and $\forall b . \forall a . a \to b$ equivalent? Not really, if assuming type applications, and at the same time yes they are if we are talking HM}).
+    The typing dimension is a lattice with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation - notice the similarity of concepts: \emph{lowest upper bound} and \emph{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables, similarly to \cite{barendregt1992lambda}).
 
     In our proposed type system, we perform the type class resolution using only this dimension. Notice how it is easily specifiable using the language of lattices: $C t \GetsTo \exists C t' \in \Gamma . t \geq_T t'$.
 \end{defn}
 
 \begin{remark}
-    Note that the unification failure is the top element of the typing lattice. And it is also the top typing. But, inferring the unification failure is similar to deriving a contradiction in a logic theory. We report such input as wrong.
+    Note that the unification failure is the top element of the typing lattice. Inferring the unification failure is similar to deriving a contradiction in a logic theory. In both systems, we report such inputs as wrong.
 \end{remark}
+
+\xxx{continue from here}
 
 \begin{remark}
     Note that, unlike other, subtype, dimensions (generally; will apply to the ones introduced), the equality in typing dimension is congruent with type applications and type substitutions, and, if we are not considering type functions, all the type operations are bijective.
 \end{remark}
 
 \begin{defn}[Subtype dimension]
+    \label{st_dim}
     Each subtype dimension $s$ is required to be a lattice with a bottom element, orthogonal to other dimensions, and non-affecting type class instantiation. Again, the top element is allowed to be a failure.
 
     It is defined by the $\leq_s$ operation (or the $\lor$ operation) and a set of distinct subtyping constants specific to the subtype dimension. This set is nonempty, always containing the bottom $\bot_s$.
