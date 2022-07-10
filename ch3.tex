@@ -18,7 +18,9 @@ In this chapter, we will describe the purpose and function of each of the compon
 
 Flattening and blockifying phase convert a possibly nested \cmm{} source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks \xxx{todo ref}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward compilation to the SSA form of LLVM.
 
-It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource-representing object (see \xxx{ref the RAII}) and these calls' types then have to be type-inferred in order to perform the desired resource management actions.
+\begin{remark}
+    It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource-representing object (see \xxx{ref the RAII}) and these calls' types then have to be type-inferred in order to perform the desired resource management actions.
+\end{remark}
 
 \xxx{\url{https://llvm.org/doxygen/classllvm_1_1BasicBlock.html}}
 
@@ -219,7 +221,7 @@ The representation of types follows the one introduced in the \cref{typing_def},
 \end{proof}
 
 \begin{defn}[Subtype dimensions]
-    The algorithm recognizes two subtype dimensions, \textbf{constness} dimension and \textbf{data kind} dimension:
+    The algorithm recognizes two subtype dimensions, \emph{constness} dimension and \emph{data kind} dimension:
 
     \begin{itemize}
         \item  The constness dimension, represented by space of constness constants $\mathbb{C}$ represents the bounds of constraints on when the value of each variable has to be known, and, when it can be known. The constness constants are defined as follows:
@@ -383,7 +385,7 @@ State variable & Definition \\
   $b_C \in \mathbb{V} \to \text{interval} \left[\mathbb{C}, \mathbb{C}\right]$ & \textbf{ConstBounds}\quad
   Similar to $b_K$, but for constnesses \\
 
-  $p \in \mathcal{V}_p \to \mathcal{P},\,\mathcal{V}_p \subseteq \mathcal{V}$ & \textbf{Type explanation}\quad
+  $p \in \mathcal{V}_p \to \mathcal{P},\,\mathcal{V}_p \subseteq \mathcal{V}$ & \textbf{Type definition}\quad
   Mapping between type variables with known (encountered or derived) definitions and their respective definitions in terms of immediate subterms. \\
 
   $d \in \mathcal{V} \to \mathcal{D}$ & \textbf{Type properties}\quad
@@ -427,32 +429,39 @@ In the table, by $<_{\mathcal{K}}$ and $<_{\mathcal{C}}$ we understand that ther
 
 \subsubsection{Intrastate invariants}
 
-The algorithm is designed to have the following intrastate invariants:
+The algorithm is designed to have the following intrastate invariants we will :
 
 % TODO: invariant about u
 
-\begin{enumerate}
-    \item Active and forgotten variables: $Var(\mathcal{F}) \cup Var(\mathcal{P}) \cup Var(\mathcal{D}) \cup Var(\mathcal{K}) \cup Var(\mathcal{C}) = Var(\mathcal{V})$ and $Var(\mathcal{V}) \cap Var(\mathcal{G}) = \emptyset$. \label{invVar}
+\begin{description}
+    \item[Active and forgotten variables] $Var(\mathcal{F}) \cup Var(\mathcal{P}) \cup Var(\mathcal{D}) \cup Var(\mathcal{K}) \cup Var(\mathcal{C}) = Var(\mathcal{V})$ and $Var(\mathcal{V}) \cap Var(\mathcal{G}) = \emptyset$.
 
-    \item $\mathcal{V}$ is projected to $\mathcal{D}$  by the type properties function $d$. The subset $\mathcal{V}_p \subseteq \mathcal{V}$ and the set $\mathcal{P}$ are bijected by the type explanation function $p$ and its inverse $p^{-1}$. Note that there generally are many types with no known explanation. \label{invPD}
+    \item[Type properties] $\mathcal{V}$ is projected into $\mathcal{D}$  by the type properties function $d$.
 
-    \item \label{invG} If we have two type variables $v, v' \in \mathcal{V}$ representing two types, then:
-        \begin{enumerate}
-            \item If $k (v) =_{\mathcal{K}} k (v')$, then: $k (v) = k(v')$. In other words, graph $\mathcal{K}$ has no strongly connected components (this will be true for $\mathcal{C}$ as well). If such strongly connected components is created by registering an edge representing a subtyping constraint, then the variables inside this new strongly connected component are unified to preserve this invariant.
-            \item If $c (v) =_{\mathcal{C}} c (v')$, then: $c (v) = c(v')$. Again, with the same resolution on encountering a newly created strongly connected component. We resolve the violation of this invariant similarly to the previous one.
-            \item If $b_K (k (v)) = b_K (k (v')) = [k_1, k_1]$ for some kind $k_1 \in \mathbb{K}$, then $k (v) = k (v')$. The type variables representing the data kinds of $v$ and $v'$ are unified whenever it is derived they have the same value.
-            \item If $b_K (k (v)) = b_K (k (v')) = [k_1, k_2]$ for some kinds $k_1, k_2 \in \mathbb{K}$, $k_2 < k_1$, then $k (v) = k (v')$ and it is an invalid kind. We resolve the violation of this invariant similarly to the previous one.
-            \item If $b_C (c (v)) = b_C (c (v')) = [c_1, c_1]$ for some constness $c_1 \in \mathbb{C}$, then $c (v) = c (v')$. We resolve the violation of this invariant similarly to the previous one.
-            \item If $b_C (c (v)) = b_C (c (v')) = [c_1, c_2]$ for some constnesses $c_1, c_2 \in \mathbb{K}$, $c_2 < c_1$, then $c (v) = c (v')$ and it is an invalid constness. We resolve the violation of this invariant similarly to the previous one.
-            \item If $k (v) <_{\mathcal{K}} k (v')$, then for bounds $k_1, k_2, k_3, k_4$ such that $b_K (k (v)) = [k_1, k_3]$, and $b_K (k (v')) = [k_2, k_4]$ it holds that $k_1 \leq k_2$ and $k_3 \leq k_4$. Note that for n variables we always assume the least restrictive bounds. Which are well defined as constnesses and data kinds are both bounded lattices.
+    \item[Type definitions] The subset $\mathcal{V}_p \subseteq \mathcal{V}$ and the set $\mathcal{P}$ are bijected by the type definition function $p$ and its inverse $p^{-1}$. Note that there generally are many types with no known definition.
 
-            The violations of this invariant are resolved by propagating the values. The data kind bounds are, for each variable, always updated monotonically.
-            \item If $c (v) <_{\mathcal{C}} c (v')$, then for bounds $c_1, c_2, c_3, c_4$ such that $b_C (c (v)) = [c_1, c_3]$, and $b_C (c (v')) = [c_2, c_4]$ it holds that $c_1 \leq c_2$ and $c_3 \leq c_4$. The violations for this invariant are resolved similarly to the previous one.
-        \end{enumerate}
+    \item[Subtype invariants] If we have two type variables $v, v' \in \mathcal{V}$ representing two types, then:
+        \begin{description}
+            \item[Graph $\mathcal{K}$ has no strongly connected components] $k (v) =_{\mathcal{K}} k (v') \To k (v) = k(v')$
+
+            \item[Graph $\mcal C$ has no strongly connected components] $c (v) =_{\mathcal{C}} c (v') \To c (v) = c(v')$
+
+            \item[Trivially bound by the same data kind] If $b_K (k (v)) = b_K (k (v')) = [k_1, k_1]$ for some kind $k_1 \in \mathbb{K}$, then $k (v) = k (v')$
+
+            \item[Absurdly-bound data kinds considered same] If $b_K (k (v)) = b_K (k (v')) = [k_1, k_2]$ for some kinds $k_1, k_2 \in \mathbb{K}$, $k_2 < k_1$, then $k (v) = k (v')$ and it is an invalid data kind
+
+            \item[Trivially bound by the same constness] If $b_C (c (v)) = b_C (c (v')) = [c_1, c_1]$ for some constness $c_1 \in \mathbb{C}$, then $c (v) = c (v')$
+
+            \item[Absurdly-bound constnesses considered same] If $b_C (c (v)) = b_C (c (v')) = [c_1, c_2]$ for some constnesses $c_1, c_2 \in \mathbb{K}$, $c_2 < c_1$, then $c (v) = c (v')$ and it is an invalid constness
+
+            \item[Data kind bounds propagate transitively] If $k (v) <_{\mathcal{K}} k (v')$, then for bounds $k_1, k_2, k_3, k_4$ such that $b_K (k (v)) = [k_1, k_3]$, and $b_K (k (v')) = [k_2, k_4]$ it holds that $k_1 \leq k_2$ and $k_3 \leq k_4$
+
+            \item[Constness bounds propagate transitively] If $c (v) <_{\mathcal{C}} c (v')$, then for bounds $c_1, c_2, c_3, c_4$ such that $b_C (c (v)) = [c_1, c_3]$, and $b_C (c (v')) = [c_2, c_4]$ it holds that $c_1 \leq c_2$ and $c_3 \leq c_4$
+        \end{description}
 
 
-    \item If a type represented by a type variable $v$ has a know definition (if $v \in \mathcal{V}_p$), then $t (d (v)) = p(v) \left[ \tau := t (d (\tau)) | \tau \in \mathrm{free} (p (d))\right]$. In other words, the typing of the type represented by $v$ follows the typing generated from the typings of the types via which it is defined. \label{invT}
-\end{enumerate}
+    \item[Typings propagate with definitions] If a type represented by a type variable $v$ has a known definition (if $v \in \mathcal{V}_p$), then $t (d (v)) = p(v) \left[ \tau := t (d (\tau)) | \tau \in \mathrm{free} (p (d))\right]$. In other words, the typing of the type represented by $v$ follows the typing generated from the typings of the types via which it is defined.
+\end{description}
 
 \subsubsection{Interstate invariants}
 
@@ -508,9 +517,9 @@ In the scope of this algorithm we distinguish 4 types of unification. The algori
     After each step of the algorithm that transforms one of the state variables (mainly $\mathcal{G}$ and $\mathcal{P}$) into a new state, we perform the minimal necessary unifications (possibly recursively):
 
     \begin{enumerate}
-        \item To ``repair'' the injections $d$ and bijection $p$ (intrastate invariant \ref{invPD}; this translates into using all four unifications).
+        \item To ``repair'' the injections $d$ and bijection $p$ (intrastate invariants about \emph{type properties} and \emph{type definitions}; this translates into using all four unifications).
 
-        \item To collapse any strongly connected components of the graphs $\mathcal{K}$ and  $\mathcal{C}$ and to remove any duplicate images of trivial bounds from $b_K$ and $b_C$ (intrastate invariant \ref{invG}, using unifications \ref{kUni} and \ref{cUni}).
+        \item To collapse any strongly connected components of the graphs $\mathcal{K}$ and  $\mathcal{C}$ and to remove any duplicate images of trivial bounds from $b_K$ and $b_C$ (intrastate \emph{subtype invariants}, using unifications \ref{kUni} and \ref{cUni}).
     \end{enumerate}
 \end{defn}
 
@@ -528,7 +537,7 @@ In the scope of this algorithm we distinguish 4 types of unification. The algori
 
     All the flat constraints generally use complicated types, before each step of the algorithm, we replace the types in the observed constraint with type variables that represent the types. Storing the structure of each input type $t$ to the variable $\mathcal P$ under the mapping $p$, generating a fresh type variable for each immediate subterm not represented in $\mcal P$, recursively.
 
-    The replacement is performed according to the observation \ref{typesObs}, changing the state variables $\mathcal{P}$, $\mathcal{D}$, $\mathcal{V}$, $p$ and $d$ accordingly. We then, starting from the type variables representing the leafs of the structural tree of the type $t$, update the typing of all newly registered subterms of $t$ to adhere to the intrastate invariant \ref{invT}, each update just collecting the typings of immediate children to their parent. For the (sub)terms types not yet represented by any type variable, we perform the steps explained in definitions \ref{freshVar} and \ref{introVar}.
+    The replacement is performed according to the observation \ref{typesObs}, changing the state variables $\mathcal{P}$, $\mathcal{D}$, $\mathcal{V}$, $p$ and $d$ accordingly. We then, starting from the type variables representing the leafs of the structural tree of the type $t$, update the typing of all newly registered subterms of $t$ to adhere to the intrastate invariant about \emph{typings propagation}, each update just collecting the typings of immediate children to their parent. For the (sub)terms types not yet represented by any type variable, we perform the steps explained in definitions \ref{freshVar} and \ref{introVar}.
 \end{defn}
 
 \begin{defn}[Algorithm initialization]
@@ -684,8 +693,8 @@ This phase renames all functions not marked with the \li{foreign "C"} specializa
 The final translation of the code (or code generation) is performed on the postprocessed code with type annotations. It uses \xxx{reference} llvm-hs-pure as a framework for llvm AST generation. The output of translation is then a code interpretable by the low-level virtual machine compiler llc. for an example, see \cref{lst:transl}.
 
 \begin{listing}
-    \label{lst:transl}
     \caption{Example source code before and after the translation to llvm.}
+    \label{lst:transl}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.5\linewidth}
@@ -724,46 +733,75 @@ Apart from the postprocessed code, it takes three variables from the blockifier:
     \item Blocks table: The mapping from each block's index to its name so we can use the blocks' actual names in the generated code.
 \end{enumerate}
 
-The translator first restructures the code so that all the struct definitions (since they do not ever call any procedures) are at the top and the procedures are at the bottom. Then it collects the definitions of all structs and represents them in the pairs \li{([(field_alias, field_index)], [field_type])}. The second value in each pair corresponds to how llvm-hs-pure represents the structures, while the first maps each field accessor to the corresponding index, again, usable when generating the relevant llvm instructions. After the translator collects all the struct definitions, it starts translating the procedures:
+The translator first restructures the code so that all the struct definitions (since they do not ever call any procedures) are at the top and the procedures are at the bottom. Then it collects the definitions of all structs and represents them in the pairs \li{([(field_alias, field_index)], [field_type])}. The second value in each pair corresponds to how llvm-hs-pure represents the structures, while the first maps each field accessor to the corresponding index, again, usable when generating the relevant LLVM instructions. After the translator collects all the struct definitions, it starts translating the procedures:
 
-\begin{enumerate}
-    \item It generates argument variables for all formal arguments
+\begin{algorithm}
+    \caption{Procedure translation}
+    \label{trans_proc}
+    \begin{algorithmic}[1]
+        \State $r \gets \emptyset$ \Comment{mapping from names to stack-allocated objects}
+        \State Open the entry basic block
+        \State Generate operands for all formal arguments
+        \State $f \gets$ a mapping from variables, initially just formals, to their operands
+        \State Hoist all declarations $D$ to the top of the procedure
+        \For{datum $d \in$ \li{stackdata} declaration $\in D$}
+            \State Generate \li{alloca} for $d$ resulting in $d'$
+            \State $r \gets r[a := d']$ for each alias $a$ of $d$. \Comment{add the appropriate pairs to the $r$ mapping}
+        \EndFor
+        \State break the list of body statements into basic blocks $B$ according to annotations left by the blockifier
+        \State from $B$, take the entry block $E$ and the rest $R$
+        \State generate $ph$ a mapping of placeholder operands for each record in the block data \xxx{see ...} without the entry block such that \li{writes} or \li{requests alive} is set
+        \State translate the statements (\cref{transl_stmt}) in the entry block $E$, each given $f$, while updating the mapping $f$ accordingly after each statement translation
+        \For{block $b \in R$}
+            \State translate the block using \cref{transl_block} with the index of the basic block, list of its statements, $r$, $f$ and $ph$
+        \EndFor
+        \State Collect the \textbf{return}ed mappings from each block into $exports$
+        \State Create a mapping $s$ from the placeholders in $ph$ to their corresponding images in $exports$
+        \State use $s$ to rewrite all placeholders in all phi nodes generated in each block in $R$
+    \end{algorithmic}
+\end{algorithm}
 
-    \item It hoists the declarations inside the procedure to the beginning of the procedure and generates an \li{alloca} instruction for each struct datum declared in the procedure's \li{stackdata} declarations and stores the mapping from their aliases to the operands representing the \li{alloca}'ted memory.
+\begin{algorithm}
+    \caption{Statement translation}
+    \label{transl_stmt}
+    \begin{algorithmic}[1]
+        \Require $r$ \Comment{mapping from names to stack-allocated object operands}
+        \Require $vars$ \Comment{mapping from variables to operands}
+        \Require $s$ \Comment{the statement}
+        \If {$s$ is a label}
+            \State open a new LLVM basic block
+        \Else
+            \State transcribe the semantics of $s$ into LLVM
+            \State \Comment {for any write to a variable, update $vars$ accordingly}
+            \State \Comment {for any reference, look up its corresponding operand in $vars$ or $r$, and if it is not present in either, generate an operand refering a global object}
+        \EndIf
+        \Return $vars$
+    \end{algorithmic}
+\end{algorithm}
 
-    \item Then it breaks the list of statements into consecutive blocks. The blocks are already annotated by the blockifier, so it just collects the ones annotated by the same block index into one group.
+\begin{algorithm}
+    \caption{Block translation}
+    \label{transl_block}
+    \begin{algorithmic}[1]
+        \Require $idx$ \Comment{the index of the basic block}
+        \Require $r$ \Comment{mapping from names to stack-allocated object operands}
+        \Require $f$ \Comment{mapping from entry block's variables to operands}
+        \Require $ph$ \Comment{mapping from \li{(blockIdx, varName)} to placeholder operands}
+        \Require $B$ \Comment{the list of consecutive statements of the basic block}
+        \State translate the first statement (\cref{transl_stmt}) of $B$ \Comment{opens a LLVM basic block, variables not relevant here}
+        \State $vars \gets \emptyset$ a mapping from variable names to their corresponding operands
+        \For {$v$ a variable requested alive}
+            \State generate a phi node $\varphi$
+            \For {$(idx', idx)$ in the control flow graph}
+                \State add an operand from $f$ (if the corresponding block $idx'$ is the entry block) or $ph$ (otherwise) labeled by the name of the block $idx'$
+            \EndFor
+            \State $vars \gets vars[v := \varphi]$ \Comment{add the phi node to the $vars$ mapping}
+        \EndFor
+        \State translate the statements of $B$ (\cref{transl_stmt}), starting from the second, each given $vars$, while updating $vars$ accordingly after each statement translation
+        \State \Return $vars$
+    \end{algorithmic}
+\end{algorithm}
 
-    \item Then it finalizes the entry block (started implicitly when beginning to translate the procedure). It gives the translation procedure the mapping from formal arguments to operands.
-
-
-    The translation of the entry block then returns this mapping with added entries for assignments performed in the entry block. These new entries can override the old ones and the current mapping always affects the translation of the currently translated statement \xxx{we will return to that}. We will call this mapping \li{nvars}
-
-    Note that one variable corresponds to multiple operands \xxx{example where we assign to `x' multiple times}. \xxx{define llvm's phi nodes somewhere}
-
-    \item After the procedure entry is done, it generates a list \li{placeholders} of placeholders used as operands for phi nodes at the entry of each block, these placeholders are indexed by the pair \li{(idx, name)} where \li{idx} is the index of the block the operand is from and \li{name} is the name of the variable the operand corresponds to. These placeholders are generated for each block's (with the exception of the entry block) potentially exported variable (every variable $v$ such that \emph{block data} for the block and $v$ have the \li{writes} and/or \li{requests alive} set).
-
-    \item Then, it translates each block, giving it the \li{nvars} mapping and the indexed list of placeholders. We will assume the block is indexed \li{idx}.
-
-    \begin{enumerate}
-        \item The block translation begins by generating the list \li{vars} of variables $v$ to be imported (via phi nodes). These are the ones, for which \emph{block data} maps the blocks's \li{idx} and the variable $v$ to a tuple with the \li{requests alive} entry set.
-
-        \item Then it generates the list \li{from} of blocks to generate the variables from. This is done by collecting the out-nodes $f$ of the edges $e$ in the control flow list such that $e = (f, idx)$.
-
-        \item Then it translates the first statement of the block (this block is a label statement).
-
-        \item Now, it finally generates the phi nodes to import each variable from the \li{vars} list from the blocks in the \li{from} list.
-
-        It does so by generating a phi node for each $v$ in \li{vars}. Each of these phi nodes is then given an argument for each $f$ in \li{from}, taking a value from \li{nvars} corresponding to $v$ if $f$ corresponds to the entry block, otherwise a placeholder from the \li {placeholders} list indexed by the pair $(f, v)$. \xxx{lemma: quadratic number of imports}
-
-        \xxx{does this deserve an example?}
-
-        It then adds the entry pairs for each $v$ and its corresponding phi node to the  mapping $bvars$.
-
-        \item Then we translate the statements in the block, each given a mapping from the variables to the corresponding operands that represent their current values. The assignment statements and call statements can (and usually will) change this mapping and this new mapping is then given to the next statement, etc. The last such mapping serves as the \li{exports} list of the current block
-    \end{enumerate}
-
-    \item We collect the \li{exports} lists of each block into one list and zip the collected list with the list of \li{placeholders} \xxx{lemma: they have the same length} and from this we create a mapping \li{(placeholder, export)}. We then use this mapping to replace all placeholders in phi nodes with the actual operands that are to be exported from the corresponding blocks. \xxx{lemma: the placeholders appear only in phi nodes}
-\end{enumerate}
 
 \section{Interaction with external calling conventions}
 

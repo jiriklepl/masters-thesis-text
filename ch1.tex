@@ -10,13 +10,13 @@ We concluded that, if a term is typable in these systems, the Algorithm W will f
 
 Throughout this section, we will show that the Algorithm W provides a good basis for typechecking of the type system, but with more extensions, namely functional dependencies, it becomes unnecessarily complex and inefficient if we want to use it for type inference as well. We will describe, how the same principles can be used to implement much simpler and more extensible two-phase algorithm based on constraint solving.
 
-\begin{remark}[Type inference and monomorphization]
+\begin{defn}[Type inference and monomorphization]
     Before we begin, let us lay down two terms we will extensively use.
 
     \textbf{Type inference} is a process of semantic analysis, which assigns a type (according to the given type system) to each node of the AST, where it makes sense (expressions, procedures, record types, etc.). Each such type can be either monotype or polytype and the object then monomorphic or polymorphic, respectively. Polytypes are characterized by being quantified. For more details, see \xxx{ref to bc}.
 
-    \textbf{Monomorphization} then statically interprets the generalized callgraph (also including references to type definition) and then, for every call to a polymorphic object, it generates a monomorphic copy of this object, which has the polytype instantiated to the monotype fitting the current context.
-\end{remark}
+    \textbf{Monomorphization} statically interprets the generalized callgraph (also including references to type definition) and, for every reference to a polymorphic object, it generates a monomorphic copy of this object, which has the polytype instantiated to the monotype fitting the current context.
+\end{defn}
 
 \subsection{Limitations of Algorithm W}
 
@@ -168,17 +168,17 @@ Additionally to the already described equality constraints and class constraints
 
 \begin{defn}[Naming]
     \begin{itemize}
-        \item We call the set of constraints, which is then qualified, in the scheme of the implication constraint \textbf{nested} in this implication constraint.
+        \item We call the set of constraints, which is then qualified, in the scheme of the implication constraint \emph{nested} in this implication constraint.
 
-        \item We call the set of nested constraints of all the parent implication constraints a \textbf{scope} or a \textbf{context}.
+        \item We call the set of nested constraints of all the parent implication constraints a \emph{scope} or a \emph{context}.
 
-        \item We use scopes to describe a context level of a constraint. For a constraint, a \textbf{context level} is the maximum length of implications leading to it.
+        \item We use scopes to describe a context level of a constraint. For a constraint, a \emph{context level} is the maximum length of implications leading to it.
 
-        \item \textbf{Context level} of the unbound type variables introduced in some scope in the \cref{constraint_language} have the context level which is equal to the context level of the scope. \label{constness_level}
+        \item \emph{Context level} of the unbound type variables introduced in some scope in the \cref{constraint_language} have the context level which is equal to the context level of the scope. \label{constness_level}
 
         All the appearances of a certain type variable have the same context level.
 
-        \item \textbf{Skolem constants} in the given scope are the type variables bound by some parent implication constraint.
+        \item \emph{Skolem constants} in the given scope are the type variables bound by some parent implication constraint.
     \end{itemize}
 \end{defn}
 
