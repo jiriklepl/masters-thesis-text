@@ -743,8 +743,7 @@ The translator first restructures the code so that all the struct definitions (s
         \State Open the entry basic block
         \State Generate operands for all formal arguments
         \State $f \gets$ a mapping from variables, initially just formals, to their operands
-        \State Hoist all declarations $D$ to the top of the procedure
-        \For{datum $d \in$ \li{stackdata} declaration $\in D$}
+        \For{datum $d \in$ \li{stackdata} declaration $in$ all procedure's declarations}
             \State Generate \li{alloca} for $d$ resulting in $d'$
             \State $r \gets r[a := d']$ for each alias $a$ of $d$. \Comment{add the appropriate pairs to the $r$ mapping}
         \EndFor
