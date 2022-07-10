@@ -4,29 +4,29 @@
 
 \section{The Algorithm W and how it connects to deferred solving}
 
-As this thesis builds on the knowledge of the Bachelor thesis \xxx{add reference}, we assume the same syntactic notation and semantics of the untyped lambda calculus, STLC \xxx{reference?}, System F, Hindley-Milner type system, and the THIH-inspired type system.
+As this thesis builds on the work of the author's bachelor thesis \cite{klepl2020type}, we assume the same syntactic notation and semantics of the untyped lambda calculus, STLC and System F (see \cite{barendregt1992lambda}), Hindley-Milner type system (see \cite{damas1982principal}), and the THIH-inspired type system (for THIH, see \cite{jones1999typing}).
 
-We concluded that, if a term is typable in these systems, the Algorithm W will find it's principal type (with an exception of the System F, typing of which is undecidable).
+We concluded that, if a term is typable in these systems, the Algorithm W will find it's principal type (with an exception of the System F, typing of which is undecidable, see \cite{wells1999typability}).
 
-Throughout this section, we will show that the Algorithm W provides a good basis for typechecking of the type system, but with more extensions, namely functional dependencies, it becomes unnecessarily complex and inefficient if we want to use it for type inference as well. We will describe, how the same principles can be used to implement much simpler and more extensible two-phase algorithm based on constraint solving.
+Throughout this section, we will show that the Algorithm W provides a good basis for typechecking of the type, but with more extensions, namely functional dependencies (see \cite{jones2000type}), it becomes unnecessarily complex and inefficient if we want to use it for type inference as well. We will describe, how the same principles can be used to implement much simpler and more extensible two-phase algorithm based on constraint solving.
 
 \begin{defn}[Type inference and monomorphization]
     Before we begin, let us lay down two terms we will extensively use.
 
-    \textbf{Type inference} is a process of semantic analysis, which assigns a type (according to the given type system) to each node of the AST, where it makes sense (expressions, procedures, record types, etc.). Each such type can be either monotype or polytype and the object then monomorphic or polymorphic, respectively. Polytypes are characterized by being quantified. For more details, see \xxx{ref to bc}.
+    \textbf{Type inference} is a process of semantic analysis, which assigns a type (according to the given type system) to each node of the AST, where it makes sense (expressions, procedures, record types, etc.). Each such type can be either monotype or polytype and the object then monomorphic or polymorphic, respectively. Polytypes are characterized by being quantified.
 
     \textbf{Monomorphization} statically interprets the generalized callgraph (also including references to type definition) and, for every reference to a polymorphic object, it generates a monomorphic copy of this object, which has the polytype instantiated to the monotype fitting the current context.
 \end{defn}
 
 \subsection{Limitations of Algorithm W}
 
-The Algorithm W, which we used in the , assumed no recursion in the code and thus any real program with any trivial or nontrivial recursion had to be rewritten into a form where recursive functions were represented by the \lstinline{fix} operator applied to some argument. Type of the \lstinline{fix} operator is $\forall \alpha . \pars {\alpha \to \alpha} \to \alpha$.
+The Algorithm W, which we used in the previous work(\cite{klepl2020type}), assumed no recursion in the code and thus any real program with any trivial or nontrivial recursion had to be rewritten into a form where recursive functions were represented by the \lstinline{fix} operator applied to some argument. Type of the \lstinline{fix} operator is $\forall \alpha . \pars {\alpha \to \alpha} \to \alpha$.
 
-The algorithm for preprocessing trivial recursions is the following (derived from \xxx{fixed point theorem}): a function represented as $f \vect{x} = \calC[f, \vect{x}]$, where $C$ is a lambda term such that $\{f\} \cup \vect{x} \subseteq \free \calC$, is simply rewritten into $f = \mathit{fix}\ \lambda F \vect{X} .\calC[f := F, \vect{x} := \vect{X}]$.
+The algorithm for preprocessing trivial recursions is the following (derived from fixed point theorem, see \cite{barendregt1992lambda} and \cite{damas1982principal}): a function represented as $f \vect{x} = \calC[f, \vect{x}]$, where $C$ is a lambda term such that $\{f\} \cup \vect{x} \subseteq \free \calC$, is simply rewritten into $f = \mathit{fix}\ \lambda F \vect{X} .\calC[f := F, \vect{x} := \vect{X}]$.
 
-For a nontrivial recursion (which we can identify using an algorithm for finding strongly connected components of the call graph), we use a generalization of the double fixed-point \xxx{reference it} theorem, describes how to construct this rewriting for a component of size two.
+For a nontrivial recursion (which we can identify using an algorithm for finding strongly connected components of the call graph), we use a generalization of fixed-point theorem, so-called double fixed-point theorem (see \cite{stepanek}), which describes how to construct this rewriting for a component of size two and can be easily generalized for an arbitrary component.
 
-For our purposes of generalizing C to use a HM-style type system with type classes, we determined that the Algorithm W, as described in THIH, is too weak.
+For our purposes of generalizing C to use a HM-style type system with type classes, we determined that the Algorithm W, as described in THIH, is too weak. In the following subsections we will explore possible extension of the Algorithm W and discuss its practicality and how it gives a motivation for the Deferred Solving algorithm introduced in \cref{defer_solve}.
 
 \subsection{Limitations of the syntax-driven aspect of Algorithm W}
 \label{ex_structs}
@@ -52,7 +52,7 @@ But we do not want to bother the programmer with such strong constraints of requ
 
 This is also because the field accessors can have semantic meaning separate from the fact of being a named field of its respective structure. Take \li{Age} as an example: many different structures can have some age. And so we define a class \li{Has_x a b}, which states that the record type $a$ has a field $x$ typed $b$.
 
-We then define the field accessors \li{.x} as instances of the following method in \li{Has_x} class: \lstinline|class HasX a b {.x : a -> b}| (with an $a \to b$ functional dependency which we will describe later).
+We then define the field accessors \li{.x} as instances of the following method in multi-parameter class \li{Has_x}: \lstinline|class HasX a b {.x : a -> b}| (with an $a \to b$ functional dependency which we will describe later).
 
 The two instances are then defined:
 
@@ -61,25 +61,20 @@ The two instances are then defined:
     instance HasX B float {.x : B -> float}
 \end{lstlisting}
 
-
 In the HM type system, this constraint cannot be expressed at all as the class constraints can be defined solely in the terms of taking a single type variable.
 
-In the THIH variation, this can be expressed, and the algorithm is strong enough to type-check such construction, but it lacks the ability to infer the obvious types of previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b} and the expressions are defined by them.
+In the THIH variation (see \cite{jones1999typing}), this can be indeed expressed, and the algorithm is strong enough to type-check such construction, but it lacks the ability to infer the obvious types of previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b} and the expressions are defined by them.
 
 \subsection{Tackling the limitations of Algorithm W}
 
-In the \cref{ex_structs}, the inability to capture functional dependencies could be possibly solved during subsequent monomorphization phase, which would know that the type of a record type determines the types of its fields but in a general case, this would mean that the subsequent monomorphization phase would have to be unnecessarily complex and it would function as a second type inference.
-
-So we have to address this issue in the type inference itself.
+In the \cref{ex_structs}, the inability to capture functional dependencies could be possibly solved during subsequent monomorphization phase, which would know that the type of a record type determines the types of its fields, but in a general case, this would mean that the subsequent monomorphization phase would have to be unnecessarily complex and it would function as a second type inference. So we have to address this issue in the type inference itself.
 
 \subsubsection*{Using the Algorithm W in the type system with functional dependencies}
 
-If we want to simply modify the Algorithm W so it solves principal types even in the case of functional dependencies and other such constructs, we can easily observe that in order to function properly, it has to, on each subprogram (strongly connected component of the program's call-graph; we perform type inference on these subprograms in topological order, beginning with the leaf components), first perform the usual unifications on the syntactic structure of the subprogram, returning a type assignment in the form: $\mtt{name} :: \forall \vect \alpha . P  \To t$, where $P$ is a set of constraints, each having a form $C \vect \tau$, where $C$ is a predicate on the types $\vect \tau$, propagated from the subexpressions of $\mtt {name}$, under some $\vect \alpha = \free t$. And then it has to solve the constraints in $P$ according to some extended constraint solving mechanism.
-
-Here we see the first hints at deferred solving.
+If we want to simply modify the Algorithm W so it solves principal types even in the case of functional dependencies and other such constructs, we can easily observe that in order to function properly, it has to, on each subprogram (strongly connected component of the program's call-graph; we perform type inference on these subprograms in topological order, beginning with the leaf components), first perform the usual unifications on the syntactic structure of the subprogram, returning a type assignment in the form: $\mtt{name} :: \forall \vect \alpha . P  \To t$, where $P$ is a set of constraints, each having a form $C \vect \tau$, where $C$ is a predicate on the types $\vect \tau$, propagated from the subexpressions of $\mtt {name}$, under some $\vect \alpha = \free t$. And then it has to solve the constraints in $P$ according to some extended constraint solving mechanism, for example with maps, as explored by \cite{jones2000type}. Here we see the first hints of the algorithm turning into Deferred Solving we will introduce in \cref{defer_solve}.
 
 \begin{defn}[Ambiguous assignments]
-    We consider such assignments ambiguous if, after solving all solvable constraints, $\free {P} \setminus \free t \setminus \free \Gamma \neq \emptyset$ (in THIH, there is so-called defaulting described, which can resolve these ambiguities under some strict conditions, but we will not consider them here as they do not apply to general cases).
+    We consider an assignment $\mtt{name} :: \forall \vect \alpha . P  \To t$ ambiguous if, after solving all solvable constraints, $\free {P} \setminus \free t \setminus \free \Gamma \neq \emptyset$ (in THIH, there is so-called defaulting described, which can resolve these ambiguities under some strict conditions, but we will not consider them here as they do not apply to general cases).
 \end{defn}
 
 THIH describes the constraint propagation through the syntactic structure of the subprogram to the scheme of the resulting type well (and it is easy to generalize it on other syntactic structures), but then, it does not describe how to solve the constraint $C$ if it does not fall into the case of being instantiable from a known predicate.
@@ -107,18 +102,18 @@ In the \cref{chaining}, we show that each constraint can generate more constrain
     The modified Algorithm W with recursion being present in the language alongside functional dependencies we deduced from the record types, is then very complicated ,and it should be obvious from the previous examples the modified algorithm, regardless of modifications, deconstructs into a two-phase process where the first generates some constrained type assignments and then the second resolves the constraints.
 \end{observe}
 
-Using the Algorithm W requires some nontrivial preprocessing and mapping the subprogram to the resulting type, and then, the subsequent constraint solving has the limitation of performing the type inference strictly in topological order dictated by the call graph, and in very inefficient chains of nested proofs, again, shown by the \cref{chaining}.
+Using the Algorithm W requires some nontrivial preprocessing and mapping the subprogram to the resulting type (as we can see in \cite{jones1999typing}), and then, the subsequent constraint solving performs very inefficient chains of nested proof lookups shown by \cref{chaining}.
 
 We will describe a two-phase algorithm, which does not require the described difficult preprocessing, and introduces ``so-called'' witnesses, which simplify solving multiple class constraints.
 
 \section{Deferred Solving}
 \label{defer_solve}
 
-The idea of using this algorithm is ``elaborating'' the source program with special variables (elaborations), then running the inference on the specific constraints derived from the source program, but independent on the syntactic specifics of the source program, and then, after the inference successfully finishes, by inserting the inferred information back in the source program in place of the special variables.
+The idea of using Deferred solving (proposed by \cite{vytiniotis2011outsidein}) is first ``elaborating'' the source program with special variables (elaborations), then running the inference on constraints generated from analysis of the source program, over the elaboration variables. This allows the constraint solver be independent on the syntactic specifics of the source program as the type semantics of the program are all captured in a simpler \emph{constraint language}. After the inference successfully finishes,  we insert the inferred information back in the source program in place of the elaborations.
 
-elaborations consist of type variables, and then \emph{dictionaries} and \emph{coercions} that then help the subsequent monomorphization decide the concrete instances that have to be used at each referring site. In the deferred solving algorithm they serve as proofs for each constraint. \emph{Dictionaries} represent type class instances that prove class constraints. And \emph{coercions} prove type identities. We call dictionaries and coercions, collectively, \emph{witnesses}.
+elaborations consist of type variables, and then \emph{dictionaries} and \emph{coercions} (defined by \cite{vytiniotis2011outsidein}) that help the subsequent monomorphization phase decide the concrete instances that have to be used at each referring site. In the deferred solving algorithm they serve as proofs for each constraint. \emph{Dictionaries} represent type class instances that prove class constraints. And \emph{coercions} prove type identities. We call dictionaries and coercions, collectively, \emph{witnesses}.
 
-The deferred solving, or deferred inference, is very similar to the idea of modified Algorithm W we presented earlier but it does not require each of the objects appearing in the type-inferred subprogram be directly syntactically mapped to a certain type. It just requires a set of constraints that capture the semantics of the program. These, in the basic version, consist of type equalities between types that have to be equal and class constraints put on certain types that require a proof of the given tuple of types belonging to the given class (these proofs are usually isomorphic to class instances defined in the type inferred language).
+The deferred solving, or deferred inference, is very similar to the idea of modified Algorithm W we presented earlier, but it does not require each of the objects appearing in the type-inferred subprogram be directly syntactically mapped to a certain type. It just requires a set of constraints that capture the semantics of the program. These constraints, in the basic version, consist of type equalities between types that have to be equal and class constraints put on certain types that require a proof of the given tuple of types belonging to the given class (these proofs represent instances defined in the type-inferred language).
 
 It also simplifies the notion of type assignments in such a way that all types considered by the algorithm are monotypes. And the type quantification with predicates, which, in the Algorithm W is considered a part of the type assignment, is, in this algorithm, instead, applied to a set of constraints.
 
@@ -147,7 +142,7 @@ The language of constraints is an extension of traditional type language with ty
   Language $F$ of \emph{flat constraints} is defined as follows:
 
     \begin{center}\begin{grammar}
-      \firstcasesubtil{$F$}{d: C \vect \tau}{Class constraint}
+      \firstcasesubtil{$F$}{d: C \tau^\star}{Class constraint}
       \otherform{g : \tau_1 \sim \tau_2}{Equality constraint}
     \end{grammar}\end{center}
 
@@ -155,16 +150,19 @@ The language of constraints is an extension of traditional type language with ty
 
     \begin{center}\begin{grammar}
       \firstcasesubtil{$W$}{F}{Flat constraint}
-      \otherform{\forall \vect \alpha . \vect F \To \vect W}{Implication constraint}
+      \otherform{\forall \alpha^\star . F^\star \To W^\star}{Implication constraint}
     \end{grammar}\end{center}
 
     \label{constraint_language}
 \end{defn}
 
-Usually, we call $d$ and $g$ \emph{witnesses} of the constraint, because they represent the instances that prove the given constraints.
-Notably, the witnesses are isomorphic to the rest of their respective constraint, unless we allow overlapping proofs. For example, given two constraints $d_1: C \vect \tau_1$, $d_2: C \vect \tau_1$, then $d_1 = d_2 \GetsTo \tau_1 = \tau_2$.
+We call $d$ and $g$ the \emph{witnesses} of the corresponding constraint, because they represent the instances that prove the given constraints.
 
-Additionally to the already described equality constraints and class constraints, the constraint language also contains ``implication constraints'', which are constraint schemes. They represent typings, both explicit and implicit, of functions declared by the programmer. Existentials contained in function types (e.g., parameters with run-time type binding) are represented by their own implication constraint.
+\begin{remark}
+    Unless we allow overlapping proofs, the witnesses are isomorphic to the rest of their respective constraint. For example, given two constraints $d_1: C \vect \tau_1$, $d_2: C \vect \tau_1$, then $d_1 = d_2 \GetsTo \tau_1 = \tau_2$.
+\end{remark}
+
+Additionally, to the already described equality constraints and class constraints, the constraint language also contains ``implication constraints'', which are constraint schemes. They represent typings, both explicit and implicit, of functions declared by the programmer. Existentials contained in function types (e.g., parameters with run-time type binding) are represented by their own implication constraint.
 
 \begin{defn}[Naming]
     \begin{itemize}
@@ -188,6 +186,7 @@ Additionally to the already described equality constraints and class constraints
 a ~ b,
 forall c. d ~ e => a ~ d -> e
     \end{lstlisting}
+
     The type variables $a, b$ have context level $0$; the type variables $d, e$ have context level $1$; and $c$, a skolem constant, has no context level.
 \end{ex}
 
@@ -207,7 +206,7 @@ Existentials are types with existentially-quantified type variables, the semanti
 
 Existentials are typically constrained by some class, which then means, they carry the corresponding class's witness for a method lookup. We then do not need the type witness as it can be derived from the class witness. This is a possible optimization, which will be not considered in the provided example for better clarity. If the types in the existential are not constrained, then we need the type witness.
 
-\begin{ex}[Existentials]
+\begin{ex}[Existentials, adapted from \cite{peytonjones2019type}]
     The following haskell code with the \lstinline{GADTs} extensions shows a definition of an type \lstinline{T} with existentially-typed field \lstinline{getT} and then a list of variables of that type along with a function that consumes them, accessing the existential.
 
     \lstinputlisting[language=Haskell]{examples/existentials.hs}
@@ -274,7 +273,7 @@ The inference is performed by rewriting the set of constraints into an equivalen
 
 
 \begin{algorithm}
-    \caption{Main loop of Deferred Inference (simplified version \xxx{ref SPJ})}
+    \caption{Main loop of Deferred Inference (simplified version, presented by \cite{peytonjones2019type})}
     \label{deferred_loop}
     \begin{algorithmic}
         \Require $\mtt {Ctx} \equiv \cdots \forall \vect \alpha_2 . A_2 \To \forall \vect \alpha_1 . A_1 \To \mcal W$ is the current context (possibly without the quantifications and corresponding qualifications; or with more)
@@ -368,22 +367,29 @@ The inference is performed by rewriting the set of constraints into an equivalen
 \end{algorithm}
 
 \begin{remark}\label{defer_properties}
-    The algorithm is confluent and terminating \xxx{reference to the essence of ML TI} under some requirements on the allowed constraints. Confluence is the property of the inference system that it gives the same result regardless of reordering of the input.
+    The algorithm is confluent and terminating (see \cite{vytiniotis2011outsidein}) under some requirements on the allowed constraints. Confluence is the property of the inference system that it gives the same result regardless of reordering of the input.
 \end{remark}
 
-The most basic requirements for confluence and termination are: (for example, used in the GHC compiler)
+\subsubsection{Requirements on the input constraints}
+\label{requirements}
+
+We present a nonexhaustive list of the requirements on the input constraints that guarantee confluence and termination, listing just the ones that are significant in our presented lemmas and remarks:
 
 \begin{enumerate}
     \item All assumptions for witness proofs have to be of the form $d : C a$, where $C a$ is the assumed constraint, $d$ is its witness, and $a$ is a type variable. \label{triv_assump}
     \item All type variables appearing in assumptions of witness proofs have to be free in the proven constraint \label{free_free}
     \item Witness proofs have to be non-overlapping, the proven constraints of two distinct proofs cannot be unifiable. \label{noover}
     \item Witness proof schemes have to be of the form $\forall \vect \alpha . P \vect \alpha \To d : C (T \vect \alpha)$, where $P \vect \alpha$ is a set of assumptions, $C (T \vect \alpha)$ is the proven constraint, and $T$ is a type constructor and $d$ is the witness \label{lookup_t}
-    \item Ambiguous schemes are not allowed (universally)
+    \item Ambiguous schemes are not allowed (universally) \label{ambi_rule}
 \end{enumerate}
 
 The rules \ref{triv_assump}, \ref{free_free} and \ref{lookup_t} together ensure that the steps solving a class constraint are always reducing. The rule \ref{noover} then ensures the class constraints satisfy the confluence property.
 
 The rule \ref{lookup_t} also ensures the proof schemes can be looked up efficiently, as the lookup can be implemented via a lookup table indexed by the $T$ type constructor.
+
+\begin{remark}[Generalization of the rules for multi-parameter type classes]
+    Rules \ref{free_free}, \ref{noover} and \ref{ambi_rule} are the same even in the context of multi-parameter type classes. \ref{triv_assump} and \ref{lookup_t} are generalized intuitively.
+\end{remark}
 
 \subsection{Improvements over the Algorithm W}
 
@@ -401,9 +407,9 @@ The rule \ref{lookup_t} also ensures the proof schemes can be looked up efficien
 
 In this thesis, we use an algorithm based on the deferred inference algorithm is because it provides a very easy to extend formalisms which require only small number of modifications to it to achieve the coverage of the desired set of typing capabilities.
 
-In our type system, we do not support existentials, as we want the maximal transparency of the resulting code for possible use in systems programming. Existentials generate irremovable witnesses we introduced in the \cref{defer_solve} and further explained in the \cref{existentials}, because the actual type of the input existentials is known only in run-time. This approach guarantees type-safety as it ensures the witnesses are passed properly, but it does so at a cost we would like to not have.
+In our type system, we do not support existentials, as we want the maximal transparency of the resulting code for possible use in systems programming. Existentials generate irremovable witnesses we introduced in the \cref{defer_solve} and further explained in the \cref{existentials}, because the actual type of the input existentials is known only in run-time (see \cite{grossman2002existential} for an exploration of this topic). This approach guarantees type-safety as it ensures the witnesses are passed properly, but it does so at a cost we would like to not have. We leave exploration of including them into the type system, after sufficient analysis of runtime representations of the witnesses, for future work.
 
-The lack of existential types is why they are described only briefly. They are still important to mention as one of the main motivations for the design of the deferred solving algorithm and as one of its supported features. They then provide good insight into the meaning of witnesses, which are still used for class constraint resolution.
+The lack of existential types is why they are described only briefly. They are still important to mention as one of the main motivations for the design of the deferred solving algorithm and as one of its supported features. They then provide good insight into the meaning of witnesses, which are still used for class constraint resolution during the inference and subsequent monomorphization.
 
 The type system we use is much more extended compared to the type system we assumed so far in a special limited version of subtyping added to the system, which will provide us the necessary means of type-checking and type-inferring whether a variable is semantically a compile time constant and also what is its data kind (we will introduce those in the \cref{chap2}, which describes the language specifics).
 
