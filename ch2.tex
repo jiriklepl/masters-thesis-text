@@ -174,6 +174,7 @@ This typing of labels allowed us to make quite subtle, but very useful syntactic
 \end{ex}
 
 \subsection{Type system extensions for \cmm{} subtypes}
+\label{sec:typesystem}
 
 We extended the language with the HM-like type system with multiple-parameter type classes and functional dependencies. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm{} language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it provided many insights into intricacies of type systems.
 
@@ -333,6 +334,7 @@ We are using the term ``fixed values'' in \cref{subtyping-idea}, but we have not
 \end{defn}
 
 \begin{defn}[Contradictions are failures]
+    \label{def:contra}
     If the outside subtype information of given subprogram for the dimension $s$, for two subtype constants $c_1, c_2$, contains an equality constraint $c_1 =_s c_2$ or an inequality constraint $c_1 \leq_s c_2$ such that $c_2 \neq c_1 \lor c_2$ ($c_1 \lor c_2$ is defined per the assumptions of the dimension $s$), we call such constraint an contradiction (as it contradicts the assumptions for the dimension $s$) and we report failure on such occurrence.
 \end{defn}
 
@@ -376,19 +378,19 @@ In the scope of the modified \cmm, the requirement is that each parameter of the
 \subsection{Automated resource management extensions}
 \label{RAII}
 
-\subsubsection{What is RAII}
+\subsubsection{RAII, an inspiration for our design}
 
 The RAII (Resource acquisition is initialization) is a mechanism and a design pattern, which can be used for automatic execution of a code (commonly referred to as ``resource release''), which is meant to be run ``in every case''. It is usually used with locks (so-called ``mutexes'') and various ``smart'' pointers and containers (for more information, see \cite{obiltschnigusing}).
 
-In C++, the language the term is coined by, RAII is characterized by tying a resource (an automated resource management action; in C++, called ``destructor'') to a certain object's lifetime. When the object's lifetime ends, the resource is ``freed'' by performing the predefined action using a reference to the said object. In addition to that, C++ defines corresponding constructors, which set the object into appropriate.
+In C++, the language the term is coined by, RAII is characterized by tying a resource (an automated resource management action; in C++, called ``destructor'') to a certain object's lifetime. When the object's lifetime ends, the resource is ``freed'' by performing the predefined action using a reference to the said object. In addition to that, C++ defines corresponding constructors, which set the object into appropriate state.
 
-RAII directly relates to the ``try - finaly'' construct, but it requires less code (as discussed by \cite{stroustrup2022raii}).
+% RAII directly relates to the ``try - finaly'' construct, but it requires less code (as discussed by \cite{stroustrup2022raii}).
 
 \subsubsection{RAII-inspired design}
 
-We extend the type system by introducing the \li{new} specifier, which signifies that an stack-allocated object (with the \li{new} specifier, a resource object) is to be tied to some predefined automatic resource management action. This action is defined by the \li{drop} function, which takes a pointer to the resource object. This function is called with every resource object on every exit point of the procedure.
+We extend the language by introducing the \li{new} specifier, which signifies that an stack-allocated object (with the \li{new} specifier, a resource object) is to be tied to some predefined automatic resource management action. This action is defined by the \li{drop} function, which takes a pointer to the resource object. This function is called with every resource object on every exit point of the procedure.
 
-The reason for tying the resource management action to the lifetime of the procedure is that this is how \cmm defines both scopes and resources. The \li{new}-specified object then serves as a handle for the specific action desired to happen.
+The reason for tying the resource management action to the lifetime of the procedure is that this is how \cmm defines both scopes and resources. The \li{new}-specified object then serves as a handle for the specific action desired to happen. Is is also important to note that \cmm does not specify call conventions between native \cmm functions and
 
 \begin{ex}[Trivial use of automatic resource management]
     This example shows a common use of a resource object, \li{X} can be, for example, some mutex
@@ -436,12 +438,12 @@ f(y); // calls: drop(ptr(bits64));
 
 \subsubsection{Manual resource management}
 
-We also introduce the \li{dropped} statement, which specifies, that the resource is to be considered ``dropped`` on all exit points following this statement in the control flow of the program.
+We introduce the \li{dropped} statement, which specifies, that the resource is to be considered ``dropped`` on all exit points following this statement in the control flow of the program.
 
 A \li{dropped} statement can be useful, for example, in the case where the resource object represents a file (the \li{drop} action closes it). If we fail to open a file, we can use the \li{dropped} statement on the corresponding path that handles this case and the attempt to close the file does not happen.
 
 \begin{ex}
-    This example then shows more complex use of automatic resource management, where we specify a part of the current scope, where the resource release is not to be done automatically.
+    This example shows more complex use of automatic resource management, where we specify a part of the current scope, where the resource release is not to be done automatically.
 
     \begin{lstlisting}
 stackdata {
