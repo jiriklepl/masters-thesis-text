@@ -16,11 +16,11 @@ The kernel coding style guide proposes the following convention:
 
 We propose the automatic resource management features introduced by the extended \cmm{} as an alternative to this convention. The cleanup section is replaced by a definition of an resource-representing object and accompanying \li{drop} function.
 
-In order to fully serve as a practical alternative to the \li{goto cleanup} pattern in a general case, we also propose a special instruction \li{dropped}. Our proposed \li{dropped} function takes a named alias to the object representing the resource and removes the implicit calls on all function exits following this instruction, still allowing for explicit calls whenever the user specifies.
+In order to fully serve as a practical alternative to the \li{goto cleanup} pattern in a general case, we also introduce a special statement \li{dropped}. Our proposed \li{dropped} function takes a named alias to the object representing the resource and removes the implicit calls on all function exits following this statement, still allowing for explicit calls whenever the user specifies.
 
-This can be easily ensured by the flow analysis algorithm which is already demonstrated in the prototype implementation. The way we propose this should be implemented is that the use of \li{dropped} instruction is malformed if there exist alternative paths in the control flow to its corresponding function exits. This can be efficiently checked by a dfs search through the control-flow graph.
+This can be easily ensured by the flow analysis algorithm which is already demonstrated in the prototype implementation. The way we propose this should be implemented is that the use of \li{dropped} statement is malformed if there exist alternative paths in the control flow to its corresponding function exits. This can be efficiently checked by a dfs search through the control-flow graph. Allowing alternative paths to the exit points affected by the \li{dropped} statement would have consequences on the code transparency (the programmer would have to be aware of the entirety of the procedure's control flow in order to know whether a \li{drop} action happens or not).
 
-One possible improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple resource-representing objects, each such action then possibly being prevented by a separate \li{dropped} instruction on some subset of control flow paths.
+One possible improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple resource-representing objects, each such action then possibly being prevented by a separate \li{dropped} statement on some subset of control flow paths.
 
 \section{Comparison to other languages offering automatic resource management}
 

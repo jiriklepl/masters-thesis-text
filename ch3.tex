@@ -221,6 +221,7 @@ The representation of types follows the one introduced in the \cref{typing_def},
 \end{proof}
 
 \begin{defn}[Subtype dimensions]
+    \label{const_kind_def}
     The algorithm recognizes two subtype dimensions, \emph{constness} dimension and \emph{data kind} dimension:
 
     \begin{itemize}
@@ -610,7 +611,7 @@ The type inference pipeline then consists of the following steps:
 
     \item We then take the functions in the component which does not have any connected edges with the ``instantiated by'' end outside of the component. And we rewrite the instantiation constraints in these functions refering the other functions into equality constraints. We then continue with the \cref{main_loop}. \label{do_inst_graph}
 
-    \item We then collect all the type variables free in the currently solved component, we minimize the subtypes according to the principle \xxx{ref prev chap}. We translate the resulting subtype variable definitions by suprema back into constraints \xxx{we do not recommend this. Instead, use type-like variable-length constructors that unify by unionization}, and then we collect the leftover constraints on the free variables of the component, we then also include the constraints derived from the type descriptions (namely typing constraints, two-way subkind and subconst constraints derived from identical properties) and subtyping bounds, kind-bound and const-bound constraints. We close the component, generating a scheme for each function of this component, quantifying the free variables and assuming all the collected constraints.
+    \item We then collect all the type variables free in the currently solved component, we minimize the subtypes according to the principle \xxx{ref prev chap}. We translate the resulting subtype variable definitions by suprema back into constraints \xxx{we do not recommend this. Instead, use type-like variable-length constructors that unify by unionization}, and then we collect the leftover constraints on the free variables of the component, we then also include the constraints derived from the type descriptions (namely typing constraints, two-way subkind and subconst constraints derived from identical properties) and subtype bounds, kind-bound and const-bound constraints. We close the component, generating a scheme for each function of this component, quantifying the free variables and assuming all the collected constraints.
 
     \item If there are more components in the instantiation graph, we construct a new instantiation graph by removing the currently closed component, we then continue with the step \ref{do_inst_graph}
 

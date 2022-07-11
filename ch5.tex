@@ -30,7 +30,7 @@ In this proposed topological approach, after a component is closed, we can forge
 
 We assume the type system for Deferred Inference with added typing variables, kinding variables and consting variables as described \xxx{in the second chapter}.
 
-Note that the variables from each of the three dimensions in this proposed algorithm occupy a separate space (this has an effect of simplifying the statements about unifications \xxx{reference the four different unification cases}; each of these spaces contains a supply of variables, a set of constructors (for typings, they are the same as for type constructors; for data kinds and constnesses, we have a set of nullary constructors representing their respective constants), a supply of skolem constants - for subtyping dimensions, the skolems are just regular variables with a special mark specifying that it represents a skolem constant with a certain context level, this mark is preserved upon unification and if two of these marks meet, only the lesser one is preserved, and a special constructor which represents the $\sup$ operation and takes a set as its argument).
+Note that the variables from each of the three dimensions in this proposed algorithm occupy a separate space (this has an effect of simplifying the statements about unifications \xxx{reference the four different unification cases}; each of these spaces contains a supply of variables, a set of constructors (for typings, they are the same as for type constructors; for data kinds and constnesses, we have a set of nullary constructors representing their respective constants), a supply of skolem constants - for subtype dimensions, the skolems are just regular variables with a special mark specifying that it represents a skolem constant with a certain context level, this mark is preserved upon unification and if two of these marks meet, only the lesser one is preserved, and a special constructor which represents the $\sup$ operation and takes a set as its argument).
 
 \begin{remark}[Separate spaces for each dimension]
     It is important to note that this separation does not affect how the algorithm operates, it just makes it easier to specify what is to be unified.
@@ -40,14 +40,14 @@ Also, each class constraint (and other constraints depending on whether we want 
 
 \subsubsection{Extended constraint language, }
 
-We propose extending the constraint language with the following constraints (for each subtyping dimension $s$).
+We propose extending the constraint language with the following constraints (for each subtype dimension $s$).
 
 \begin{enumerate}
-    \item $t \to_s s_t$: type variable $t$ is mapped to the subtyping variable $s_t$
+    \item $t \to_s s_t$: type variable $t$ is mapped to the subtype variable $s_t$
 
-    \item $s_1 \leq_s s_2$: subtyping variable $s_1$ is lesser (less general: with less possible register types, or more constant) than $s_2$. (this one does not apply to typings)
+    \item $s_1 \leq_s s_2$: subtype variable $s_1$ is lesser (less general: with less possible register types, or more constant) than $s_2$. (this one does not apply to typings)
 
-    \item $s_1 \leq_s s_2$: subtyping variable $s_1$ is lesser (less general: with less possible register types, or more constant) than $s_2$. (for typings, we define only $t_1 \sim_T t_2$).
+    \item $s_1 \leq_s s_2$: subtype variable $s_1$ is lesser (less general: with less possible register types, or more constant) than $s_2$. (for typings, we define only $t_1 \sim_T t_2$).
 \end{enumerate}
 
 \begin{remark}
@@ -88,7 +88,7 @@ We propose the following type inference pipeline:
 
         For all references within this component, we generate equality constraints (instead of instantiation constraints used in the prototype implementation); then we do the same for references to any monotyped objects from the previously solved components, otherwise, we directly instantiate the schemes of the polytyped objects with fresh type variables (note that, for any qualified object (for example, methods), we elaborate the references to them with these qualifications).
 
-        \item For any constraint containing at least one type $t$, and for each subtyping dimension $s$, we generate a constraint $t \to_s s_1$, where $s_1$ is a fresh subtype variable.
+        \item For any constraint containing at least one type $t$, and for each subtype dimension $s$, we generate a constraint $t \to_s s_1$, where $s_1$ is a fresh subtype variable.
 
         This ensures (together with the next step) that the algorithm models the $t, k, c$ mappings.
 
@@ -118,11 +118,11 @@ We propose the following type inference pipeline:
 
         \item (Just a comment, the constraints regarding subkinding and subconsting are postponed to this phase as they do not affect the class resolution nor the types and typings.)
 
-        \item For each subtyping dimension $s$, we collect the constraints of the form $t \to_s s$, then, we group them by $t$ and if there is any group of more than one element, we unify them. This then means that each type is mapped to exactly one subtype variable in the given subtyping dimension. We can skip this step if we keep the invariant that each type is mapped to exactly one subtype, see the step \ref{mapping_once}.
+        \item For each subtype dimension $s$, we collect the constraints of the form $t \to_s s$, then, we group them by $t$ and if there is any group of more than one element, we unify them. This then means that each type is mapped to exactly one subtype variable in the given subtype dimension. We can skip this step if we keep the invariant that each type is mapped to exactly one subtype, see the step \ref{mapping_once}.
 
-        \item Then, for each subtyping dimension $s$, we determine the strongly connected components of the graphs defined by the subtypings topology and we unify the variables present in any such strongly connected component, given the size of the corresponding component is greater than one.
+        \item Then, for each subtype dimension $s$, we determine the strongly connected components of the graphs defined by the subtype variables' topology and we unify the variables present in any such strongly connected component, given the size of the corresponding component is greater than one.
 
-        \item For each subtyping dimension $s$, We then identify the fixed lower bounds (as described by \xxx{chap 2}) of each subtype variable $s_1$ that is not marked.
+        \item For each subtype dimension $s$, We then identify the fixed lower bounds (as described by \xxx{chap 2}) of each subtype variable $s_1$ that is not marked.
 
         We then remove all constraints regarding $s_1$. And we unify it with the $\sup$ constructor applied to the set of its fixed lower bounds.
 
