@@ -1,6 +1,7 @@
 \chapter{Lessons learned and discussion}
 
 \section{Design for a practical compiler implementing the proposed type system}
+\label{new_approach}
 
 We do not recommend following the prototype implementation shown in the \xxx{ref to chap 3}. Instead, the definition of this implementation, with little modification, can serve as a theoretic model for describing various invariants on an inference algorithm that implements the type system \xxx{ref to chap 2; add the things about 5 name spaces and that 4 of them can be quantified in schemes (implication constraints)}.
 
@@ -228,7 +229,7 @@ mangle n@(_ `Annot` (_ :: a)) = go n
 
     As an anti-example, take the monomorphization layer. It has two (albeit very related) jobs: it stores the types inferred by the inference layer into the annotations in AST and it also monomorphizes the code - those are two distinct responsibilities. Separating them into two layers would have an effect of it being possible to use the above pattern to simplify one of such layers into mere hundreds of lines of code.
 
-    Good examples of using this principle are the modules \li{CMM.Mangle} (source of the above example \xxx{ref}) and \li{CMM.FillHoles}.
+    Good examples of using this principle are the modules \li{CMM.Mangle} (source of the above example \xxx{ref}) and \li{CMM.FillElabs}.
 
     \item The third finding is the benefit of defining the layers with no assumptions on the actual structure of the node annotations but requiring a type class which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.
 

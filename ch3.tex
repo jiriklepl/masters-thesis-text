@@ -10,19 +10,19 @@
 
 \section{Overview}
 
-The overall architecture of the prototype implementation is shown in \cref{fig:arch}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each somehow transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error information (depicted by, slightly darker, orange parallelograms).
+In this chapter, we demonstrate how we implemented the prototype compiler so it supported the introduced language and type system extensions we discussed in \cref{chap2} and translated the source code into a form interpretable by the LLVM backend for correct programs, while providing specific error messages to programs that are recognized as malformed due to various reasons (ranging from syntax errors to type errors).
 
-In this chapter, we will describe the purpose and function of each of the components separately.
+The overall architecture of the prototype implementation is shown in \cref{fig:arch}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each somehow transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error information (depicted by, slightly darker, orange parallelograms), into the resulting LLVM representation.
+
+We will describe the purpose and the function of each of the components of the compiler pipeline separately. The description and introduced primitives of each component should be the main takeaway from this chapter rather than the specific implementation itself.
 
 \section{Flattening and blockifying}
 
-Flattening and blockifying phase convert a possibly nested \cmm{} source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks \xxx{todo ref}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward compilation to the SSA form of LLVM.
+Flattening and blockifying phase convert a possibly nested \cmm{} source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks as defined by \cite{llvmBB}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward transcription to the SSA form of LLVM.
 
 \begin{remark}
-    It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource-representing object (see \xxx{ref the RAII}) and these calls' types then have to be type-inferred in order to perform the desired resource management actions.
+    It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource object (see \cref{RAII}) and these calls' types then have to be type-inferred in order to perform the desired resource management actions.
 \end{remark}
-
-\xxx{\url{https://llvm.org/doxygen/classllvm_1_1BasicBlock.html}}
 
 LLVM basic block is defined as a sequence of consecutive (non-terminating, if not malformed) statements that starts with a label (or an entry point of a procedure) and ends with a `terminator' statement, such as a branch, a return, an explicitly marked unreachable statement, or an implicit fallthrough to another basic block. Notably, basic blocks can not contain labels other than the initial ones.
 
@@ -74,20 +74,34 @@ F_fi_1:
 
 Flattening moves the nested bodies of each \li{if} statement to the same level as the \li{if} statement, replacing them with a single \li{goto} statement and adding other \li{goto}s where needed to preserve the semantics. Deeply nested code is flattened recursively. For consistency in subsequent processing, it also generates an explicit \li{goto} for each fallthrough.
 
-The resulting code structure can be directly transcribed into LLVM, with \li{if} statements containing nested bodies with just a single branch expression directly relating to LLVM conditional branches. We perform the transformation similarly for \li{switch} statements. Although \cmm{} does not specify any other control flow statements with nested bodies, the flattening would be applicable even for \li{while} statements and other, more complex conditional execution.
+The resulting code structure can be directly transcribed into LLVM (see \cref{translation}). After flattening, each of \li{if} statements' nested bodies (notably, else body is always present) consist of just a single branch expression. This makes the \li{if} statements directly related to LLVM conditional branches. We perform the transformation similarly for \li{switch} statements. Although \cmm{} does not specify any other control flow statements with nested bodies, the flattening would be applicable even for \li{while} statements and other, more complex conditional execution.
 
-After transforming all function bodies into flat forms, the flattening phase also reorders the bodies of functions so that all declarations are at the top. This is not necessary, but it improves the readability of the generated code for programmers, and also simplifies the implementation of several other parts of the compiler pipeline.
+After transforming all function bodies into flat forms, the flattening phase also reorders the bodies of functions so that all declarations are at the top. This is not necessary, but it improves the readability of the generated code for programmers, and also simplifies the implementation of several other parts of the compiler pipeline. Note that, per \cite{ramsey2005c}, the order of declarations in procedure bodies is irrelevant and the names are visible throughout the whole procedure.
 
 \subsubsection{Filling in calls to the \li{drop} function}
 
-One more task for the flattening phase in the scope of this programming language is that it studies the presence of any resource-representing objects (stack allocated objects carrying \li{new} specification, see \xxx{ref ref ref}) and puts calls to the \li{drop} function accordingly to the function's exit points. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough, so there was no necessity for an extra phase.
+One more task for the flattening phase in the scope of this programming language is that it studies the presence of any resource-representing objects (stack allocated objects carrying \li{new} specification; see \cref{RAII}) and puts calls to the \li{drop} function accordingly to the function's exit points. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough, so there was no necessity for an extra phase. In the case of further similar extensions, we advise considering separation of such concerns into more phases. \xxx{add discussion somewhere}
 
 \subsection{Blockifying}
 
-The blockifying phase follows the flattening phase and it annotates the statements of functions with annotations stating whether the node starts a basic block, is part of a certain basic block, or that it is not a part of any basic block (and for such, generates warnings). A statement is not a part of any basic block, for example, when it follows a \li{goto} statement and is not preceded by any label. For the identified basic blocks, there is generated an accompanying control-flow graph. And for each block and each variable, the blockifier remembers whether the variable is read before the first write to it and whether it is written to.
+The blockifying phase follows the flattening phase and it annotates each statement of functions with block annotations while collecting some further information we will describe shortly.
+
+\begin{defn}[Block annotations]
+    Block annotations, given to each statement of a procedure, state whether the statement:
+
+    \begin{enumerate}
+        \item starts a basic block, given by index
+        \item is part of a basic block given by index
+        \item is not a part of any basic block (and for such, generates warnings).
+    \end{enumerate}
+\end{defn}
+
+\begin{remark}
+    A statement is not a part of any basic block, for example, when it follows a \li{goto} statement and is not preceded by any label.
+\end{remark}
 
 \begin{ex}
-    An example of blockifying:
+    An example of a result of blockifying:
     \begin{lstlisting}
 while: // starts 1
 if x == 0 { goto _then; } // p. of 1; reads "x"; cf += (1, 2)
@@ -104,64 +118,105 @@ _fi: // starts 4
     \end{lstlisting}
 
     The control flow graph contains: $\{(1,2), (1,3), (2,4), (3,4)\}$
-
 \end{ex}
 
+For the identified basic blocks, there is generated an accompanying control flow graph, a blocks table and blocks data.
 
-Blockifying is performed by reading the code sequentially and marking each label as a start of a new basic block and each \li{goto} and \li{return} as end of a basic block. The blockifier keeps track of the current basic block in its inner state. If the blockifier identifies a branch from one basic block to another, it adds an edge to the control-flow graph.
+\begin{defn}[Control flow graph]
+    Control flow graph is a graph on the set of basic blocks of the given procedure with edges specified by branches (represented by \li{goto}s, possibly in \li{if} statements and \li{switch} statements) in pairs $(\mtt{fromIdx}, \mtt{toIdx})$ and a special basic block called entry block which begins the procedure and is never branched to.
+\end{defn}
 
-Blockifying also identifies illegal fallthroughs (fallthroughs to continuation statements and fallthroughs outside of the procedure) and generates errors for such.
+\begin{defn}[Blocks table]
+    Blocks table is a mapping from each basic block index to its respective name. This allows representing the blocks with unique identifiers while also later allowing them to have the original names in the translated representation.
+\end{defn}
 
-\subsubsection{Live range analysis}
+\begin{defn}[Blocks data]
+    Blocks data is a mapping from each pair \linebreak \li{(blockIdx, varName)} to a triple \li{(reads before write, writes, requests alive)}. The first two values of the triples are filled in by the blockifier (they are given syntactically) and the last one by the subsequent live-range analysis, which we will describe \xxx{where}.
 
-After the blockifier annotates all basic blocks in a procedure and builds the whole control-flow graph, it then measures live ranges of all variables and gives errors for uninitialized variables \xxx{link bednarek}. It also finds out unreachable labels and generates warnings for such.
+    This mapping, together with control flow graph, is then used in translation (\cref{translation}) for rewriting the code into SSA form required by LLVM, more specifically, for generating so-called ``phi nodes'' \xxx{ref ref ref}.
+\end{defn}
 
-\subsubsection{Blockifier state uses by other compiler components}
+\subsubsection{Blockifying algorithm}
 
-The state the blockifier keeps is usable for translating the code into an SSA form. After the blockifying is finished, for each basic block, it keeps the list of the basic blocks it is preceded by in the control flow of the corresponding procedure, and for each variable present relevant to the basic block, it contains whether the variable is required to be alive at the basic block's entry and whether it is written to (note that the variable can be requested alive even if it is never referred to in the scope of the basic block).
+Blockifying is performed by reading the code sequentially while annotating the statements with the block annotations, generating the control flow graph, blocks table as described by \cref{alg:blockifying} (for simplicity, we assume just one procedure in the algorithm; for more procedure, assign unique identifier to each entry block as well). This is then followed by live-range analysis, which updates blocks table.
 
-\begin{remark}[Blocks table]
-    Note that each basic block is referred to using an unique integer identifier and therefore the blockifier's state also contains a \emph{blocks table}, which translates the identifier back into names. This will be important in \xxx{ref translation}.
-\end{remark}
+\begin{algorithm}
+    \caption{Simplified blockifying algorithm for a single procedure}
+    \label{alg:blockifying}
+    \begin{algorithmic}
+        \Require $S$ \Comment {the list of statements}
+        \State $BB \gets \{0\}$ \Comment {the set of basic blocks, containing just the entry block}
+        \State $CF \gets \emptyset$ \Comment {edges of the control flow graph}
+        \State $\mtt{blocks\_table} \gets \emptyset$ \Comment {a mapping from block names to indexes}
+        \State $\mtt{blocks\_data} \gets \emptyset$ \Comment {triples \li{(reads before write, writes, requests alive)}}
+        \State $\mtt{current\_block} \gets 0$ \Comment {the current block implicitly set to entry block}
+        \State $\forall \mtt{formal\ argument}\ f . \mtt{blocks\_data} \gets \mtt{blocks\_data} [ (0, f) := (\bot, \top, \bot) ]$
+        \While {$S \neq \emptyset$}
+            \State pop the first statement $s$ from $S$
+            \If {$\mtt{current\_block} \neq \emptyset$ }
+                \State \Comment {For both, if the record does not yet exist, it is defaulted to $(\bot,\bot, \bot)$}
+                \State $\forall v . s\ \mtt{reads}\ v \To \mtt{blocks\_data} [ (\mtt{current\_block}, v) := (r \lor \neg w, w, l) ]$
+                \State \quad\quad $\mtt{where}\ (r, w, l) = \mtt{blocks\_data}(\mtt{current\_block}, v)$
+                \State $\forall v . s\ \mtt{writes}\ v \To \mtt{blocks\_data} [ (\mtt{current\_block}, v) := (r, \top, l) ]$
+                \State \quad\quad $\mtt{where}\ (r, \_, l) = \mtt{blocks\_data}(\mtt{current\_block}, v)$
+                \State \Comment {In both, we consider only local variables $v$}
+            \EndIf
+            \If {$s$ is a label $n:$}
+                \State $\mtt{current\_block} \gets \mtt{GetOrAssignFresh}(BB, \mtt{blocks\_table},n)$
+            \ElsIf {$s \text{ is a branch with targets } T \land \mtt{current\_block} \neq \emptyset$}
+                \State $\forall t \in T: CF \gets \cdots$  (next line)
+                \State $CF \cup (\mtt{current\_block}, \mtt{GetOrAssignFresh}(BB, \mtt{blocks\_table},t))$
+                \State $\mtt{current\_block} \gets \emptyset$
+            \EndIf
+            \State \Return $(\mtt{inverted } \mtt{blocks\_table}, \mtt{blocks\_data}, BB, CF)$
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
 
-The SSA form then can be generated by a two-phase algorithm where the first phase prepares the relevant phi nodes with placeholders for variables being exported from the preceding basic blocks and then the second phase fills in these placeholders with actual names of the exported variables (they will likely not match the original names of the variables as we have to distinguish between different writes to them). \xxx{connect it to translation}
+Not shown in the algorithm, blockifier also identifies duplicate declarations (mainly variables and labels) and illegal fallthroughs (fallthroughs to continuation statements and fallthroughs outside of the procedure) and generates errors for such.
+
+\subsubsection{Live-range analysis}
+
+After the blockifier builds the whole control flow graph and blocks data, live-range analysis (originally described by \cite{Aho2006compilers} as live-variable analysis, we use simplified version described by \cite{bednarek2008compilers}) measures live-ranges of all variables, gives errors for uninitialized variables (variables requested alive in the entry block) and warnings for unreachable basic blocks (basic blocks not in dfs closure generated from the entry block).
+
 
 \section{Type System}
 
-We derived the type system from the description in \xxx{ref prev section}. But there were many flaws in the original design. First, and the most significant flaw, was assuming that the types are equal if they are equal in every subtype dimension and their typing.
+We implemented the type system as defined in \cref{sec:typesystem}. But there were many flaws in the original design. First, and the most significant flaw, was assuming that the types are equal if they are equal in every subtype dimension and their typing. This fatal flaw was removed from the system, but we include it here as a warning for any attempt at a similar design. The following example shows an inconsistency caused by such an assumption:
 
 \begin{ex}[Inconsistency of assuming type equality equivalent to combination of typing equality and subtype equality in all dimensions]
-    Let us assume that the types $t$ and $t'$ are equal in every subtype dimension and the typing dimension. That is, $t =_s t'$ for every subtype dimension $s$ and $t =_T t'$ \xxx{according to def. ref here}.
+    \label{inconsistency}
+    Let us assume that the types $t$ and $t'$ are equal in every subtype dimension and the typing dimension. That is, $t =_s t'$ for every subtype dimension $s$ and also $t =_T t'$ (see \cref{typing_def} and \cref{st_dim}).
 
-    Then if they are type applications $\alpha \beta$ and $\alpha' \beta'$, respectively, then from $t =_T t'$, it also follows that $\alpha =_T \alpha'$ and $\beta =_T \beta'$, but it does not follow that $\alpha =_s \alpha'$ and $\beta =_s \beta'$ for every subtype dimension. We will offer a counterexample.
+    More specifically, if they are type applications $\alpha \beta$ and $\alpha' \beta'$, respectively, then from $t =_T t'$, it also follows that $\alpha =_T \alpha'$ and $\beta =_T \beta'$, but it does not follow that $\alpha =_s \alpha'$ and $\beta =_s \beta'$ for a general subtype dimension. We will offer a counterexample.
 
-    Let us say, $t$ and $t'$ are pointers to functions that take a 32-bit bitvector and return the same type, they are both constant expressions and the both pointers are stored on the same register (they have the same data kind). This means that $t$ and $t'$ follow the assumptions listed above. But one of them can be constrained to be a pointer to a function that takes an integer and returns an integer, while the other can be constrained to be a pointer to a function that takes a float number and returns a float number. If we assumed that $t = t'$, we would have to solve the constraint $\mtt{float} = \mtt{int}$, where both operands are constants.
+    Let us say, $t$ and $t'$ are pointers to functions that take a 32-bit bitvector and return the same type, they are both compile-time constants and the both pointers are stored on the same types of registers (they have the same data kind). This means that $t$ and $t'$ follow the assumptions listed above. But one of them can be constrained to be a pointer to a function that takes an integer and returns an integer, while the other can be constrained to be a pointer to a function that takes a float number and returns a float number (can be shown by a function defined similarly to $id$ known from Haskell). If we assumed that $t = t'$, we would have to solve the constraint $\mtt{float} = \mtt{int}$, where both operands are constants. This would lead to a contradiction as defined by \cref{def:contra}
 
-    Note that there can be systems with different subtype dimensions, in which the two relations can indeed be defined as equivalent. An example of such a system would be a system with no subtype dimensions.
+    Note that there can be systems with different subtype dimensions, in which the two relations (equality of types, equality of all dimensions of types) can indeed be defined as equivalent. An example of such a system would be a system with no subtype dimensions.
 \end{ex}
-
-This fatal flaw was removed from the system.
 
 \section{Type Inference}
 
-In the modified \cmm{} language, we do not support existentials (\xxx{ref reasoning}) and all polymorphic definitions have to be at top level (or they are easily representable as such - applies to definitions of methods and their instances). This allows the solver to solve more eagerly, since there are no context levels, deferring the constraints only on two cases (see the \cref{main_loop}).
+In the modified \cmm{} language, we do not support existentials (as discussed in \ref{sys_defer}) and all polymorphic definitions have to be at top level (or they are easily representable as such: definitions of methods and their instances). This allows the solver to solve more eagerly, since there is no need for context levels, deferring the constraints only on two cases (see \cref{main_loop}).
 
 \subsection{Type inference preliminaries}
 
-The basic idea of the implementation of type inference used in our solution is that each type is represented by a type variable. And the semantic value of this variable is defined by the state of inferencer, structure that controls the inference algorithm.
+The basic idea of the implementation of type inference used in the prototype compiler is that each type is represented by a type variable. And the semantic value of this variable is defined by the state of inferencer, structure that controls the inference algorithm.
 
-In our solution, the type inferencer keeps track of the type definitions of all known types in the terms of a type constructor applied to variables representing each of its immediate subterms (so called ``primitive patterns''). And for each type variable it contains a handle which stores its subtype dimensions (fully substituted \xxx{?}, contrasting the primitive patterns). In addition to these two databases of ``alive variables'', it also keeps the mapping from each variable's original name (as it appears in annotated AST \xxx{preprocessing}) as the algorithm performs many unifications and substitutions which often causes the variables being renamed.
+In the prototype compiler, the type inferencer keeps track of the type definitions of all known types in the terms of a type constructor applied to variables representing each of its immediate subterms (so called \emph{primitive patterns}). And for each type variable it contains a handle, which (in contrast to primitive patterns) stores its fully substituted values of all dimensions (typings stored in a similar form to Algorithm W resulting unifications - see \cite{damas1982principal}, constnesses and data kinds). In addition to these two ``databases'' of \emph{alive variables}, it also keeps the mapping from each variable's original name (as it appears in the AST with so-called \emph{elaborations}, see \cref{preprocessing}). This mapping is necessary as the algorithm performs many unifications of the alive type variables and their corresponding records in aforementioned ``databases'' may not be stored under the original type variables.
+
+The reason behind such intricate design was the necessity to capture the semantics of the various subtype dimensions, and originally the design made assumptions described in \cref{inconsistency}. In \cref{new_approach}, we introduce a simpler, practical, design more akin to the design of Deferred Solving described in \cref{defer_solve}. The prototype design can serve as a basis for a theoretic model, which models the inference of the proposed type system, or can be modified for type systems, for which the assumptions from \cref{inconsistency} hold.
 
 \subsubsection{Representaition of type-related values}
 
 \begin{defn}[Type variables]
-    We will call the space of type variables $\mathbb{V}$.
+    We call the space of type variables $\mathbb{V}$.
 
     Each type variable is represented by an unique integer identifier, its type kind and a reference to a parent type variable, if it has any.
 
     \emph{Type variable identifier} is an unique number generated by incrementing a specific counter in the preprocessor state \xxx{ref} and then later in the inferencer state.
 
-    \emph{Reference to a parent type variable} is a reference to a variable, which uniquely represents the nested scope in which the variable was generated. The references to parent variables are a generalization of the idea presented by the deferred inference algorithm  \xxx{ref to deferred inference algorithm}. They are used mainly for debugging.
+    \emph{Reference to a parent type variable} is a reference to a variable, which uniquely represents the nested scope in which the variable was generated. The references to parent variables are a generalization of the idea of context levels presented by the deferred inference algorithm  \xxx{ref to deferred inference algorithm}. They are used mainly for debugging.
 \end{defn}
 
 \begin{defn}[Alive type variable]
@@ -310,15 +365,24 @@ The representation of types follows the one introduced in the \cref{typing_def},
 \end{defn}
 
 \subsection{Type inference preprocessing}
+\label{preprocessing}
 
-The type inference preprocessing, also called constraint generation takes the AST representation of the source code as its input, annotates it with so-called type holes, and for each of these type holes, generates constraints \xxx{see prev def} as described in \xxx{chap one ref}.
+The type inference preprocessing, also called constraint generation, takes the AST representation of the source code as its input, annotates it with elaborations, and for each of these elaborations, generates constraints described in \cref{lang:flat}.
+
+\begin{ex}[Simplified example for a call statement]
+    \begin{lstlisting}
+        x = f(a->b);
+        // x {elaboration: v1}
+        // f {elaboration: instance v_f v2}
+        // a {elaboration: v3}
+        // ->b {elaboration: }
+    \end{lstlisting}
+\end{ex}
 
 The result of type inference preprocessing is the list of constraints and the annotated AST. The list of constraints is then given to the type inference algorithm and after that the inferred type assignments stored in the state of the inferencer are paired with the annotated AST, resulting in AST with type annotation.
 
-% The algorithm reads the syntactic tree, annotates its nodes (starting from the leaves) is quite complex and the code for it is very lengthy. It is also quite difficult to check for errors. This is why the actual implementation extends the language of constraints with constraint comments.with ``type holes'' and then gives constraints for these type holes.
-
-\begin{defn}[Type holes]
-    Type holes are simple structures that contain zero, one or multiple type variables depending on the type of the hole. They serve as the elaborations introduced in \xxx{deferred inference}.
+\begin{defn}[elaborations]
+    elaborations are simple structures that contain zero, one or multiple type variables depending on the type of the elaboration. They serve as the elaborations introduced in \xxx{deferred inference}.
 
     They help to distinguish, for example, whether an named reference is instantiation of some polymorphic object.
 \end{defn}
@@ -331,7 +395,7 @@ The result of type inference preprocessing is the list of constraints and the an
 
     \xxx{This was later determined to be completely replacible by declaration hoisting in the procedures and preprocessing the program in topological order}.
 
-    \item When preprocessing a piece of code which contains nontrivial subnodes (sub-expressions, sub-statements, etc.), these subnodes are generally preprocessed first, then the algorithm retrieves their type holes and adds the constraints defined by the semantics of the code to the current list of constraints.
+    \item When preprocessing a piece of code which contains nontrivial subnodes (sub-expressions, sub-statements, etc.), these subnodes are generally preprocessed first, then the algorithm retrieves their elaborations and adds the constraints defined by the semantics of the code to the current list of constraints.
 
     \item The constraints are represented by a list of lists as each context nesting in the code also nests the context of constraints. The decision for a list of list is not completely necessary, but it makes the definition easy to use, future-proof and well-generalizable.
 
@@ -618,6 +682,8 @@ The type inference pipeline then consists of the following steps:
     \item If there are none, we determine whether there are some unresolved constraints and if there are, we report an error. If there are none, the code is ready to be monomorphized.
 \end{enumerate}
 
+\subsection{Type inference output}
+
 \xxx{maybe remove or move to conclusion}. We would like to point out that, ideally, there should be a phase between type inference and monomorphization that would annotate the code with the inferred schemes, which would have an effect of simplifying the the monomorphization implementation and decreasing the space for errors as the ast would be annotated with clear indications whether the singular nodes of ast are polymorphic or monomorphic (the monomorphic nodes would have no free variables, they are monotyped).
 
 Note that, in the included implementation, this is part of the monomorphization phase, so all the primitives of this new layer are already demonstrated.
@@ -672,7 +738,7 @@ The demonstration algorithm differs from the above description in that it also u
 
 The monomorphization algorithm does not change the code, it simply copies the top level definitions and changes their type annotations so that they contain the correct monotypes.
 
-\subsubsection{Type hole filling}
+\subsubsection{Elaboration filling}
 
 This phase reads the type annotations of all types encountered in the monomorphized code and replaces the AST nodes with representations of the inferred types.
 
@@ -690,6 +756,7 @@ This phase renames all functions not marked with the \li{foreign "C"} specializa
 \xxx{example}
 
 \section{Translation}
+\label{translation}
 
 The final translation of the code (or code generation) is performed on the postprocessed code with type annotations. It uses \xxx{reference} llvm-hs-pure as a framework for llvm AST generation. The output of translation is then a code interpretable by the low-level virtual machine compiler llc. for an example, see \cref{lst:transl}.
 

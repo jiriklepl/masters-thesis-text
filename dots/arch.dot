@@ -29,7 +29,7 @@ digraph {
             Facts [label="Type facts"]
             LeftFacts [label="Leftover facts"]
             Variables [label="Variables"]
-            ASTTypeHoles [label="AST\nwith type holes"]
+            ASTTypeElabs [label="AST\nwith elaborations"]
             Judgments [label="Type assigments"]
             FlatAST [label="Flat AST"]
             BlockifiedAST [label="Blockified AST"]
@@ -59,7 +59,7 @@ digraph {
             FlowAnalysis [label="Flow analysis"]
             Inference [label="Type inference"]
             Monomorphization
-            HoleFilling [label="Type hole filling"]
+            ElabFilling [label="elaboration filling"]
             Mangling
             Translator
         }
@@ -81,17 +81,17 @@ digraph {
     VariableMining -> VariablesErrors
     AST -> VariableMining -> Variables -> Preprocess
     Facts -> { FunDepSimpl AnnotMining }
-    ASTTypeHoles -> AnnotMining
-    ASTTypeHoles -> Monomorphization
-    { FunDepSimpl AnnotMining } -> Inference -> Judgments -> Monomorphization -> MonoAST -> HoleFilling -> FilledMonoAST -> Mangling -> PostAST -> Prettyprinter
-    HoleFilling -> FillingErrors
+    ASTTypeElabs -> AnnotMining
+    ASTTypeElabs -> Monomorphization
+    { FunDepSimpl AnnotMining } -> Inference -> Judgments -> Monomorphization -> MonoAST -> ElabFilling -> FilledMonoAST -> Mangling -> PostAST -> Prettyprinter
+    ElabFilling -> FillingErrors
     Mangling -> ManglingErrors
     { Inference Monomorphization } -> Unification
     FlatAST -> Blockifier -> {BlockifiedAST BlockifierErrors }
     BlockifiedAST -> FlowAnalysis -> BlockifiedASTAnnots
     FlowAnalysis -> BlockifierErrors
     Unification -> { UnifyErrors Monomorphization Inference }
-    BlockifiedASTAnnots -> Preprocess -> { Facts ASTTypeHoles }
+    BlockifiedASTAnnots -> Preprocess -> { Facts ASTTypeElabs }
     Monomorphization -> MonomorphizeErrors
     { FillingErrors ManglingErrors UnifyErrors BlockifierErrors MonomorphizeErrors VariablesErrors LeftFacts } -> ASTErrors -> Prettyprinter
     Inference -> { Prettyprinter LeftFacts }
