@@ -80,9 +80,10 @@ After transforming all function bodies into flat forms, the flattening phase als
 
 \subsubsection{Filling in calls to the \li{drop} function}
 
-One more task for the flattening phase in the scope of this programming language is that it studies the presence of any resource-representing objects (stack allocated objects carrying \li{new} specification; see \cref{RAII}) and puts calls to the \li{drop} function accordingly to the function's exit points. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough, so there was no necessity for an extra phase. In the case of further similar extensions, we advise considering separation of such concerns into more phases. \xxx{add discussion somewhere}
+One more task for the flattening phase in the scope of this programming language is that it studies the presence of any resource-representing objects (stack allocated objects carrying \li{new} specification; see \cref{RAII}) and puts calls to the \li{drop} function accordingly to the function's exit points. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough, so there was no necessity for an extra phase. In the case of further similar extensions, we advise considering separation of such concerns into more phases. \xxx{add discussion somewhere?}
 
 \subsection{Blockifying}
+\label{sec:blockify}
 
 The blockifying phase follows the flattening phase and it annotates each statement of functions with block annotations while collecting some further information we will describe shortly.
 
@@ -589,7 +590,7 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
 
 \begin{defn}[Fresh variable]
     \label{freshVar}
-    An identifier for a fresh variable is chosen according to: \linebreak $\min \left(\mathbb{V} \setminus \mathcal{V} \setminus \mathcal{G}\right)$. It is given a ``generic'' type kinds, which then is unified with whatever kind the fresh variable is assigned to represent. And the parent is set to $cp$, the current parent.
+    An identifier for a fresh variable is chosen according to: \linebreak $\min \left(\mathbb{V} \setminus \mathcal{V} \setminus \mathcal{G}\right)$. It is given a ``generic'' type kind, which then is unified with whatever kind the fresh variable is assigned to represent. And the parent is set to $cp$, the current parent.
 \end{defn}
 
 \begin{defn}[Algorithm repair steps]
@@ -802,27 +803,24 @@ The monomorphization phase is then followed by two postprocessing phases, \emph{
 
 \subsubsection{Elaboration filling}
 
-This phase reads the type annotations of all types encountered in the monomorphized code and replaces the AST nodes with representations of the inferred types. The resulting code then contains only explicitly typed declarations (no \li{auto}).
+This phase takes an elaborated and monomorphized AST, reads the type elaborations of all type nodes encountered in the AST, and replaces the nodes with representations of the inferred types. The resulting code then contains only explicitly typed declarations (no \li{auto}).
 
 \subsubsection{Name mangling}
 \label{sec:mangling}
 
-This phase renames all functions not marked with the \li{foreign "C"} specialization. According to their types. The name mangling used in this implementation is not very space-efficient as it is designed to be human-readable for easier exploration and debugging.
+This phase takes an elaborated and monomorphized AST. It renames all functions not marked with the \li{foreign "C"} specialization according to their types. The name mangling used in this implementation is not very space-efficient as it is designed to be human-readable for easier exploration and debugging. See \cref{lst:mono} for an example of a mangled function name.
 
 \begin{defn}[Name mangling]
-    The mangled name consists of the \li{_M\$} prefix (standing for ``mangled'') followed by the name and then by the result of applying the mangle function to a type which, for primitive types, returns their name, and for aggregate types, returns the prefix corresponding to the aggregate type followed by the arguments enclosed in \li{\$L} and \li{R\$} (for functions, the arguments and the returns are enclosed separately).
+    The mangled name consists of the \li{_M\$} prefix (standing for ``mangled'') followed by the name and then by the result of applying the mangle function to a type. The mangle function, for primitive types (\li{bits32}, etc.), returns their shortened name (for \li{bits32}, \li{b32}, for example), and for aggregate types, returns the prefix corresponding to the aggregate type followed by its arguments enclosed in \li{\$L} and \li{R\$} (for functions, the arguments and the returns are enclosed separately).
 \end{defn}
-
-
-\xxx{example}
 
 \section{Translation}
 \label{translation}
 
-The final translation of the code (or code generation) is performed on the postprocessed code with type annotations. It uses \xxx{reference} llvm-hs-pure as a framework for llvm AST generation. The output of translation is then a code interpretable by the low-level virtual machine compiler llc. for an example, see \cref{lst:transl}.
+The final translation of the code (or code generation) is performed on the postprocessed monomorphized code with type elaborations and block annotations (see \cref{sec:blockify} and ). We use llvm-hs-pure (see \cite{llvmHSpure}) as a framework for LLVM AST generation and llvm-hs-pretty for subsequent prettyprinting \cite{llvmHSpretty}. The prettyprinted output of translation is then a LLVM assembly code interpretable by the low-level virtual machine compiler \emph{llc}. For an example, see \cref{lst:transl}.
 
 \begin{listing}
-    \caption{Example source code before and after the translation to llvm.}
+    \caption{Example source code before and after the translation to LLVM.}
     \label{lst:transl}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -854,32 +852,33 @@ LR$procedure0:
     \end{center}
 \end{listing}
 
-Apart from the postprocessed code, it takes three variables from the blockifier:
+Apart from the postprocessed monomorphized code, translation takes three variables from the \emph{blockifier} (see \cref{sec:blockify}):
 
-\begin{enumerate}
-    \item Control flow: The edges of the control flow graph
-    \item Block data: The mapping from each block's index and variable name relevant in the context of the corresponding block to a two-valued tuple \linebreak \li{(writes, requests alive)} where each entry is a boolean
-    \item Blocks table: The mapping from each block's index to its name so we can use the blocks' actual names in the generated code.
-\end{enumerate}
+\begin{description}
+    \item[Control flow] The edges of the control flow graph, for each procedure.
+    \item[Block data] The mapping from each block's index and variable name relevant in the context of the corresponding block to a two-valued tuple \linebreak \li{(writes, requests alive)} where each entry is a boolean (note that in \cref{sec:blockify}, we introduced this variable as a triple, we siply strip the first value of each record away).
+    \item[Blocks table] The mapping from each block's index to its name, so we can use the blocks' actual names in the generated code.
+\end{description}
 
-The translator first restructures the code so that all the struct definitions (since they do not ever call any procedures) are at the top and the procedures are at the bottom. Then it collects the definitions of all structs and represents them in the pairs \li{([(field_alias, field_index)], [field_type])}. The second value in each pair corresponds to how llvm-hs-pure represents the structures, while the first maps each field accessor to the corresponding index, again, usable when generating the relevant LLVM instructions. After the translator collects all the struct definitions, it starts translating the procedures:
+The translator first restructures the code so that all the struct definitions are at the top and the procedures are at the bottom. Then it collects the definitions of all structs and represents each of them using a pair  \li{([(field_alias, field_index)], [field_type])}. The second value (list of a structure's fields) in each such pair corresponds to how llvm-hs-pure represents the structures, while the first maps each field accessor name to the index of the corresponding field, again, directly usable when generating the relevant LLVM instructions. After the translator collects all the struct definitions, it starts translating the procedures as described in \cref{trans_proc}.
 
 \begin{algorithm}
     \caption{Procedure translation}
     \label{trans_proc}
     \begin{algorithmic}[1]
+        \Require $S$ \Comment{List of the procedure's statements}
         \State $r \gets \emptyset$ \Comment{mapping from names to stack-allocated objects}
         \State Open the entry basic block
-        \State Generate operands for all formal arguments
-        \State $f \gets$ a mapping from variables, initially just formals, to their operands
-        \For{datum $d \in$ \li{stackdata} declaration $in$ all procedure's declarations}
-            \State Generate \li{alloca} for $d$ resulting in $d'$
-            \State $r \gets r[a := d']$ for each alias $a$ of $d$. \Comment{add the appropriate pairs to the $r$ mapping}
+        \State $f \gets \emptyset$ \Comment{a mapping from variable names to their operands}
+        \State $\forall \mtt{formal\ argument}\ \alpha . f \gets f [ \alpha := \mtt{newOperand}]$
+        \For{$\mtt{datum}\ d \in$ \li{stackdata \{ ... \}} $\in \mtt{declarationsOfProcedure}$ }
+            \State Generate \li{alloca} for $d$, resulting in $d'$
+            \State $\forall  a\ \mtt{aliasOf}\ d .  r \gets r[a := d']$. \Comment{add the appropriate pairs to $r$ mapping}
         \EndFor
-        \State break the list of body statements into basic blocks $B$ according to annotations left by the blockifier
+        \State $B \gets \mtt{breakIntoBasicBlocks} (S)$ \Comment{according to blockifier's annotations}
         \State from $B$, take the entry block $E$ and the rest $R$
-        \State generate $ph$ a mapping of placeholder operands for each record in the block data \xxx{see ...} without the entry block such that \li{writes} or \li{requests alive} is set
-        \State translate the statements (\cref{transl_stmt}) in the entry block $E$, each given $f$, while updating the mapping $f$ accordingly after each statement translation
+        \State generate $ph$, a mapping of placeholder operands for each record in the \emph{block data} without the entry block such that \li{writes} or \li{requests alive} is set
+        \State translate the statements (\cref{transl_stmt}) in the entry block $E$, each given $f$, while updating the mapping $f$ accordingly after each statement's translation
         \For{block $b \in R$}
             \State translate the block using \cref{transl_block} with the index of the basic block, list of its statements, $r$, $f$ and $ph$
         \EndFor
@@ -894,7 +893,7 @@ The translator first restructures the code so that all the struct definitions (s
     \label{transl_stmt}
     \begin{algorithmic}[1]
         \Require $r$ \Comment{mapping from names to stack-allocated object operands}
-        \Require $vars$ \Comment{mapping from variables to operands}
+        \Require $vars$ \Comment{mapping from variable names to operands}
         \Require $s$ \Comment{the statement}
         \If {$s$ is a label}
             \State open a new LLVM basic block
@@ -903,7 +902,7 @@ The translator first restructures the code so that all the struct definitions (s
             \State \Comment {for any write to a variable, update $vars$ accordingly}
             \State \Comment {for any reference, look up its corresponding operand in $vars$ or $r$, and if it is not present in either, generate an operand refering a global object}
         \EndIf
-        \Return $vars$
+        \State \Return $vars$
     \end{algorithmic}
 \end{algorithm}
 
@@ -916,12 +915,12 @@ The translator first restructures the code so that all the struct definitions (s
         \Require $f$ \Comment{mapping from entry block's variables to operands}
         \Require $ph$ \Comment{mapping from \li{(blockIdx, varName)} to placeholder operands}
         \Require $B$ \Comment{the list of consecutive statements of the basic block}
-        \State translate the first statement (\cref{transl_stmt}) of $B$ \Comment{opens a LLVM basic block, variables not relevant here}
-        \State $vars \gets \emptyset$ a mapping from variable names to their corresponding operands
+        \State translate the first statement (\cref{transl_stmt}) of $B$ \Comment{opens a LLVM basic block, variables not relevant here (label statements do not access them)}
+        \State $vars \gets \emptyset$ \Comment{a mapping from variable names to their corresponding operands}
         \For {$v$ a variable requested alive}
             \State generate a phi node $\varphi$
             \For {$(idx', idx)$ in the control flow graph}
-                \State add an operand from $f$ (if the corresponding block $idx'$ is the entry block) or $ph$ (otherwise) labeled by the name of the block $idx'$
+                \State add an operand $f(idx', v)$ (if $idx'$ is the entry block) or $ph(idx', v)$ (otherwise) labeled $\mtt{blocks\ table}(idx')$ \Comment{labeled with $idx'$ block's name}
             \EndFor
             \State $vars \gets vars[v := \varphi]$ \Comment{add the phi node to the $vars$ mapping}
         \EndFor
