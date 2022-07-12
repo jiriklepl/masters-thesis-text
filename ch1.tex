@@ -139,14 +139,16 @@ It also simplifies the notion of type assignments in such a way that all types c
 
 The language of constraints is an extension of traditional type language with type variables annotated by ``context levels'', giving a language of flat and nested constraints:
 \begin{defn}[Language of constraints]
-  Language $F$ of \emph{flat constraints} is defined as follows:
+    \label{def:defer_constr}
+
+    Language $F$ of \emph{flat constraints} is defined as follows:
 
     \begin{center}\begin{grammar}
       \firstcasesubtil{$F$}{d: C \tau^\star}{Class constraint}
       \otherform{g : \tau_1 \sim \tau_2}{Equality constraint}
     \end{grammar}\end{center}
 
-  The language $W$ of \emph{nested constraints} is defined inductively as follows:
+    The language $W$ of \emph{nested constraints} is defined inductively as follows:
 
     \begin{center}\begin{grammar}
       \firstcasesubtil{$W$}{F}{Flat constraint}

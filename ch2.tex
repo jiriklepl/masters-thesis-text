@@ -192,30 +192,25 @@ We represent the various dimensions of types with so-called ``subtype variables'
 
 \subsubsection{Subtyping system dimensions}
 
-\begin{remark}[Type systems without subtyping]
-    We consider the HM type system and all its variations we assumed so far a type system with only one dimension, the typing dimension. It is important to note, that the typing dimension is separate from the type, as having the same typings does not imply the types are necessarily the same.
-\end{remark}
-
 \begin{defn}[Subtyping system]
     We define the subtyping system as a minimization problem, where we first minimize the ``typing dimension'' (principal types, see \cite{damas1982principal}) and then the mutually orthogonal ``subtype dimensions''. We introduce these two concepts in definitions \ref{typing_def} and \ref{st_dim}.
 \end{defn}
 
 \begin{defn}[Typing dimension]
     \label{typing_def}
-    The typing dimension is a lattice with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation - notice the similarity of concepts: \emph{lowest upper bound} and \emph{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables, similarly to \cite{barendregt1992lambda}).
+    The typing dimension is a lattice on types with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation - notice the similarity of concepts: \emph{lowest upper bound} and \emph{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables, similarly to \cite{barendregt1992lambda}). Typing dimension is defined to have the same properties as types in the system without subtyping.
 
-    In our proposed type system, we perform the type class resolution using only this dimension. Notice how it is easily specifiable using the language of lattices: $C t \GetsTo \exists C t' \in \Gamma . t \geq_T t'$.
+    Typing inequality ($\leq_T$) commutes with type applications, quantification and type decomposition (for example, $\tau \leq_T \tau' \land \sigma \leq_T \sigma' \GetsTo \tau \sigma \leq_T \tau' \sigma'; \tau \leq_T \tau' \To (\forall \vect \alpha . \tau) \leq_T (\forall \vect \alpha . \tau')$).
+
+    In our proposed type system, we perform the type class resolution using only this dimension. Notice how it is easily specifiable using the language of lattices: $C t \GetsTo \exists C t' \in \Gamma . t \geq_T t'$, where $\Gamma$ is the context containing the known proofs.
 \end{defn}
+
+\begin{remark}[Type systems without subtyping]
+    We consider the HM type system and all its variations we assumed so far a type system with only one dimension, the typing dimension. It is important to note, that the typing dimension is separate from the type, as having the same typings does not imply the types are necessarily the same.
+\end{remark}
 
 \begin{remark}[Unification failure]
     Note that the unification failure is the top element of the typing lattice. Inferring the unification failure is similar to deriving a contradiction in a logic theory. In both systems, we report such inputs as wrong.
-\end{remark}
-
-\begin{remark}[Congruence of typings]
-    \label{congruence}
-    Note that, unlike other, subtype, dimensions (generally), the equality in typing dimension is congruent with type applications and type substitutions, and, if we are not considering type functions, this congruence is bijective for all type operations.
-
-    For subtype dimensions, the congruence property is not considered  as considering it a requirement for subtype dimensions would have impractical implications for our attempts: given two runtime objects of the same type and a pointer to each, there is no reason to constrain said pointers to have the same constness, one can be a runtime object as well and the other one a compile-time constant - compile-time pointers are equivalent to named references, for example.
 \end{remark}
 
 \begin{defn}[Subtype dimension]
@@ -228,6 +223,11 @@ We represent the various dimensions of types with so-called ``subtype variables'
 
     In the type system specific to this thesis, we use two subtype dimensions: \emph{data kinds} and \emph{constnesses}. We will specify them in \cref{const_kind_def}.
 \end{defn}
+
+\begin{remark}[Problems of subtype dimensions commuting with types]
+    \label{congruence}
+    Unlike for the typing dimension, considering commuting a requirement for subtype dimensions would have impractical implications for our attempts: given two runtime objects of the same type and a pointer to each, there is no reason to constrain said pointers to have the same constness, one can be a runtime object as well and the other one a compile-time constant - compile-time pointers are equivalent to named references, for example.
+\end{remark}
 
 
 \subsubsection{Subtyping system constraints and variables}
@@ -294,6 +294,7 @@ This example demonstrates that the minimal subtypes within a space of fixed valu
 \end{remark}
 
 \subsection{Inference of subtypes}
+\label{sec:inferSub}
 
 We are using the term ``fixed values'' in \cref{subtyping-idea}, but we have not yet introduced its meaning. Fixed values are some values that are not to be optimized by the subtyping inference mechanism. In the most simple version of this system, if we do not consider type classes (only the HM type system with type constructors), the fixed values consist of subtype dimension constants (in \cref{subtyping-idea}, that would be $K$) and then the subtype dimensions of skolem constants (in \cref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
 
@@ -318,7 +319,7 @@ We are using the term ``fixed values'' in \cref{subtyping-idea}, but we have not
 \begin{cor}[Monotypes in the subtyping system]
     If the type of a procedure is a monotype (and thus it is a valid type for a program), it has no skolem constants and that means we can safely define all the free subtype variables as suprema of their fixed lower bounds.
 
-    This is very strong assumption, but supported by a precedent given by many languages that define entry points of programs of predefined types (these entry points then represent the entirety of the program). Two examples, both defining the entry point as \li{main}: Haskell (which requires monotype $\mtt{IO}\ \tau$ for some $\tau$, see \cite{haskell2010}) and C (which notably allows two possible types, see \cite{cstandard2018}, with some implementation-defined alternatives).
+    This is very strong assumption, but supported by a precedent given by many languages that define entry points of programs with predefined types (these entry points then represent the entirety of the program). Two examples, both defining the entry point as \li{main}: Haskell (which requires monotype $\mtt{IO}\ \tau$ for some $\tau$, see \cite{haskell2010}) and C (which notably allows two possible types, see \cite{cstandard2018}, with some implementation-defined alternatives).
 \end{cor}
 
 \begin{defn}[Suprema subtype constructor]
