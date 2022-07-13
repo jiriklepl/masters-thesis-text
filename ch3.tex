@@ -196,6 +196,12 @@ We implemented the type system as defined in \cref{sec:typesystem}. But there we
     Note that there can be systems with different subtype dimensions, in which the two relations (equality of types, equality of all dimensions of types) can indeed be defined as equivalent. An example of such a system would be a system with no subtype dimensions.
 \end{ex}
 
+\subsection{Type system limitations}
+
+Consider \cref{congruence} and \cref{inconsistency}. Notice that if we have two function types $t \equiv \alpha \to \beta$ and $t' \equiv \alpha' \to \beta'$ and $t \leq t'$, then the only derivable constraints on $\alpha, \alpha', \beta, \beta'$ are $\alpha \sim_T \alpha'$ and $\beta \sim_T \beta'$. In the prototype implementation, this does not pose any problems as we do not assign references to functions.
+
+In \cref{st_dim}, we introduced that subtype dimension are non-affecting type class resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing new constraints after deciding the typings according to the desired semantics (for example, $\alpha \leq \alpha' \land \beta' \leq \beta$).
+
 \section{Type Inference}
 
 In the modified \cmm{} language, we do not support existentials (as discussed in \ref{sys_defer}) and all polymorphic definitions have to be at top level (or they are easily representable as such: definitions of methods and their instances). This allows the solver to solve more eagerly, since there is no need for context levels, deferring the constraints only on two cases (see \cref{main_loop}).
@@ -811,7 +817,7 @@ This phase takes an elaborated and monomorphized AST, reads the type elaboration
 This phase takes an elaborated and monomorphized AST. It renames all functions not marked with the \li{foreign "C"} specialization according to their types. The name mangling used in this implementation is not very space-efficient as it is designed to be human-readable for easier exploration and debugging. See \cref{lst:mono} for an example of a mangled function name.
 
 \begin{defn}[Name mangling]
-    The mangled name consists of the \li{_M\$} prefix (standing for ``mangled'') followed by the name and then by the result of applying the mangle function to a type. The mangle function, for primitive types (\li{bits32}, etc.), returns their shortened name (for \li{bits32}, \li{b32}, for example), and for aggregate types, returns the prefix corresponding to the aggregate type followed by its arguments enclosed in \li{\$L} and \li{R\$} (for functions, the arguments and the returns are enclosed separately).
+    The mangled name consists of the \li{_M\$} prefix (standing for ``mangled'') followed by the name and then by the result of applying the mangle function to a type. The mangle function, for primitive types (\li{bits32}, etc.), returns their shortened name (for \li{bits32}, \li{b32}, for example), and for composite types, returns the prefix corresponding to the top-most type constructor followed by its mangled arguments enclosed in \li{\$L} and \li{R\$} (for functions, the arguments and the returns are enclosed separately).
 \end{defn}
 
 \section{Translation}

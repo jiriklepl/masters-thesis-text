@@ -2,9 +2,43 @@
 
 \section{Subtyping in systems programming}
 
-The subset of subtyping modelled by our proposed type system can be used to check various secondary properties of objects. We demonstrated its use on constness and data kinds of the \cmm language. Connecting the analysis of these secondary properties to the type system allows for tying the constraints on these properties to a particular typing, for example, by defining each type class instance with a different set of constraints.
+The subset of subtyping modelled by our proposed type system can be used to check and infer various secondary properties of objects. We demonstrated its use on constness and data kinds of the \cmm{} language. Connecting the analysis of these secondary properties to the type system allows for tying the constraints on these properties only to a particular typing (as defined in \cref{sec:typesystem}), for example, by defining each type class instance with a different set of constraints.
 
-\section{Example of possible automatic resource management use in production systems programming}
+\section{Comparison to C subtyping}
+
+In the previous work (see \cite{klepl2020type}), we identified weakness of the then-used type system with regards to the \li{const} qualifier from the C language (see \cite{cstandard2018}). Do its semantics fit the type system we introduced in \cref{sec:typesystem}?
+
+The semantics of the C \li{const} qualifier (as specified by \cite{cstandard2018}) quite differ from the constness introduced in \cref{const_kind_def}. For our purposes, we simplify the semantics into two cases:
+
+\begin{enumerate}
+    \item If the \li{const} qualifier is applied to a variable (for example, \li{char *const p}), the type of the variable is the same as if it was not \li{const}-qualified. Any attempt to assign to this variable is an undefined behavior. \label{constvar}
+
+    \item If the \li{const} qualifier is applied to a type pointed to by a certain pointer (for example, \li{char const *p}), any assignments to the pointer from pointers pointing to a non-\li{const}-qualified version of the same type are valid and the two pointers have the same value afterwards. The reverse assignment would be, again, an undefined behavior. \label{pointerSubtype}
+
+    In our formalism, this means that \li{T *} is less general than \li{T const *}.
+\end{enumerate}
+
+We can model the semantics of the case number \ref{pointerSubtype} (case number \ref{constvar} is identified syntactically) via introducing a new subtype dimension, which is only relevant to pointer types (in simplification; we could then generalize this to array types and other aggregate types), let us call this dimension the \emph{C-const dimension}.
+
+\begin{defn}[C-const dimension]
+    The C-const subtype dimension $C$ is defined by two constants $\mtt{NonConst}, \mtt{Const}$ and an ordering $\top = \mtt{Const} >_C \mtt{NonConst} = \bot$.
+
+    This dimension is only relevant to pointer types, other types being either unconstrained or constrained to specifically one of the constants (which is then sometimes called canonical - see \cite{tiuryn1999subtyping}).
+\end{defn}
+
+In the following, we use $a \sim_\chi b$ as a shortcut for $a \leq_\chi b \land b \leq_\chi a$, where $\chi$ is a dimension of the type system.
+
+\begin{itemize}
+    \item Each type definition (or primitive type: for example, \li{int}) $t$ is constrained: $t \sim_C \mtt{NonConst}$ (on top of any other constraints).
+
+    \item Any declaration \li{T const *} constrains the type $t$ of the declared variable: $(\forall \mtt{dimension}\ s, s \neq C. t \sim_s T\ast), t \sim_C \mtt{Const}$ (this models that applying \li{const} is idempotent).
+
+    \item For (generalized) assignments with operand types $t_l, t_r$, we put $t_l \geq_s t_r$ for each dimension $s$ and $t_l \sim_T t_r$. (we say ``generalized assignments'' as we consider even actual arguments to procedures and return operands, etc.).
+\end{itemize}
+
+This models the semantics of the \li{const} qualifier in a possible C extension with polymorphism.
+
+\section{Automatic resource management in practical systems programming}
 
 We show how to use the results of this thesis to simplify the resource management in system programming languages.
 
