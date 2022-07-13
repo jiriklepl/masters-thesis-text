@@ -4,25 +4,25 @@
 
 \section{The Algorithm W and how it connects to deferred solving}
 
-As this thesis builds on the work of the author's bachelor thesis \cite{klepl2020type}, we assume the same syntactic notation and semantics of the untyped lambda calculus, STLC and System F (see \cite{barendregt1992lambda}), Hindley-Milner type system (see \cite{damas1982principal}), and the THIH-inspired type system (for THIH, see \cite{jones1999typing}).
+As this thesis builds on the work of the author's bachelor thesis \cite{klepl2020type}, we assume the same syntactic notation and semantics of the untyped lambda calculus, STLC and System F \cite{barendregt1992lambda}, Hindley-Milner type system \cite{damas1982principal}, and the type system by Typing Haskell In Haskell (here shortened as THIH, see \cite{jones1999typing}).
 
-We concluded that, if a term is typable in these systems, the Algorithm W will find it's principal type (with an exception of the System F, typing of which is undecidable, see \cite{wells1999typability}).
+We concluded that, if a term is typable in these systems, the Algorithm W will find it's principal type (with an exception of the System F, typing of which is undecidable \cite{wells1999typability}.
 
-Throughout this section, we will show that the Algorithm W provides a good basis for typechecking of the type, but with more extensions, namely functional dependencies (see \cite{jones2000type}), it becomes unnecessarily complex and inefficient if we want to use it for type inference as well. We will describe, how the same principles can be used to implement much simpler and more extensible two-phase algorithm based on constraint solving.
+Throughout this section, we will show that the Algorithm W provides a good basis for typechecking of the type, but with more extensions, namely functional dependencies \cite{jones2000type}, it becomes unnecessarily complex and inefficient if we want to use it for type inference as well. We will describe, how the same principles can be used to implement much simpler and more extensible two-phase algorithm based on constraint solving.
 
-\begin{defn}[Type inference and monomorphization]
-    Before we begin, let us lay down two terms we will extensively use.
+Before we begin, let us lay down two terms we will extensively use:
 
-    \textbf{Type inference} is a process of semantic analysis, which assigns a type (according to the given type system) to each node of the AST, where it makes sense (expressions, procedures, record types, etc.). Each such type can be either monotype or polytype and the object then monomorphic or polymorphic, respectively. Polytypes are characterized by being quantified.
+\begin{itemize}
+\item \textbf{Type inference} is a process of semantic analysis, which assigns a type (according to the given type system) to each node of the AST, where it makes sense (expressions, procedures, record types, etc.). Each such type can be either monotype or polytype and the object then monomorphic or polymorphic, respectively. Polytypes are characterized by being quantified.
 
-    \textbf{Monomorphization} statically interprets the generalized callgraph (also including references to type definition) and, for every reference to a polymorphic object, it generates a monomorphic copy of this object, which has the polytype instantiated to the monotype fitting the current context.
-\end{defn}
+\item \textbf{Monomorphization} statically interprets the generalized callgraph (also including references to type definition) and, for every reference to a polymorphic object, it generates a monomorphic copy of this object, which has the polytype instantiated to the monotype fitting the current context.
+\end{itemize}
 
 \subsection{Limitations of Algorithm W}
 
-The Algorithm W, which we used in the previous work(\cite{klepl2020type}), assumed no recursion in the code and thus any real program with any trivial or nontrivial recursion had to be rewritten into a form where recursive functions were represented by the \lstinline{fix} operator applied to some argument. Type of the \lstinline{fix} operator is $\forall \alpha . \pars {\alpha \to \alpha} \to \alpha$.
+The Algorithm W, which we used in the previous work \cite{klepl2020type}, assumed no recursion in the code and thus any real program with any trivial or nontrivial recursion had to be rewritten into a form where recursive functions were represented by the \lstinline{fix} operator applied to some argument. Type of the \lstinline{fix} operator is $\forall \alpha . \pars {\alpha \to \alpha} \to \alpha$.
 
-The algorithm for preprocessing trivial recursions is the following (derived from fixed point theorem, see \cite{barendregt1992lambda} and \cite{damas1982principal}): a function represented as $f \vect{x} = \calC[f, \vect{x}]$, where $C$ is a lambda term such that $\{f\} \cup \vect{x} \subseteq \free \calC$, is simply rewritten into $f = \mathit{fix}\ \lambda F \vect{X} .\calC[f := F, \vect{x} := \vect{X}]$.
+The algorithm for preprocessing trivial recursions is derived from fixed point theorem \cite{barendregt1992lambda,damas1982principal}): a function represented as $f \vect{x} = \calC[f, \vect{x}]$, where $C$ is a lambda term such that $\{f\} \cup \vect{x} \subseteq \free \calC$, is simply rewritten into $f = \mathit{fix}\ \lambda F \vect{X} .\calC[f := F, \vect{x} := \vect{X}]$.
 
 For a nontrivial recursion (which we can identify using an algorithm for finding strongly connected components of the call graph), we use a generalization of fixed-point theorem, so-called double fixed-point theorem (see \cite{stepanek}), which describes how to construct this rewriting for a component of size two and can be easily generalized for an arbitrary component.
 
@@ -79,30 +79,23 @@ If we want to simply modify the Algorithm W so it solves principal types even in
 
 THIH describes the constraint propagation through the syntactic structure of the subprogram to the scheme of the resulting type well (and it is easy to generalize it on other syntactic structures), but then, it does not describe how to solve the constraint $C$ if it does not fall into the case of being instantiable from a known predicate.
 
-\subsubsection*{Intermission: solving class constraints from known proofs}
+\subsubsection{Intermission: solving class constraints from known proofs}
 
-\begin{ex}[Solving a constraint by instantiating a known predicate]
-    For example, given $\Gamma = \{\forall a . \mtt {Ord} [a]\}$ (using a simplified representation for contexts, combining class environments and assumptions into one set $\Gamma$), we can prove $\Gamma \vdash \mtt {Ord} [Int]$, using substitution $[a := \mtt {Int}]$.
-\end{ex}
+We show how to solve a class constraint by instantiating a know predicate on a small example. Given $\Gamma = \{\forall a . \mtt {Ord} [a]\}$ (using a simplified representation for contexts, combining class environments and assumptions into one set $\Gamma$), we can prove $\Gamma \vdash \mtt {Ord} [Int]$, using substitution $[a := \mtt {Int}]$.
 
-\begin{observe}[Proof is supported by an instantiating substiution]
-    Notice that the substitution $\sigma$ that is used to prove a constraint $C \tau$ from a known predicate (or proof) $C \tau'$ has to satisfy $\tau = \tau' \sigma$, which then also means, it satisfies $\dom \sigma \subseteq \free \tau' \land \ran \sigma \subseteq \free \tau$ (it consumes the free variables of $\tau'$ not present in $\tau$).
-\end{observe}
+Notice that the substitution $\sigma$ that is used to prove a constraint $C \tau$ from a known predicate (or proof) $C \tau'$ has to satisfy $\tau = \tau' \sigma$, which then also means, it satisfies $\dom \sigma \subseteq \free \tau' \land \ran \sigma \subseteq \free \tau$ (it consumes the free variables of $\tau'$ not present in $\tau$).
 
-\begin{ex}[Class constraints often generate more class constraints]
-    \label{chaining}
-    More complicated example would be proving $\Gamma \vdash \mtt {Ord} [Int]$ in the context $\Gamma = \{\mtt {Ord}\ \mtt {Int}; \forall a . \mtt {Ord}\ a \To \mtt {Ord} [a]\}$. First, we deduce $\Gamma \vdash \mtt {Ord} [Int] \Leftarrow \Gamma \vdash \mtt {Ord}\ Int$ (proven using substitution $[a := \mtt {Int}]$ and the proof $\forall a . \mtt {Ord}\ a \To \mtt {Ord} [a]$) and then $\Gamma \vdash \mtt {Ord}\ Int$ (proven by being an assumption of the context; therefore, using an empty substitution). This shows that, if we introduce functional dependencies to the type system (or even non-reducing proofs), the typing can be infinite for some contexts and thus undecidable.
-\end{ex}
+Using a more complicated example, we can demonstrate that class constraints often generate additional (more complex) class constraints: To prove $\Gamma \vdash \mtt {Ord} [Int]$ in the context $\Gamma = \{\mtt {Ord}\ \mtt {Int}; \forall a . \mtt {Ord}\ a \To \mtt {Ord} [a]\}$, we first deduce $\Gamma \vdash \mtt {Ord} [Int] \Leftarrow \Gamma \vdash \mtt {Ord}\ Int$ (proven using substitution $[a := \mtt {Int}]$ and the proof $\forall a . \mtt {Ord}\ a \To \mtt {Ord} [a]$) and then $\Gamma \vdash \mtt {Ord}\ Int$ (proven by being an assumption of the context; therefore, using an empty substitution). This shows that the type system can be pushed to generate infinite typings for some contexts if we introduce language extensions such as functional dependencies and non-reducing proofs.
 
-\subsection{The challenges of the modified W, rise to a two-phase algorithm}
+\subsection{The challenges in the modified W, \xxx{rise to} a two-phase algorithm}
 
-In the \cref{chaining}, we show that each constraint can generate more constraints, and the Algorithm W as described by THIH, then solves each of theses chains separately. And often, they can break into trees. This then requires a significant amount of work and progressively more complicated code, which resolves each of the cases.
+In the previous section, we showed that each constraint can generate more constraints, and the Algorithm W then solves each of theses chains separately. \xxx{And often, they can break into trees. This then requires a significant amount of work and progressively more complicated code, which resolves each of the cases.}
 
 \begin{observe}[Hints of a two-phase approach to type inference]
-    The modified Algorithm W with recursion being present in the language alongside functional dependencies we deduced from the record types, is then very complicated ,and it should be obvious from the previous examples the modified algorithm, regardless of modifications, deconstructs into a two-phase process where the first generates some constrained type assignments and then the second resolves the constraints.
+    \xxx{The modified Algorithm W with recursion being present in the language alongside functional dependencies we deduced from the record types, is then very complicated ,and it should be obvious from the previous examples the modified algorithm, regardless of modifications, deconstructs into a two-phase process where the first generates some constrained type assignments and then the second resolves the constraints.}
 \end{observe}
 
-Using the Algorithm W requires some nontrivial preprocessing and mapping the subprogram to the resulting type (as we can see in \cite{jones1999typing}), and then, the subsequent constraint solving performs very inefficient chains of nested proof lookups shown by \cref{chaining}.
+Using the Algorithm W requires some nontrivial preprocessing and mapping the subprogram to the resulting type (as demonstrated by \citet{jones1999typing}), and then, the subsequent constraint solving performs the very inefficient chains of nested proof lookups, as shown above.
 
 We will describe a two-phase algorithm, which does not require the described difficult preprocessing, and introduces ``so-called'' witnesses, which simplify solving multiple class constraints.
 
@@ -182,100 +175,80 @@ Additionally, to the already described equality constraints and class constraint
     \end{itemize}
 \end{defn}
 
-\begin{ex}[Context levels] Consider the following set of constraints:
-
-    \begin{lstlisting}
-a ~ b,
-forall c. d ~ e => a ~ d -> e
-    \end{lstlisting}
-
-    The type variables $a, b$ have context level $0$; the type variables $d, e$ have context level $1$; and $c$, a skolem constant, has no context level.
-\end{ex}
+For example, in the following set of constraints
+\[ \left\{ a ~ b, \forall c. (d ~ e => a ~ d -> e) \right\} \]
+the type variables $a, b$ have context level $0$; the type variables $d, e$ have context level $1$; and $c$, being a Skolem constant, has no context level.
 
 \subsection{Existentials}
 
 \label{existentials}
 
-Existentials are types with existentially-quantified type variables, the semantics of such are that there exists some assignment to the existentially-qualified variables that, within the given constraints, describes the value of the existential. This assignment has to be solved during dynamic interpretation of the code (runtime).
+Existentials are types with existentially-quantified type variables, the semantics of such are that there exists some assignment to the existentially-qualified variables that, within the given constraints, describes the value of the existential. Usually, this assignment can be solved only during the dynamic interpretation of the code (i.e., `at runtime').
 
-\begin{remark}[Semantic distinction between universals and existentials]
-    A distinction between universals (universally quantified types) and existentials is that universals have unknown monotypes during definitions and they have to be defined polymorphically, while existentials have unknown types in references and can be defined monomorphically.
-\end{remark}
+Semantically, the `universals' (universally quantified types) and existentials differ by that universals have unknown monotypes during definitions and they have to be defined polymorphically, while existentials have unknown types in references and can be defined monomorphically. This leads to an interesting practical consequence: Code specialization required for universal types often leads to code multiplication. On the other hand, use of existentials leads to a necessity of (potentially very unpredictable) use of runtime type and class witnesses, and coercions.
 
-\begin{remark}[Practical difference between existentials and universals]
-    In practice, universal types lead to code multiplication, while existentials lead to a necessity of runtime type (coercion) witnesses and constraint witnesses.
-\end{remark}
+Existentials are typically constrained by some class, which then means that they become witnesses for a method lookup in that class. This can, among other, supply the rest of the code with a type witness that can be derived from the class witness, and does not need to be carried explicitly.
 
-Existentials are typically constrained by some class, which then means, they carry the corresponding class's witness for a method lookup. We then do not need the type witness as it can be derived from the class witness. This is a possible optimization, which will be not considered in the provided example for better clarity. If the types in the existential are not constrained, then we need the type witness.
+\subsubsection{Existentials as constraints}
 
-\begin{ex}[Existentials, adapted from \cite{peytonjones2019type}]
-    The following haskell code with the \lstinline{GADTs} extensions shows a definition of an type \lstinline{T} with existentially-typed field \lstinline{getT} and then a list of variables of that type along with a function that consumes them, accessing the existential.
+Before we start describing the construction of the type system based on constraint solving, we illustrate the aims using a translation of existentials to the language of constraints on an example adapted from \cite{peytonjones2019type}:
+The Haskell code in \cref{cex:existentials} shows a definition of an type \lstinline{T} with existentially-typed field \lstinline{getT}, and then a list of variables of that type along with a function that consumes them, accessing the existential.
 
-    \lstinputlisting[language=Haskell]{examples/existentials.hs}
+\begin{codex}
+\lstinputlisting[language=Haskell]{examples/existentials.hs}
+\caption{Example use of existentials in a Haskell program}
+\label{cex:existentials}
+\end{codex}
 
-    Now we would like to translate this example into the constraint language. First, we have to elaborate the program: (we will decorate the elaborations with $@$ for clarity; note that each elaboration comes with a context level, but we will not write them in the example as we will describe them collectively)
+We would like to translate this example into the constraint language. We will decorate the variables in the elaborations with $@$ for clarity, and ignore the elaboration levels for brevity (all global variables are in level 0, and all locally-mentioned variables are in level 1). The functions and their types get elaborated as shown in \cref{cex:exist-elab}, by putting a type variable (``hole'') to each place where the input from the type inference is expected.
 
-    The Context level for all globally-mentioned variables (outside any quantification) is $0$ and for all locally-mentioned variables (within a quantification) is $1$.
+\begin{codex}
+\begin{lstlisting}[language=Haskell]
+MkT :: forall @x . (@y : Show @x) => @x -> T
 
-    \lstinline{MkT} gets translated into: (the quantified type variables and the class constraint serve as new arguments created by the elaboration: these new arguments are witnesses for the type and for the \li{Show} instance)
-    \begin{lstlisting}[language=Haskell]
-        MkT :: forall @x . (@y : Show @x) => @x -> T
-    \end{lstlisting}
+show :: forall @s . (@r : Show @s) => @s -> String
 
-    (we will use the following type signature for \li{Show})
-    \begin{lstlisting}
-        show :: forall @s . (@r : Show @s) => @s -> String
-    \end{lstlisting}
+xs = [ MkT @a (@e : Show @a) 5
+     , MkT @b (@f : Show @b) "String"]
 
-    \lstinline{xs} gets translated into:
+f :: @s -> @t
+f (MkT @c (@g : Show @c) {getT=(x : @c)} : T) =
+    show @d @h x
+\end{lstlisting}
+\caption{Elaborated program from \cref{cex:existentials}.}
+\label{cex:exist-elab}
+\end{codex}
 
-    \begin{lstlisting}[language=Haskell]
-        xs = [ MkT @a (@e : Show @a) 5
-             , MkT @b (@f : Show @b) "String"]
-    \end{lstlisting}
+The observations from the code are collected into the set of constraints, which is shown in \cref{cex:exist-constr}.
 
-    \lstinline{f} gets translated into:
+\begin{codex}
+\begin{lstlisting}[language=Haskell]
+-- from xs:
+@a ~ Int,    @e : Show @a,
+@b ~ String, @f : Show @a
 
-    \begin{lstlisting}[language=Haskell]
-        f :: @s -> @t
-        f (MkT @c (@g : Show @c) {getT=(x : @c)} : T) =
-            show @d @h x
-    \end{lstlisting}
+-- from f:
+@s ~ T -- because the input parameter is T
+forall @c . (@g : Show @c) => -- w. required by MkT
+    @d ~ @c, -- from the type signature of `show'
+    @h : Show @d, -- witness required by show
+    @t ~ String -- returned by show
+\end{lstlisting}
+\caption{Constraints generated from \cref{cex:existentials}.}
+\label{cex:exist-constr}
+\end{codex}
 
-    From this elaborated program, we simply write the constraints:
+The constraints can be solved by the following assignments $@a := \mtt{Int}, @b := \mtt{String}, @e := \mtt{Show}\ \mtt{Int}, @b : \mtt{Show}\ \mtt{String}, @s := t, @d := @c, @h := @g, @t := \mtt{String}$. The resulting type scheme for \li{f} is: \li{T -> String}.
 
-    \begin{lstlisting}[language=Haskell]
-        -- from xs:
-        @a ~ Int,    @e : Show @a,
-        @b ~ String, @f : Show @a
-
-        -- from f:
-        @s ~ T -- because the input parameter is T
-        forall @c . (@g : Show @c) => -- w. required by MkT
-            @d ~ @c, -- from the type signature of `show'
-            @h : Show @d, -- witness required by show
-            @t ~ String -- returned by show
-    \end{lstlisting}
-
-    This set of variables is then solved by: the following assignments $@a := \mtt{Int}, @b := \mtt{String}, @e := \mtt{Show}\ \mtt{Int}, @b : \mtt{Show}\ \mtt{String}, @s := t, @d := @c, @h := @g, @t := \mtt{String}$ with resulting scheme for \li{f} being: \li{T -> String}.
-
-    We will shortly specify how the algorithm, which provides the desired assignment, works.
-
-    All unnested constraint in the top part of the example and nested constraints in the implication constraint are solved by the given assignment and therefore the inference has no leftover constraints.
-\end{ex}
-
-\begin{defn}[Unification variable]
-    Unification variable is any type variable which is not bound in an implication constraint quantification (in other words, is not a skolem constant of a given scope).
-\end{defn}
-
+\FloatBarrier
 \subsection{Deferred Inference algorithm}
 
-The inference is performed by rewriting the set of constraints into an equivalent set of constraints in each step. The Algorithm works as laid out in the \cref{deferred_loop}.
+The Deferred Inference algorithm performs the type inference by rewriting a set of constraints that was generated during the code elaboration into an equivalent, simpler set of constraints in each step, until it either solves all constraints or ends up with a set of constraints that can not be reduced further. \cite{peytonjones2019type}
 
-
+Our simplified presentation of the algoritm (\Cref{deferred_loop}) is further subdivided to a special case that handles a class constraint (\Cref{case_class}) and an equality constraint (\Cref{case_equality}).
 
 \begin{algorithm}
-    \caption{Main loop of Deferred Inference (simplified version, presented by \cite{peytonjones2019type})}
+    \caption{Main loop of Deferred Inference algorithm (simplified from \cite{peytonjones2019type})}
     \label{deferred_loop}
     \begin{algorithmic}
         \Require $\mtt {Ctx} \equiv \cdots \forall \vect \alpha_2 . A_2 \To \forall \vect \alpha_1 . A_1 \To \mcal W$ is the current context (possibly without the quantifications and corresponding qualifications; or with more)
@@ -368,14 +341,9 @@ The inference is performed by rewriting the set of constraints into an equivalen
     \end{algorithmic}
 \end{algorithm}
 
-\begin{remark}\label{defer_properties}
-    The algorithm is confluent and terminating (see \cite{vytiniotis2011outsidein}) under some requirements on the allowed constraints. Confluence is the property of the inference system that it gives the same result regardless of reordering of the input.
-\end{remark}
+\citet{vytiniotis2011outsidein} proved that the algorithm is terminating, given some requirements are met in the set of the allowed input constraints. At the same time, the algorithm is confluent --- it produces the same result regardless of reordering of the input.
 
-\subsubsection{Requirements on the input constraints}
-\label{requirements}
-
-We present a nonexhaustive list of the requirements on the input constraints that guarantee confluence and termination, listing just the ones that are significant in our presented lemmas and remarks:
+The precise requirements on the input constraints are rather complicated, we therefore highlight only the ones that are directly relevant to our results:
 
 \begin{enumerate}
     \item All assumptions for witness proofs have to be of the form $d : C a$, where $C a$ is the assumed constraint, $d$ is its witness, and $a$ is a type variable. \label{triv_assump}
@@ -389,20 +357,19 @@ The rules \ref{triv_assump}, \ref{free_free} and \ref{lookup_t} together ensure 
 
 The rule \ref{lookup_t} also ensures the proof schemes can be looked up efficiently, as the lookup can be implemented via a lookup table indexed by the $T$ type constructor.
 
-\begin{remark}[Generalization of the rules for multi-parameter type classes]
-    Rules \ref{free_free}, \ref{noover} and \ref{ambi_rule} are the same even in the context of multi-parameter type classes. \ref{triv_assump} and \ref{lookup_t} are generalized intuitively.
-\end{remark}
+Finally, the rules \ref{triv_assump} and \ref{lookup_t} can also be intuitively generalized for use with multi-parameter type classes.
 
 \subsection{Improvements over the Algorithm W}
 
+\xxx{Tohle potrebuje nejakou uvodni vetu}
+
 \begin{itemize}
-    \item  The solving can be performed in an arbitrary order as long as the modifications preserve its confluence property, see the \cref{defer_properties}.
+    \item  The solving of constraints can be performed in any arbitrary order as long as any possible algorithm extensions preserve its confluence property.
 
     \item The solving is completely independent on the specifics of the typed language structure, this is achieved via the elaboration it with placeholders for types and witnesses, then expressing the input for inference via those placeholders alone, and then finally filling in the placeholders back to the language.
 
-    \item The notion of witnesses allows us to compress the many proof chains we explored in the \cref{chaining}.
+    \item The notion of witnesses allows us to reduce the amount of explorable proof chains, because the constraints of related or equivalent proofs can be easily unified and removed.
 \end{itemize}
-
 
 
 \section{Deferred Solving for systems programming}

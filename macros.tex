@@ -20,8 +20,8 @@
 \newtheorem{lemma}[thm]{Lemma}
 \newtheorem{claim}[thm]{Claim}
 \newtheorem{defn}{Definition}
-\newtheorem{observe}{Observation}
-\newtheorem{remark}{Remark}
+\newtheorem{observe}{Corollary}
+\newtheorem{remark}{Remark} %TODO odstranit
 \newtheorem{ex}{Example}
 \theoremstyle{remark}
 \newtheorem*{cor}{Corollary}
@@ -56,6 +56,8 @@
 % listings and default lstlisting config (remove if unused)
 \DeclareNewFloatType{listing}{}
 \floatsetup[listing]{style=ruled}
+\DeclareNewFloatType{codex}{}
+\floatsetup[codex]{style=ruled}
 \DeclareNewFloatType{lang}{}
 \floatsetup[lang]{style=Boxed}
 
@@ -64,7 +66,8 @@
 \captionsetup{style=thesis}
 \captionsetup[algorithm]{style=thesis,singlelinecheck=off}
 \captionsetup[listing]{style=thesis,singlelinecheck=off}
-\captionsetup[lang]{style=thesis, singlelinecheck=off}
+\captionsetup[codex]{style=thesis,singlelinecheck=off}
+\captionsetup[lang]{style=thesis,singlelinecheck=off}
 
 % Uncomment for table captions on top. This is sometimes recommended by the
 % style guide, and even required for some publication types.
@@ -87,6 +90,8 @@
 
 \ifEN\floatname{listing}{Listing}
 \else\floatname{listing}{Výpis kódu}\fi
+\ifEN\floatname{codex}{Code sample}
+\else\floatname{codex}{Ukázka kódu}\fi
 \ifEN\floatname{lang}{Language}
 \else\floatname{lang}{Jazyk}\fi
 
@@ -127,6 +132,8 @@
 
 \crefname{lang}{language}{languages}
 \Crefname{lang}{Language}{Languages}
+\crefname{codex}{code sample}{code samples}
+\Crefname{codex}{Code sample}{Code samples}
 
 \providecommand{\vect}[1]{\overrightarrow{#1}}
 
