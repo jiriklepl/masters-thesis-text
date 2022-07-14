@@ -1,16 +1,43 @@
 
 \chapwithtoc{Conclusion}
 
-\section{Generic programming in \cmm{} with MPTC}
+\section*{Successfully solved assigned goals}
 
-We have already demonstrated \xxx{ref to chap 1} that multi-parameter typeclasses with functional dependencies are very powerful tool And that they are instrumental for fully implemented support of member fields of record data types.
+\begin{description}
+    \small
+    \item[Extend \cmm{} with parametric polymorphism with type classes] We achieved this goal successfully and we demonstrate parametric polymorphism with typeclasses in our results. We also extended the typeclasses to multi-parameter typeclasses, solving one of the issues identified in the previous work. We then extended this even further with user-specifiable functional dependencies on the multi-parameter typeclasses. This allows for more expressive code and stronger type constraints than regular typeclasses.
 
-Their implementation is showcased by structs and their fields, which are a part of our extension to the base \cmm{} language.
+    \item[Extend \cmm{} with record types]  We extended the language with \li{struct} types inspired by C, but allowing for multiple aliases to fields. The field accessors are defined with as singleton method of classes parametrized by corresponding structs and their respective fields and with functional dependencies \li{struct -> field}, which solves the field-accessor-related issue identified in the previous work.
 
-In the conclusion, you should summarize what was achieved by the thesis. In a few paragraphs, try to answer the following:
-\begin{itemize}
-\item Was the problem stated in the introduction solved? (Ideally include a list of successfully achieved goals.)
-\item What is the quality of the result? Is the problem solved for good and the mankind does not need to ever think about it again, or just partially improved upon? (Is the incompleteness caused by overwhelming problem complexity that would be out of thesis scope\todo{This is quite common.}, or any theoretical reasons, such as computational hardness?)
-\item Does the result have any practical applications that improve upon something realistic?
-\item Is there any good future development or research direction that could further improve the results of this thesis? (This is often summarized in a separate subsection called `Future work'.)
-\end{itemize}
+    \item[Extend \cmm{} with automatic resource management features] We extended the language with \li{new} specifier, which signifies that an object is to automatically undergo a predefined resource management action on each procedure exit. We also successfully experimented with introducing user-specified special cases to this mechanism and with various combinations with the type inference mechanism. We showed practical uses-cases for each of these further extensions.
+
+    \item[The solution should simplify implementation of low-level software] We showed that the solution can be used to reduce the written code and we also discussed the effects on performance and showed the generic code does not constitute any runtime type checks or indirections.
+
+    \item[The code written in the extended \cmm{} language will be compilable to LLVM] We showed many examples of the input code and the corresponding translation to LLVM. We also explained the steps necessary for such translation and discussed some optimizations that use the same primitives as the translation and which can be performed simultaneously with the semantic processing of the code for translation. The compiler also contains options \li{-f} and \li{-n} for running the compiler pipeline up to the flattening phase and just before the transcription to LLVM, respectively. These options help connect the input code to its LLVM representation.
+
+    \item[The available features will be evaluated by demonstrational programs] In our results, we include an example for every claim we make about the extended \cmm{} in results or here. Furthermore, there are even more examples, that can be automatically executed by a script, in the supplementary repository \cite{klepl2022compiler}.
+
+    \item[The available features will be compared with similarly-focused languages] We compared the features of the extended \cmm{} to C, the ``de facto'' standard system programming language and we discussed possible benefits of our approach to some common design patterns of C.
+
+    We also compared the features of the extended \cmm{} to other languages offering support for generics, namely Java and Python. And we showed that our solution, contrasting these, does not require any runtime type information.
+
+    We then compared the features of the extended \cmm{} to other languages offering automatic resource management, namely C++ and C\#. And discussed the differences in design decisions.
+
+    Less-significantly, we compared the type system introduced into \cmm{} to the one we introduced into C in the previous work and we concluded that it solves the unreached goals of that work.
+\end{description}
+
+\section*{Tackled and not fully solved assigned goals}
+
+\xxx{constants}
+
+\section*{The overall quality of the solution}
+
+\xxx{monster; not even dragon, it's a hydra; but somehow, it works}
+
+\section*{Practical uses of the solution}
+
+\xxx{the hell do i know}
+
+\section*{Future work}
+
+\xxx{existentials}
