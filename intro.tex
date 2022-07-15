@@ -1,16 +1,16 @@
 
 \chapwithtoc{Introduction}
 
-Introduction should answer the following questions, ideally in this order:
-\begin{enumerate}
-\item What is the nature of the problem the thesis is addressing?
-\item What is the common approach for solving that problem now?
-\item How this thesis approaches the problem?
-\item What are the results? Did something improve?
-\item What can the reader expect in the individual chapters of the thesis?
-\end{enumerate}
+We introduce polymorphism with typeclasses, record types and automatic resource management into \cmm{}, an low-level C-like imperative language. \cmm is a pseudo-assembler language, which is designed to serve as a backend compiler for various compiler frontends. It is more readable than assembly languages like LLVM, while it still offers many features that allow the user to specify many compiler directives. These directives can , for example, control data alignment, alias analysis or control flow analysis. \cmm stands out from other popular C-like languages in its minimalism and support for explicit tail calls, a feature that is missing even in the ``de-facto'' standard systems programming language, C.
 
-Expected length of the introduction is between 1--4 pages. Longer introductions may require sub-sectioning with appropriate headings --- use \texttt{\textbackslash{}section*} to avoid numbering (with section names like `Motivation' and `Related work'), but try to avoid lengthy discussion of anything specific. Any ``real science'' (definitions, theorems, methods, data) should go into other chapters.
-\todo{You may notice that this paragraph briefly shows different ``types'' of `quotes' in TeX, and the usage difference between a hyphen (-), en-dash (--) and em-dash (---).}
+We extend the \cmm{} language with polymorphism with typeclasses and with the other features to demonstrate possible benefits of combining a systems-focused imperative language with features that allow reduction of repeating human-written code, notably, by polymorphism and automatic resource management. This also has an effect of allowing the user to let the compiler fill in the correct types instead of having to explicitly state them at every declaration and dereference.
 
-It is very advisable to skim through a book about scientific English writing before starting the thesis. I can recommend `\citetitle{glasman2010science}' by \citet{glasman2010science}.
+Type-inferring the program in the extended \cmm{} constitutes finding the principal type \cite{damas1982principal} for each definition. And, for our use in systems programming, focussing on efficiency, subsequent monomorphization of the type-inferred program into a form, where each polymorphic definition is replaced with the monomorphic versions used in their corresponding call-sites (or generally, references).
+
+We continue previous work \cite{klepl2020type}, which used a variation of Algorithm W inspired by THIH \cite{jones1999typing}, for type inference in context of C. Algorithm W can be considered the standard approach to similar problems. The previous work identified problems witch such approach we address by using a constraint-solving based approach inspired by \cite{vytiniotis2011outsidein}. The constraint solver used in our approach differs from general-purpose constraint solvers in that it does not backtrack. This is significant because we require the system be without ambiguities and the compiler deterministic.
+
+A side-goal of our work are user-specified semantics of constants. This has lead to developing a subtyping type system, which we demonstrate can be efficiently solved, in contrast to many other, even semi-trivial systems \cite{tiuryn1992subtype}, \cite{frey1997subtype}. We discuss its limitations in practical use and propose further development for future work.
+
+We demonstrate the possible use-cases of the features introduced into \cmm{}. Some of these use-cases are demonstrated on simplified general examples and few are taken from use in practical environments, namely, from Linux kernel development.
+
+In thesis, we first discuss the switch from Algorithm W towards Deferred Solving, the constraint-solving base algorithm, then we introduce \cmm{} and the concrete extensions, along with the type system. After that, we describe the prototype compiler with all the significant parts of is pipeline. And with the compiler explained, we then discuss practical uses of it.

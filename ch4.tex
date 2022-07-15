@@ -131,6 +131,8 @@ c2 = _Madd_$f$Lb64...(a2, b2);
 
 The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases unusual assignment statement, which are a feature of \cmm{}.
 
+\subsection{\xxx{Simplified references to memory}}
+
 \subsection{Improvements over Damas-Milner Algorithm W}
 
 In our previous work \cite{klepl2020type}, we used an variation of Algorithm W based on THIH \cite{jones1999typing}. We concluded that such approach did not allow for multi-parameter typeclasses (\emph{MPTC}s) and general use of field accessors to \li{struct} fields, we required each field to have a unique name.
@@ -298,6 +300,8 @@ LR$procedure4:
     \end{minipage}
     \end{center}
 \end{listing}
+
+\subsubsection{\xxx{User-specified functional dependencies}}
 \subsubsection{Field accessors}
 
 Field accessors allow us to introduce further semantics into structs. This is useful in situations, where each object in a certain model has to contain some information that characterizes the given object. It can be the object's identifier, or age, and perhaps, it can have different types for different objects. For example, one part of the model can use 32-bit wide identifiers and another 64-bit wide. This is where the approach from the previous work did not suffice.

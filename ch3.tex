@@ -76,11 +76,11 @@ Flattening moves the nested bodies of each \li{if} statement to the same level a
 
 The resulting code structure can be directly transcribed into LLVM (see \cref{translation}). After flattening, each of \li{if} statements' nested bodies (notably, else body is always present) consist of just a single branch expression. This makes the \li{if} statements directly related to LLVM conditional branches. We perform the transformation similarly for \li{switch} statements. Although \cmm{} does not specify any other control flow statements with nested bodies, the flattening would be applicable even for \li{while} statements and other, more complex conditional execution.
 
-After transforming all function bodies into flat forms, the flattening phase also reorders the bodies of functions so that all declarations are at the top. This is not necessary, but it improves the readability of the generated code for programmers, and also simplifies the implementation of several other parts of the compiler pipeline. Note that, per \cite{ramsey2005c}, the order of declarations in procedure bodies is irrelevant and the names are visible throughout the whole procedure.
+After transforming all function bodies into flat forms, the flattening phase also reorders the bodies of functions so that all declarations are at the top. This is not necessary, but it improves the readability of the generated code for programmers, and also simplifies the implementation of several other parts of the compiler pipeline. Note that the order of declarations in procedure bodies is irrelevant and the names are visible throughout the whole procedure \cite{ramsey2005c}.
 
 \subsubsection{Filling in calls to the \li{drop} function}
 
-One more task for the flattening phase in the scope of this programming language is that it studies the presence of any resource-representing objects (stack allocated objects carrying \li{new} specification; see \cref{RAII}) and puts calls to the \li{drop} function accordingly to the function's exit points. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough, so there was no necessity for an extra phase. In the case of further similar extensions, we advise considering separation of such concerns into more phases. \xxx{add discussion somewhere?}
+One more task for the flattening phase in the scope of this programming language is that it studies the presence of any resource-representing objects (stack allocated objects carrying \li{new} specification; see \cref{RAII}) and puts calls to the \li{drop} function accordingly to the function's exit points. This is not a usual goal for the flattening phase, but it fitted its algorithm well enough, so there was no necessity for an extra phase. In the case of further similar extensions, we advise considering separation of such concerns into more phases.
 
 \subsection{Blockifying}
 \label{sec:blockify}
@@ -132,10 +132,12 @@ For the identified basic blocks, there is generated an accompanying control flow
 \end{defn}
 
 \begin{defn}[Blocks data]
-    Blocks data is a mapping from each pair \linebreak \li{(blockIdx, varName)} to a triple \li{(reads before write, writes, requests alive)}. The first two values of the triples are filled in by the blockifier (they are given syntactically) and the last one by the subsequent live-range analysis, which we will describe \xxx{where}.
+    Blocks data is a mapping from each pair \linebreak \li{(blockIdx, varName)} to a triple \li{(reads before write, writes, requests alive)}. The first two values of the triples are filled in by the blockifier (they are given syntactically) and the last one by the subsequent live-range analysis, which we will describe later in this section.
 
-    This mapping, together with control flow graph, is then used in translation (\cref{translation}) for rewriting the code into SSA form required by LLVM, more specifically, for generating so-called ``phi nodes'' \xxx{ref ref ref}.
+    This mapping, together with control flow graph, is then used in translation (\cref{translation}) for rewriting the code into SSA form required by LLVM, more specifically, for generating so-called ``phi nodes''.
 \end{defn}
+
+Phi nodes are operands introduced by the \emph{phi} instruction. This instruction takes arguments in \li{(operand, label)} pairs, where the first value of each pair is the operand stored in the phi node during execution in the case the execution was preceded by the basic block specified (using its label) in the second value of the given pair.
 
 \subsubsection{Blockifying algorithm}
 
@@ -178,7 +180,8 @@ Not shown in the algorithm, blockifier also identifies duplicate declarations (m
 
 \subsubsection{Live-range analysis}
 
-After the blockifier builds the whole control flow graph and blocks data, live-range analysis (originally described by \cite{Aho2006compilers} as live-variable analysis, we use simplified version described by \cite{bednarek2008compilers}) measures live-ranges of all variables, gives errors for uninitialized variables (variables requested alive in the entry block) and warnings for unreachable basic blocks (basic blocks not in the dfs closure generated from the entry block).
+
+After the blockifier builds the whole control flow graph and blocks data, live-range analysis (originally described by \citet{Aho2006compilers} as live-variable analysis, we use simplified version described by \citet{bednarek2008compilers}) measures live-ranges of all variables, gives errors for uninitialized variables (variables requested alive in the entry block) and warnings for unreachable basic blocks (basic blocks not in the dfs closure generated from the entry block).
 
 
 \section{Type System}
@@ -330,8 +333,8 @@ The reason behind such intricate design was the necessity to capture the semanti
     \otherformP{\mathbb{T} \leq_C \mathbb{T}}{SubConst (the right-hand operand has more general constness than the left-hand operand)}
     \otherformP{\mathbb{K} \leq_K \mathbb{T} \leq_K \mathbb{K}}{Kind bounds (the type has a data kind from the given range)}
     \otherformP{\mathbb{C} \leq_C \mathbb{T} \leq_C \mathbb{C}}{Const bounds (the type has a constness from the given range)}
-    \otherformP{C?\ \mathbb{T}^\star}{Class constraint (the given types have to satisfy the given constraint - requires an instantiation of a proof)}
-    \otherformP{C!\ \mathbb{T}^\star}{Class fact (the given types are known to satisfy the given constraint - provides the proof to $C?\ \mathbb{T}^\star$)}
+    \otherformP{C?\ \mathbb{T}^\ast}{Class constraint (the given types have to satisfy the given constraint - requires an instantiation of a proof)}
+    \otherformP{C!\ \mathbb{T}^\ast}{Class fact (the given types are known to satisfy the given constraint - provides the proof to $C?\ \mathbb{T}^\ast$)}
     \otherformP{\mathbb{T} \sqsupseteq_M \mathbb{T}}{Instantiation constraint (the left-hand operand is a monotype instance of the polytype right-hand operand)}
   \end{grammar}
 \end{lang}
@@ -487,10 +490,10 @@ State variable & Definition \\
   $fs \in \mathcal{V}_f \to \mathbb{W},\,\mcal V_f \subseteq \mcal V$ & \textbf{Schemes}\quad
   The schemes of the closed functions (regular functions, methods, their instances, field accessors) \\
 
-  $cs \in C_{cs} \to \mathbb{W}^\star,\,C_{cs} \in 2^{\mbb C}$ & \textbf{Class schemes}\quad
+  $cs \in C_{cs} \to \mathbb{W}^\ast,\,C_{cs} \in 2^{\mbb C}$ & \textbf{Class schemes}\quad
   The schemes of the known classes, each of the form $\forall \vect \alpha . F \To C?  \vect \alpha$, where $C?  \vect \alpha$ is a class constraint and $F \in {\mbb F}^\ast$ is a list of superclasses \\
 
-  $cf \in C_{cf} \to \mathbb{W}^\star,\,C_{cf} \subseteq C_{cs}$ & \textbf{Class facts}\quad
+  $cf \in C_{cf} \to \mathbb{W}^\ast,\,C_{cf} \subseteq C_{cs}$ & \textbf{Class facts}\quad
   The known proofs for each class constraint. Each proof has the form $\forall \vect \alpha . F \To C!\ \vect t$, where $C!\ \vect t$ is a class fact and $F \in {\mbb F}^\ast$ is the list of assumptions of the corresponding proof. \\
 
   $fd \in C_{fd} \to \mathbb{FD},\,C_{fd} \subseteq C_{cs}$ & \textbf{Functional dependencies}\quad
@@ -773,7 +776,7 @@ foreign "C" g(bits64 x) {
     \end{center}
 \end{listing}
 
-Note that if there was no limit on monomorphization (observe step \ref{steptwo}), it could potentially continue forever (we usually choose the limit so it is safely bigger than the monomorphization depth of majority of practical programs; this is precedented, for example, by \cite{haskell2010}):
+Note that if there was no limit on monomorphization (observe step \ref{steptwo}), it could potentially continue forever (we usually choose the limit so it is safely bigger than the monomorphization depth of majority of practical programs; this is precedented, for example, by Haskell \cite{haskell2010}):
 
 \begin{ex}[non-terminating monomorphization]
     Suppose the following program:
