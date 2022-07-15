@@ -127,11 +127,13 @@ c2 = _Madd_$f$Lb64...(a2, b2);
     \end{center}
 \end{listing}
 
+\subsection{\xxx{Simplified references to memory}}
+
+In \cmm{}, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter, or, from the result. Any inferred type of the result or the address parameter then propagates to the other one. We use this in \cref{lst:fieldAccessors}.
+
 \subsection{Translation into the LLVM assembly language}
 
 The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases unusual assignment statement, which are a feature of \cmm{}.
-
-\subsection{\xxx{Simplified references to memory}}
 
 \subsection{Improvements over Damas-Milner Algorithm W}
 
@@ -301,7 +303,74 @@ LR$procedure4:
     \end{center}
 \end{listing}
 
-\subsubsection{\xxx{User-specified functional dependencies}}
+\subsubsection{User-specified functional dependencies}
+
+Sometimes, a procedure can have returns of different types depending on the given arguments. In many instances, these types are closely related to the argument types and they can be derived from type algebra. For such cases, regular (multi-parameter) type classes are enough as demonstrated by other examples. But, sometimes the types of the returned values are not algebraicly dependent on the argument types. One example of this are the oftenly mentioned field accessors.
+
+The prototype compiler allows definition of functional dependencies for arbitrary user-defined typeclass. A simple use of this is demonstrated in \cref{lst:fundeps}. The compiler correcly type-infers the result types according to the given functional dependency.
+
+\begin{listing}
+    \caption{Example of functional dependencies}
+    \label{lst:fundeps}
+    \begin{center}
+    %\begin{minipage}[t]{0.5\linewidth}
+    \begin{minipage}{0.5\linewidth}
+    \begin{lstlisting}
+// defines a dependency: a -> b
+class Id a b | a -> b {
+  id (auto (a) x) -> auto (b);
+}
+
+instance Id bits32 bits32 {
+  id (auto u) {
+    return (u);
+  }
+}
+
+instance Id bits64 bits64 {
+  id (auto u) {
+    return (u);
+  }
+}
+
+...
+
+bits32 x;
+auto id_x;
+bits64 y;
+auto id_y;
+
+id_x = id(x);
+id_y = id(y);
+    \end{lstlisting}
+    %\begin{minipage}[t]{0.5\linewidth}
+    \end{minipage}%
+    \begin{minipage}{0.5\linewidth}
+    \begin{lstlisting}
+_Mid_$f$Lb32...(bits32 u) {
+  return (u);
+}
+_Mid_$f$Lb64...(bits64 u) {
+  return (u);
+}
+
+...
+
+bits32 x;
+// type-inferred return
+bits32 id_x;
+
+bits64 y;
+// type-inferred return
+bits64 id_y;
+
+id_x = _Mid_$f$Lb32...(x);
+id_y = _Mid_$f$Lb64...(y);
+    \end{lstlisting}
+    \end{minipage}
+    \end{center}
+\end{listing}
+
 \subsubsection{Field accessors}
 
 Field accessors allow us to introduce further semantics into structs. This is useful in situations, where each object in a certain model has to contain some information that characterizes the given object. It can be the object's identifier, or age, and perhaps, it can have different types for different objects. For example, one part of the model can use 32-bit wide identifiers and another 64-bit wide. This is where the approach from the previous work did not suffice.
@@ -326,12 +395,15 @@ struct B {
 
 update_id(auto s,
           auto x) {
+    // indirect write
+    // to 'id' field
     [s->id] = x;
     return ();
 }
 
 access_id(auto s) {
     auto x;
+    // indirect read
     x = [s->id];
     return (x);
 }
