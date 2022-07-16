@@ -168,7 +168,7 @@ In our design, in the prototype implementation just as well as in the proposed d
 
 This is due to the impossibility of solving such systems efficiently \xxx{ref intersection types}.
 
-\section{\xxx{Things discovered along the way}}
+\section{Useful functional constructs for compiler implementation}
 
 As this work is our first compiler with no significant dependencies on an established framework (with the exception of the code generation), our approach was at times, quite experimental. This lead to many design-related findings, some of which might be beneficial to any future work in similar areas.
 
@@ -231,7 +231,7 @@ mangle n@(_ `Annot` (_ :: a)) = go n
 
     Good examples of using this principle are the modules \li{CMM.Mangle} (source of the above example \xxx{ref}) and \li{CMM.FillElabs}.
 
-    \item The third finding is the benefit of defining the layers with no assumptions on the actual structure of the node annotations but requiring a type class which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.
+    \item The third finding is the benefit of defining the layers with no assumptions on the actual structure of the node annotations but requiring a typeclass which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.
 
     \item The fourth finding is the benefit of adding unnecessary debug information to the data passed around \xxx{the comment constraints in preprocessing; that is not recommended by any source}. And it is especially if this generation of debug information can be turned off by a build option. This principle extends to explicit invariant checks.
 

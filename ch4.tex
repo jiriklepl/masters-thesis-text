@@ -62,7 +62,7 @@ Notably, compared to some other solutions (for example: Java, Python), which pro
 This constitutes ``mangling'' the names of monomorphic copies of polymorphic procedures depending on their types. This is performed so each generated definition has a unique name and they can be correctly referenced from their corresponding call sites.
 
 \begin{listing}
-    \caption{Example of reduction of code (parts of names left out due to their length)}
+    \caption{Example of reduction of code (some names truncated for brevity)}
     \label{lst:reduction}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -129,13 +129,13 @@ c2 = _Madd_$f$Lb64...(a2, b2);
 
 \subsection{\xxx{Simplified references to memory}}
 
-In \cmm, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter, or, from the result. Any inferred type of the result or the address parameter then propagates to the other one. We use this in \cref{lst:fieldAccessors}.
+In \cmm, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter, or, from the result. Any inferred type of the result or the address parameter then propagates to the other one. We show this in \cref{lst:fieldAccessors}.
 
 \subsection{Translation into the LLVM assembly language}
 
 The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases unusual assignment statement, which are a feature of \cmm.
 
-\subsection{Improvements over Damas-Milner Algorithm W}
+\subsection{Improvements over the Algorithm W}
 
 In our previous work \cite{klepl2020type}, we used an variation of Algorithm W based on THIH \cite{jones1999typing}. We concluded that such approach did not allow for multi-parameter typeclasses (\emph{MPTC}s) and general use of field accessors to \li{struct} fields, we required each field to have a unique name.
 
@@ -202,12 +202,13 @@ F$else_1:
     \end{minipage}
     \end{center}
 \end{listing}
-\subsubsection{Multi-parameter type classes}
 
-Multi-parameter type classes allow us to overload procedures with more than one type argument, this is useful for situations when the procedure is to be implemented differently depending on the parameter types. Perhaps, the procedure can be implemented more efficiently, when the input types are the same. The example in \cref{lst:mptcs} shows exactly that. If both of the types are \li{bits32}, the instance adds the inputs together and returns the result. If the second argument is a pointer, it performs some more complicated operation on the first argument, represented by multiplication.
+\subsubsection{Multi-parameter typeclasses}
+
+Multi-parameter typeclasses allow us to overload procedures with more than one type argument, this is useful for situations when the procedure is to be implemented differently depending on the parameter types. Perhaps, the procedure can be implemented more efficiently, when the input types are the same. The example in \cref{lst:mptcs} shows exactly that. If both of the types are \li{bits32}, the instance adds the inputs together and returns the result. If the second argument is a pointer, it performs some more complicated operation on the first argument, represented by multiplication.
 \begin{listing}
     \small
-    \caption{Example of MPTCs (parts of names left out due to their length)}
+    \caption{Example of MPTC usage in the extended \cmm (some names truncated for brevity)}
     \label{lst:mptcs}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -260,7 +261,6 @@ LR$procedure2:
   ret <{i32}> %1
 }
 
-
 define external ccc  <{i32}>
   @_Mm_$f$Lb32b32...(
     i32  %u_0, i32  %w_0) {
@@ -270,7 +270,6 @@ LR$procedure1:
         undef, i32 %0, 0
   ret <{i32}> %1
 }
-
 
 define external ccc  <{i32}>
   @f(i32  %x_0, i64*  %y_0) {
@@ -284,7 +283,6 @@ LR$procedure3:
         undef, i32 %1, 0
   ret <{i32}> %2
 }
-
 
 define external ccc  <{i32}>
   @g(i32  %x_0) {
@@ -305,12 +303,12 @@ LR$procedure4:
 
 \subsubsection{User-specified functional dependencies}
 
-Sometimes, a procedure can have returns of different types depending on the given arguments. In many instances, these types are closely related to the argument types and they can be derived from type algebra. For such cases, regular (multi-parameter) type classes are enough as demonstrated by other examples. But, sometimes the types of the returned values are not algebraicly dependent on the argument types. One example of this are the oftenly mentioned field accessors.
+Sometimes, a procedure can have returns of different types depending on the given arguments. In many instances, these types are closely related to the argument types and they can be derived from type algebra. For such cases, regular (multi-parameter) typeclasses are enough as demonstrated by other examples. But, sometimes the types of the returned values are not algebraicly dependent on the argument types. One example of this are the oftenly mentioned field accessors.
 
 The prototype compiler allows definition of functional dependencies for arbitrary user-defined typeclass. A simple use of this is demonstrated in \cref{lst:fundeps}. The compiler correcly type-infers the result types according to the given functional dependency.
 
 \begin{listing}
-    \caption{Example of functional dependencies}
+    \caption{Example use of functional dependencies (some names truncated for brevity)}
     \label{lst:fundeps}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -378,13 +376,12 @@ Field accessors allow us to introduce further semantics into structs. This is us
 With the prototype implementation based on Deferred Solving with MPTCs and functional dependencies, type-inferring general field accessors is possible as shown in \cref{lst:fieldAccessors}. The compiler type-infers all relevant types, only \li{struct} definitions are typed explicitly.
 
 \begin{listing}
-    \small
-    \caption{Example of field accessors (parts of names left out due to their length)}
+    \caption{Example use of field accessors (some names truncated for brevity)}
     \label{lst:fieldAccessors}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
-    \begin{minipage}{0.35\linewidth}
-    \begin{lstlisting}
+    \begin{minipage}{0.45\linewidth}
+    \begin{lstlisting}[basicstyle=\footnotesize\ttfamily]
 struct A {
     id: bits32;
 }
@@ -426,8 +423,8 @@ y = access_id(b);
     \end{lstlisting}
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
-    \begin{minipage}{0.65\linewidth}
-    \begin{lstlisting}[language=LLVM]
+    \begin{minipage}{0.55\linewidth}
+    \begin{lstlisting}[language=LLVM,basicstyle=\scriptsize\ttfamily]
 define external ccc  <{}>
   @_Mupdate...A({i32}*  %s_0,
                 i32  %x_0) {
@@ -479,7 +476,7 @@ If an object carries the \li{new} specialization, the compiler calls \li{drop} p
 
 \begin{listing}
     \small
-    \caption{Example of automatic resource management (parts of names left out due to their length)}
+    \caption{Example use of automatic resource management (some names truncated for brevity)}
     \label{lst:resource}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -526,8 +523,8 @@ f(bits32 a) {
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
     \begin{lstlisting}[language=LLVM]
-define external ccc
-<{}> @_Mdrop...X({i32}*  %u_0) {
+define external ccc <{}>
+@_Mdrop...X({i32}*  %u_0) {
 LR$procedure1:
   %0 = getelementptr {i32}, {i32}* %u_0,
                       i32 0, i32 0
@@ -536,15 +533,15 @@ LR$procedure1:
 }
 
 
-define external ccc
-<{}> @_Mdrop...Y({i64}*  %w_0) {
+define external ccc <{}>
+@_Mdrop...Y({i64}*  %w_0) {
 LR$procedure2:
   ret <{}> <{  }>
 }
 
 
-define external ccc
-<{}> @f(i32  %a_0) {
+define external ccc <{}>
+@f(i32  %a_0) {
 LR$procedure3:
   %0 = alloca {i32}
   %1 = alloca {i64}
@@ -571,7 +568,7 @@ It may happen the resource management action depends on a type parameter. Perhap
 
 \begin{listing}
     \small
-    \caption{Example of type-inferred resource management (parts of names left out due to their length)}
+    \caption{Example use of type-inferred resource management (some names truncated for brevity)}
     \label{lst:polyResource}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -611,24 +608,24 @@ f(ptr(X) s,
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
     \begin{lstlisting}[language=LLVM]
-define external ccc
-<{}> @_Mdrop...(i32*  %u_0) {
+define external ccc <{}>
+@_Mdrop...(i32*  %u_0) {
 LR$procedure0:
   ; ...
   ret <{}> <{  }>
 }
 
 
-define external ccc
-<{}> @_Mdrop...(i64*  %u_0) {
+define external ccc <{}>
+@_Mdrop...(i64*  %u_0) {
 LR$procedure0:
   ; ...
   ret <{}> <{  }>
 }
 
 
-define external ccc
-<{}> @f({i32}*  %s_0, {i64}*  %t_0) {
+define external ccc <{}>
+@f({i32}*  %s_0, {i64}*  %t_0) {
 LR$procedure1:
   %0 = alloca i32
   %1 = alloca i64
@@ -651,14 +648,14 @@ LR$procedure1:
     \end{center}
 \end{listing}
 
-\section{Automatic resource management with special cases}
+\subsection{Automatic resource management with \texttt{dropped} statements}
 
 Sometimes, when we use automatic resource management, there exists a special case, in which we do not want to perform the resource management action. This may apply to cases where the resource is a file handle of a file we failed to open. In the prototype compiler, we can use \li{dropped} statement with a named reference to a resource object to specify that the corresponding resource management action is not to be performed automatically (but may be still manually). We demonstrate its use in \cref{lst:manual}.
 
 
 \begin{listing}
     \small
-    \caption{Example of automatic resource management with special cases (parts of names left out due to their length)}
+    \caption{Example use of automatic resource management with \li{dropped} statements (some names truncated for brevity)}
     \label{lst:manual}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -703,15 +700,15 @@ f(bits32 a) {
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
     \begin{lstlisting}[language=LLVM]
-define external ccc
-<{}> @_Mdrop...(i32*  %a_0) {
+define external ccc <{}>
+@_Mdrop...(i32*  %a_0) {
 LR$procedure0:
   ret <{}> <{  }>
 }
 
 
-define external ccc
-<{}> @f(i32  %a_0) {
+define external ccc <{}>
+@f(i32  %a_0) {
 LR$procedure1:
   %0 = alloca i32
   %1 = icmp eq i32 %a_0, 0
@@ -749,15 +746,13 @@ F$else_3:
 
 \section{Applicability to other languages}
 
-
-
 \subsection{Subtyping in systems programming}
 
-The subset of subtyping modelled by our proposed type system can be used to check and infer various secondary properties of objects. Throughout the thesis, we demonstrated its use on constnesses and data kinds of the \cmm language. Connecting the analysis of these secondary properties to the type system allows for tying the constraints on these properties only to a particular typing (as defined in \cref{sec:typesystem}), for example, by defining each type class instance with a different set of constraints.
+The subset of subtyping modelled by our proposed type system can be used to check and infer various secondary properties of objects. Throughout the thesis, we demonstrated its use on constnesses and data kinds of the \cmm language. Connecting the analysis of these secondary properties to the type system allows for tying the constraints on these properties only to a particular typing (as defined in \cref{sec:typesystem}), for example, by defining each typeclass instance with a different set of constraints.
 
 \subsection{C subtyping}
 
-In the previous work (see \cite{klepl2020type}), we identified weakness of the then-used type system with regards to the \li{const} qualifier from the C language (see \cite{cstandard2018}). Do its semantics fit the type system we introduced in \cref{sec:typesystem}?
+In the previous work \cite{klepl2020type}, we identified a weakness of the then-used type system with regards to the \li{const} qualifier from the C language \cite{cstandard2018}. Let us examine whether its semantics fit the type system we introduced in \cref{sec:typesystem}.
 
 The semantics of the C \li{const} qualifier (as specified by \cite{cstandard2018}), quite differ from the constness introduced in \cref{const_kind_def}, despite the similarity of names. For our purposes, we simplify the semantics into two cases:
 

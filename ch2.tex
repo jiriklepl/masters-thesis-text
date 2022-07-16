@@ -82,11 +82,11 @@ We extended the language with new syntactic constructs:
 
 And semantically, we extended the language with more intricate type system supporting subtyping, automatic resource management features that define automatic procedure calls on procedure exits, and class instance (method instance) resolution.
 
-\subsection{Type classes and instances}
+\subsection{Typeclasses and their instances}
 
 \li{class}es and their \li{instance}s are implemented in a similar fashion to the previous work \cite{klepl2020type}, and unlike in the previous work, we define functional dependencies.
 
-\li{class} definitions define the user-defined type classes with some superclasses and functional dependencies and then contain list of procedure declarations defining the methods of the type class. For superclasses and functional dependencies, we borrow Haskell syntax.
+\li{class} definitions define the user-defined typeclasses with some superclasses and functional dependencies and then contain list of procedure declarations defining the methods of the typeclass. For superclasses and functional dependencies, we borrow Haskell syntax.
 
 Superclasses are requirements that specify that each instance of the class has to correspond to some instances of the superclass; a good example of this would be \li{Eq a} in \li{class Eq a => Ord a} in Haskell, which specifies that all comparable types have to also be equatable.
 
@@ -102,7 +102,7 @@ Superclasses are requirements that specify that each instance of the class has t
     The method \li{m} takes an argument of type \li{a} and returns a result of the same type. All instances of this method then have to follow this type scheme.
 \end{ex}
 
-\li{instance} definitions then define the instances of their corresponding type classes under some assumptions. For each instance, its assumptions have to satisfy all superclasses of the corresponding class (often, they are the same).
+\li{instance} definitions then define the instances of their corresponding typeclasses under some assumptions. For each instance, its assumptions have to satisfy all superclasses of the corresponding class (often, they are the same).
 
 \begin{ex}[Instance]
     The following code snippet then shows a possible instance definition.
@@ -188,7 +188,7 @@ This typing of labels allowed us to make quite subtle, but very useful syntactic
 \subsection{Type system extensions for \cmm subtypes}
 \label{sec:typesystem}
 
-We extended the language with the HM-like type system with multiple-parameter type classes and functional dependencies (MPTCs).
+We extended the language with the HM-like type system with multiple-parameter typeclasses and functional dependencies (MPTCs).
 
 Inspired by the optional data-kind specifications supported by the \cmm language, alongside with requirements on various values being computed in compile-time or link-time, we decided to model those in the inference as well. This was very experimental and it provided many insights into intricacies of type systems.
 
@@ -303,7 +303,7 @@ This example demonstrated that the minimal subtypes within a space of fixed valu
 \subsection{Inference of subtypes}
 \label{sec:inferSub}
 
-We are using the term ``fixed values'' in \cref{subtyping-idea}, but we have not yet introduced its meaning. \emph{Fixed values} are some values that are not to be optimized by the subtyping inference mechanism. In the most simple version of this system, if we do not consider type classes (only the HM type system with type constructors), the fixed values consist of subtype dimension constants (in \cref{subtyping-idea}, that would be $K$) and the subtype dimensions of skolem constants (in \cref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
+We are using the term ``fixed values'' in \cref{subtyping-idea}, but we have not yet introduced its meaning. \emph{Fixed values} are some values that are not to be optimized by the subtyping inference mechanism. In the most simple version of this system, if we do not consider typeclasses (only the HM type system with type constructors), the fixed values consist of subtype dimension constants (in \cref{subtyping-idea}, that would be $K$) and the subtype dimensions of skolem constants (in \cref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
 
 We call \emph{(closest) fixed lower bounds} of a subtype variable $v$ in a subtype dimension $s$ such fixed values $c$ in the dimension $s$, that $c \leq_s v$ and there is no other $c'$, such that $c \leq_s c' \leq_s v$ would be in the closure of the known inequalities. Note that if $c \leq_s c' \land c' \leq_s c$, then $c = c'$.
 
@@ -343,9 +343,9 @@ The \emph{inside subtype information} of the given subprogram consists of a set 
 
 \subsubsection{Inference of subtypes in the presence of typeclasses}
 
-If we extend this mechanism to the type system with typeclasses, we have to regard the subtype dimensions of variables constrained in a type class constraints.
+If we extend this mechanism to the type system with typeclasses, we have to regard the subtype dimensions of variables constrained in a typeclass constraints.
 
-Each subtype variable of a skolem constant, subtype dimension constant, or a subtype variable of a type variable appearing in a type class constraint is a fixed value.
+Each subtype variable of a skolem constant, subtype dimension constant, or a subtype variable of a type variable appearing in a typeclass constraint is a fixed value.
 
 The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context, see \cref{constness_level}. This applies to their subtype dimensions as well. And then, in a context with a certain context level, we consider any subtype variable with a lower context level be a fixed value as well. We did not strive for representing existentials, as there has to be runtime type information included with them to interpret them (see \cref{sys_defer}), so we will not consider such system throughout this thesis. Yet, we specify it for any such extensions attempted by some future work.
 

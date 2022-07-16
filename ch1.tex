@@ -48,7 +48,7 @@ We demonstrated that it is indeed possible to represent the source code in the l
 \subsection{Limitations of the syntax-driven aspect of the Algorithm~W}
 \label{ex_structs}
 
-In the previous work, for our purposes of extending C to use a HM-style type system with type classes, we determined that the Algorithm W, as described in THIH, is too weak. In the following subsections we explore a possible extension of the Algorithm W and discuss its practicality and how it gives a motivation for the Deferred Solving algorithm introduced in \cref{defer_solve}.
+In the previous work, for our purposes of extending C to use a HM-style type system with typeclasses, we determined that the Algorithm W, as described in THIH, is too weak. In the following subsections we explore a possible extension of the Algorithm W and discuss its practicality and how it gives a motivation for the Deferred Solving algorithm introduced in \cref{defer_solve}.
 
 For the needs of type inference, we, in the context of Algorithm W, represent \emph{field accessors} as functions from a record structure to the given field (or, equivalently, with a pointer constructor applied to them), each such functions named after the given field name.
 
@@ -80,7 +80,7 @@ instance HasX A int {.x : A -> int}
 instance HasX B float {.x : B -> float}
 \end{lstlisting}
 
-In the HM type system with type classes, this constraint cannot be expressed at all as the class constraints can be defined solely in the terms of taking a single type variable.
+In the HM type system with typeclasses, this constraint cannot be expressed at all as the class constraints can be defined solely in the terms of taking a single type variable.
 
 In he THIH variation \cite{jones1999typing}, this can be indeed expressed (it is not reflected in the paper, but the supplementary implementation allows arbitrary number of arguments), and the algorithm is strong enough to type-check such construction for concrete types, but it lacks the ability to infer the obvious types of the previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b} and the expressions are defined by them.
 
@@ -117,7 +117,7 @@ We will describe a two-phase algorithm, which does not require the described dif
 
 The idea of using Deferred solving (proposed by \citet{vytiniotis2011outsidein}) is first ``elaborating'' the source program with special variables (elaborations), then running the inference on constraints generated from a semantic analysis of the source program, over the elaboration variables. This allows the constraint solver be independent on the syntactic specifics of the source program as the type semantics of the program are all captured in a simpler \emph{constraint language}. After the inference successfully finishes, we insert the inferred information back into the source program in place of the elaborations.
 
-Elaborations consist of type variables, and then \emph{dictionaries} and \emph{coercions} (defined by \citet{vytiniotis2011outsidein}) that help the subsequent monomorphization phase decide the concrete instances that have to be used at each referring site. In the Deferred Solving algorithm they serve as proofs for each constraint. \emph{Dictionaries} represent type class instances that prove class constraints. And \emph{coercions} prove type identities. We call dictionaries and coercions, collectively, \emph{witnesses}.
+Elaborations consist of type variables, and then \emph{dictionaries} and \emph{coercions} (defined by \citet{vytiniotis2011outsidein}) that help the subsequent monomorphization phase decide the concrete instances that have to be used at each referring site. In the Deferred Solving algorithm they serve as proofs for each constraint. \emph{Dictionaries} represent typeclass instances that prove class constraints. And \emph{coercions} prove type identities. We call dictionaries and coercions, collectively, \emph{witnesses}.
 
 Deferred Solving, or Deferred Inference, is very similar to the idea of modified Algorithm W we presented earlier, but it does not require each of the objects appearing in the type-inferred subprogram be directly syntactically mapped to a certain type. It just requires a set of constraints that capture the semantics of the program. These constraints, in the basic version, consist of type equalities between types that have to be equal and class constraints put on certain types that require a proof of the given tuple of types belonging to the given class (these proofs represent instances defined in the type-inferred language).
 
@@ -370,7 +370,7 @@ The rules \ref{triv_assump}, \ref{free_free} and \ref{lookup_t} together ensure 
 
 The rule \ref{lookup_t} also ensures the proof schemes can be looked up efficiently, as the lookup can be implemented via a lookup table indexed by the $T$ type constructor.
 
-Finally, the rules \ref{triv_assump} and \ref{lookup_t} can also be intuitively generalized for use with multi-parameter type classes.
+Finally, the rules \ref{triv_assump} and \ref{lookup_t} can also be intuitively generalized for use with multi-parameter typeclasses.
 
 \subsection{Improvements over the Algorithm W}
 

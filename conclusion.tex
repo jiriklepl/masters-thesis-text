@@ -5,7 +5,7 @@
 
 \begin{description}
     \small
-    \item[Extend \cmm with parametric polymorphism with type classes] We achieved this goal successfully and we demonstrate parametric polymorphism with typeclasses in our results. We also extended the typeclasses to multi-parameter typeclasses, solving one of the issues identified in the previous work. We then extended this even further with user-specifiable functional dependencies on the multi-parameter typeclasses. This allows for more expressive code and stronger type constraints than regular typeclasses.
+    \item[Extend \cmm with parametric polymorphism with typeclasses] We achieved this goal successfully and we demonstrate parametric polymorphism with typeclasses in our results. We also extended the typeclasses to multi-parameter typeclasses, solving one of the issues identified in the previous work. We then extended this even further with user-specifiable functional dependencies on the multi-parameter typeclasses. This allows for more expressive code and stronger type constraints than regular typeclasses.
 
     \item[Extend \cmm with record types]  We extended the language with \li{struct} types inspired by C, but allowing for multiple aliases to fields. The field accessors are defined with as singleton method of classes parametrized by corresponding structs and their respective fields and with functional dependencies \li{struct -> field}, which solves the field-accessor-related issue identified in the previous work.
 
@@ -41,7 +41,7 @@ In the prototype compiler, we focused on the assignment goals and on the goals t
 
 \section*{Practical uses of the solution}
 
-We discussed practical use-cases of our solution in systems programming, specifically, in Linux kernel programming. We also discussed various general use-cases for polymorphism with type classes for reducing human-written by introducing polymorphic definitions and for automatic resource management. We supported these discussions by examples compiled using the prototype compiler and compared them to similar solutions of popular languages.
+We discussed practical use-cases of our solution in systems programming, specifically, in Linux kernel programming. We also discussed various general use-cases for polymorphism with typeclasses for reducing human-written by introducing polymorphic definitions and for automatic resource management. We supported these discussions by examples compiled using the prototype compiler and compared them to similar solutions of popular languages.
 
 \section*{Future work}
 
@@ -50,7 +50,7 @@ Here we include the possible extensions to our solution that were outside of tim
 \begin{description}
     \item[Existential types] We based our solution for type inference on deferred solving algorithm capable of solving existential types \cite{vytiniotis2011outsidein}. One natural course of future development could be trying to combine those with our extensions to the language. Existential types are demonstrated in imperative languages by \citet{grossman2002existential}.
 
-    \item[Stronger subtyping system] We discussed some insufficiencies of the type system we developed. We leave for a future work a revised approach, which constitutes two constraint generation phases for each subprogram (strongly connected component of definitions and declarations), the first generating constraints for typings and the other, after all typings of the component are inferred, constraints for the subtypes, which is then followed by minimization of the inequality-constrained variables. The revised approach can generate stronger subtype constraints. We provide the necessary primitives for this revised approach.
+    \item[Stronger subtyping system] We discussed some insufficiencies of the type system we developed. We leave for a future work a revised approach, which constitutes two constraint generation phases for each subprogram (strongly connected component of definitions and declarations), the first generating constraints for typings and the other, after all typings of the component are inferred, constraints for the subtypes, which is then followed by minimization of the inequality-constrained variables. The revised approach can generate stronger subtype constraints.
 
     This goal would constitute further discussions that would compare subtypes, type-inferred secondary properties of types, to more conventional approaches of semantic analysis. As well as sufficient discussions for practical use-cases for subtypes.
 \end{description}

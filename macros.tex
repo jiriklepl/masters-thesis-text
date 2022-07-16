@@ -22,6 +22,7 @@
 \newtheorem{defn}{Definition}
 \newtheorem{observe}{Corollary}
 \newtheorem{remark}{Remark} %TODO odstranit
+\newtheorem{conv}{Convention}
 \newtheorem{ex}{Example}
 \theoremstyle{remark}
 \newtheorem*{cor}{Corollary}
@@ -33,6 +34,7 @@
 \newtheorem{defn}{Definice}
 \newtheorem{observe}{Pozorování}
 \newtheorem{remark}{Poznámka}
+\newtheorem{conv}{Konvence}
 \newtheorem{ex}{Ukázka}
 \theoremstyle{remark}
 \newtheorem*{cor}{Důsledek}
@@ -108,7 +110,14 @@
 % Czech versions of the used cleveref references (It's not as convenient as in
 % English because of declension, cleveref is limited to sg/pl nominative. Use
 % plain \ref to dodge that.)
-\ifEN\relax\else
+\ifEN
+%\crefname{defn}{definition}{definitions}
+\Crefname{defn}{Definition}{Definitions}
+%\crefname{lang}{language}{languages}
+\Crefname{lang}{Language}{Languages}
+%\crefname{codex}{code sample}{code samples}
+\Crefname{codex}{Code sample}{Code samples}
+\else
 \crefname{chapter}{kapitola}{kapitoly}
 \Crefname{chapter}{Kapitola}{Kapitoly}
 \crefname{section}{sekce}{sekce}
@@ -130,10 +139,6 @@
 \newcommand{\crefrangeconjunction}{ a~}
 \fi
 
-\crefname{lang}{language}{languages}
-\Crefname{lang}{Language}{Languages}
-\crefname{codex}{code sample}{code samples}
-\Crefname{codex}{Code sample}{Code samples}
 
 \providecommand{\vect}[1]{\overrightarrow{#1}}
 

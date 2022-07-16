@@ -202,7 +202,7 @@ Consider \cref{congruence}, which describes why subtypes do not commute with typ
 
 Notice that if we have two function types $t \equiv \alpha \to \beta$ and $t' \equiv \alpha' \to \beta'$ and $t \leq t'$, then the only derivable constraints on $\alpha, \alpha', \beta, \beta'$ are $\alpha \sim_T \alpha'$ and $\beta \sim_T \beta'$. This means that if we assign a reference to a function to a variable, the subtype constraints on its arguments are ``forgotten''. In the prototype implementation, this does not pose any problems as we consider only direct references to functions in call statements. But, In general case, it should be addressed as we describe here:
 
-In \cref{def:stDim}, we introduced that subtype dimension are non-affecting type class resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing appropriate constraints after deciding the typings according to the desired semantics (for example, $\alpha \leq \alpha' \land \beta' \leq \beta$).
+In \cref{def:stDim}, we introduced that subtype dimension are non-affecting typeclass resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing appropriate constraints after deciding the typings according to the desired semantics (for example, $\alpha \leq \alpha' \land \beta' \leq \beta$).
 
 \section{Type Inference}
 
