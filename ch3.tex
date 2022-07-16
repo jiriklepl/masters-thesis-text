@@ -257,7 +257,7 @@ The reason behind such intricate design was the necessity to capture the semanti
 
 \begin{defn}[Primitive patterns]
     \label{def:primpat}
-    Primitive patterns $\mathbb{P}$ follow the same grammar as typings (see the \cref{typing_gram}) but without the very first grammar case ($\mathbb{V}$) and with type variables ($\mbb{V}$) appearing in the grammar cases in place of typings ($\mbb{T}$) wherever applicable.
+    Primitive patterns $\mathbb{P}$ follow the same grammar as typings (see \cref{typing_gram}) but without the very first grammar case ($\mathbb{V}$) and with type variables ($\mbb{V}$) appearing in the grammar cases in place of typings ($\mbb{T}$) wherever applicable.
 
     Primitive patterns represent the definition of types broken up into single applications of type constructors.
 \end{defn}
@@ -648,7 +648,7 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
         \State $\mcal F_p \gets \emptyset$ \Comment {deferred constraints}
         \While {$\mcal{F} \neq \emptyset$}
             \State take an arbitrary constraint $f$ from $\mcal F \setminus \mcal F_p$
-            \State perform the preparation step, see the \cref{presteps}
+            \State perform the preparation step, see \cref{presteps}
             \State $\mcal F \gets \mcal F \setminus \{f\}$ \Comment {$f$ is speculatively removed}
             \If {$f \equiv t_1 \sim t_2$}
                 \State unify $t_1$ and $t_2$ by the unification \ref{tUni}
@@ -684,7 +684,7 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
                     \State $ \mcal F \gets \mcal F \cup \{f\}; \mcal F_p \gets \mcal F_p \cup \{f\}$ \Comment {$f$ is deferred}
                 \EndIf
             \EndIf
-            \State perform a repair step, see the \cref{middlesteps}
+            \State perform a repair step, see \cref{middlesteps}
         \EndWhile
         \State \Return $\mcal F_p$
     \end{algorithmic}
@@ -697,11 +697,11 @@ Because of not supporting nested constraints (see the introduction of this secti
 The type inference pipeline then consists of the following steps:
 
 \begin{enumerate}
-    \item We repeatedly perform the \cref{main_loop} until the resulting list $\mcal F_p$ of deferred constraints covers the whole $\mcal{F}$.
+    \item We repeatedly perform \cref{main_loop} until the resulting list $\mcal F_p$ of deferred constraints covers the whole $\mcal{F}$.
 
     \item If there are any instantiation constraints present in $\mcal F$, we know we have an unclosed function. We collect the instantiation constraints and then we construct an ``instantiation'` graph with edges of the form ``(instantiated, instantiated by)''. We then analyze the topological ordering of this graph, identifying the strongly connected components and relations between them.
 
-    \item We then take the functions in the component that do not have any connected edges with the ``instantiated by'' end outside of the component. And we rewrite the instantiation constraints in these functions referring the other functions into equality constraints. We then continue with the \cref{main_loop}. \label{do_inst_graph}
+    \item We then take the functions in the component that do not have any connected edges with the ``instantiated by'' end outside of the component. And we rewrite the instantiation constraints in these functions referring the other functions into equality constraints. We then continue with \cref{main_loop}. \label{do_inst_graph}
 
     \item We then collect all the type variables free in the currently solved component, we minimize the subtypes according to \cref{sec:inferSub}. We translate the resulting subtype variable definitions by suprema back into constraints, and we collect the unsolved constraints on the free variables of the component, we also include, for each free type variable, the constraints derived from the type descriptions (records in $\mcal{D}$) and subtype bounds (edges from/to the type variable in $\mcal K, \mcal C$), kind-bound (from $\mcal b_K$) and const-bound (from $\mcal b_C$) constraints. We close the component, generating a scheme for each function of this component, quantifying the free variables and assuming all the collected constraints. \label{closing}
 

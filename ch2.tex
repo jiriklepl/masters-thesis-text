@@ -20,7 +20,7 @@ The register type by itself does not specify whether the register is an unsigned
 
 One of the main motivations for choosing this language was that it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers, offering many features, which can be tied to type inference. It is due to the above reasons, it is usually categorized as pseudo-assembler.
 
-The algorithm our experimental approach is based on, so called ``Deferred Inference'' or the ``French Approach'' (described in the \cref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
+The algorithm our experimental approach is based on, so called ``Deferred Inference'' or the ``French Approach'' (described in \cref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
 
 \section{Syntax and properties of \cmm{}}
 
@@ -129,13 +129,13 @@ Structures use the syntax derived from regular data notation for maximum consist
     The last field showcases that the list can be used in both, any function that expects it to carry a value, and in any function that expects it to store some data.
 \end{ex}
 
-They allow us to pack more, related, data together (in the \cref{list_ex}, some item and a pointer to the next item) and thus abstract away the specific data layout from the implementations. This then allows us to write functions passing the data or references to it once and then not reimplement them every time the specific data layout changes.
+They allow us to pack more, related, data together (in \cref{list_ex}, some item and a pointer to the next item) and thus abstract away the specific data layout from the implementations. This then allows us to write functions passing the data or references to it once and then not reimplement them every time the specific data layout changes.
 
 The reason \cmm{} itself does not require structs is that it does not support polymorphism nor it enforces type safety. Instead of passing a pointer to a record and then, in the consumer, using a set of field accessors, it can pass an untyped pointer and then use a set of integer constants representing the offsets of the data.
 
 Since we infer the types and multiple record types can have the fields implemented differently (in the case of our modification, the field might even overlap), the above approach is no longer desirable. It is also very error-prone as the offsets may change with every layout adjustment.
 
-And we also added \li{new} specifiers for \li{struct} objects to implement our automatic resource management goal. For these automatic resource management features see the \cref{RAII}
+And we also added \li{new} specifiers for \li{struct} objects to implement our automatic resource management goal. For these automatic resource management features, see \cref{RAII}.
 
 \subsection{Generic dereference and typed labels}
 
@@ -346,11 +346,11 @@ We are using the term ``fixed values'' in \cref{subtyping-idea}, but we have not
 \begin{defn}[Inside subtype information]
     The inside subtype information consists of a set of statements in the form $x = \sup X$ and the bindings to their respective types. It is not a part of the type signature of the function.
 
-    Validity of this is described by the \cref{suprema_subtyping}.
+    Validity of this is described by \cref{suprema_subtyping}.
 \end{defn}
 
 \begin{remark}[Typechecker for user-code that contains blackbox function does not need the inside subtype information]
-    Another direct consequence of the \cref{suprema_subtyping}.
+    Another direct consequence of \cref{suprema_subtyping}.
 \end{remark}
 
 If we extend this mechanism to the type system with typeclasses, we have to regard the subtype dimensions of variables constrained in a type class constraints.
@@ -360,7 +360,7 @@ If we extend this mechanism to the type system with typeclasses, we have to rega
 \end{defn}
 
 
-The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context, see the \cref{constness_level}. This applies to their subtype dimensions as well
+The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context, see \cref{constness_level}. This applies to their subtype dimensions as well
 
 \begin{defn}[fixed value in a subtyping system with type classes and context levels]
     Each subtype variable of a skolem constant, subtype dimension constant, a subtype variable of a type variable appearing in a type class constraint, or a subtype variable with a lower context level than that of the solver (or equivalently, scope) is a fixed value.
