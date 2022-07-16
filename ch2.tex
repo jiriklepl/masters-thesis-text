@@ -1,32 +1,32 @@
-\chapter{\cmm{} extension with type inference and automatic resource management}
+\chapter{\cmm extension with type inference and automatic resource management}
 
 \label{chap2}
 
-\section{\cmm{} history and significance}
+\section{\cmm history and significance}
 
-Before we talk about the specifics of \cmm{}, let us explain our choice of this particular language for our demonstration of using type inference and automatic resource management features in a systems-programming context.
+Before we talk about the specifics of \cmm, let us explain our choice of this particular language for our demonstration of using type inference and automatic resource management features in a systems-programming context.
 
-Cmm (a variant of \cmm{}) is used as a backend intermediate representation for GHC \cite{haskellbackends}, the most popular haskell compiler. \cmm{} is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
+Cmm (a variant of \cmm) is used as a backend intermediate representation for GHC \cite{haskellbackends}, the most popular haskell compiler. \cmm is designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the haskell language and GHC itself.
 
 \begin{remark}
-    The \cmm{} language has two major versions, which differ quite significantly.
+    The \cmm language has two major versions, which differ quite significantly.
 
-    It is important to note that, by referring to just \cmm{}, we will always refer to the second version of the language, \cmm{} 2.0 (as specified by \citet{ramsey2005c}).
+    It is important to note that, by referring to just \cmm, we will always refer to the second version of the language, \cmm 2.0 (as specified by \citet{ramsey2005c}).
 \end{remark}
 
-Just like Cmm, \cmm{} is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular function call, which does not constitute stack manipulation.
+Just like Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular function call, which does not constitute stack manipulation.
 
-The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent types in the context of \cmm{}.
+The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent types in the context of \cmm.
 
 One of the main motivations for choosing this language was that it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers, offering many features, which can be tied to type inference. It is due to the above reasons, it is usually categorized as pseudo-assembler.
 
 The algorithm our experimental approach is based on, so called ``Deferred Inference'' or the ``French Approach'' (described in \cref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
 
-\section{Syntax and properties of \cmm{}}
+\section{Syntax and properties of \cmm}
 
-What characterizes \cmm{} perhaps the best is simply: minimalism. The general syntax for statements and expressions is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only three control flow statements (not counting call statements) it supports are if statements, switch statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
+What characterizes \cmm perhaps the best is simply: minimalism. The general syntax for statements and expressions is almost directly a sharp subset of any other C-like language, it supports only bit-vector types with no distinction between integers and float numbers, and the only three control flow statements (not counting call statements) it supports are if statements, switch statements and branches. But, at the same time, it offers a high number of additional compiler hints and constraints the user can specify. All of these characteristics are desirable features of any systems programming language.
 
-\begin{ex}[\cmm{} syntax example]
+\begin{ex}[\cmm syntax example]
     \li{sp1} computes the tuple $\pars{\dfrac{n(n+1)}{2}, n!}$ with 32-bit integers
     \begin{lstlisting}
 sp1(bits32 n) {
@@ -42,19 +42,19 @@ sp1(bits32 n) {
     \end{lstlisting}
 \end{ex}
 
-\subsection{\cmm{}: no side-effects in expressions}
+\subsection{\cmm: no side-effects in expressions}
 
-What differs the approach of \cmm{} from other C-like languages is that it has call statements instead of call expressions. This is an important distinction, as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. Not allowing side effects inside expressions is another desirable feature of a systems programming language if we strive for maximum code transparency.
+What differs the approach of \cmm from other C-like languages is that it has call statements instead of call expressions. This is an important distinction, as procedure calls usually perform some hidden side-effects (they have non-pure computation model), hidden in the sense that the side effects would be specified in the language syntax. Not allowing side effects inside expressions is another desirable feature of a systems programming language if we strive for maximum code transparency.
 
-\subsection{Continuations, special labels in \cmm{}}
+\subsection{Continuations, special labels in \cmm}
 
-It is important to note that \cmm{}, while being minimalistic, is not minimalistic in all of its aspects. \cmm{}, in contrast to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
+It is important to note that \cmm, while being minimalistic, is not minimalistic in all of its aspects. \cmm, in contrast to C and other similar languages, offers so-called ``continuations''. Those are a generalization of label statements that can be called (using a ``cut to'' statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this ``cut to'' call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
 
 It might seem that these continuations serve as a thread model for the language, but it is not so, they do not implement the whole thread model and the languages does not specify any thread scheduler, but it offers a well-defined hooks for the front-end compilers. Same would apply for any assumptions that this implements some kind of error handling. \cite{ramsey2005c}
 
-\subsection{Kinds in \cmm{}, an inspiration for a new type system}
+\subsection{Kinds in \cmm, an inspiration for a new type system}
 
-As we discussed earlier, \cmm{} does not distinguish between different register types in the type system. The way \cmm{} distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
+As we discussed earlier, \cmm does not distinguish between different register types in the type system. The way \cmm distinguishes between different register types is by introducing a concept called ``kinds'' (but we will refer to them as ``data kinds'' to distinguish them from kinds we know from the HM type system and similar systems).
 
 Note that these data kinds are usually strictly separated from each other in many languages (by so-called ``aliasing rules'' \cite{cstandard2018}).
 
@@ -62,7 +62,7 @@ By specifying a kind, a user can give constraints on which type of physical regi
 
 This can be modelled efficiently with a very limited notion of lattice-based subtyping we introduce in the next section, where we consider the empty set of possible registered the bottom and all registers the top (this relates to work by \citet{tiuryn1999subtyping}, who shows \texttt{PSPACE}-completeness for a generalization of this idea).
 
-\section{Extending \cmm{} for type inference}
+\section{Extending \cmm for type inference}
 
 We extended the language with new syntactic constructs: \li{class}es, \li{instance}s, \li{struct}s, \li{new} specifiers, \li{dropped} statements and \li{[ptr]} generic dereference.
 
@@ -131,7 +131,7 @@ Structures use the syntax derived from regular data notation for maximum consist
 
 They allow us to pack more, related, data together (in \cref{list_ex}, some item and a pointer to the next item) and thus abstract away the specific data layout from the implementations. This then allows us to write functions passing the data or references to it once and then not reimplement them every time the specific data layout changes.
 
-The reason \cmm{} itself does not require structs is that it does not support polymorphism nor it enforces type safety. Instead of passing a pointer to a record and then, in the consumer, using a set of field accessors, it can pass an untyped pointer and then use a set of integer constants representing the offsets of the data.
+The reason \cmm itself does not require structs is that it does not support polymorphism nor it enforces type safety. Instead of passing a pointer to a record and then, in the consumer, using a set of field accessors, it can pass an untyped pointer and then use a set of integer constants representing the offsets of the data.
 
 Since we infer the types and multiple record types can have the fields implemented differently (in the case of our modification, the field might even overlap), the above approach is no longer desirable. It is also very error-prone as the offsets may change with every layout adjustment.
 
@@ -173,12 +173,12 @@ This typing of labels allowed us to make quite subtle, but very useful syntactic
     \end{lstlisting}
 \end{ex}
 
-\subsection{Type system extensions for \cmm{} subtypes}
+\subsection{Type system extensions for \cmm subtypes}
 \label{sec:typesystem}
 
-We extended the language with the HM-like type system with multiple-parameter type classes and functional dependencies. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm{} language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it provided many insights into intricacies of type systems.
+We extended the language with the HM-like type system with multiple-parameter type classes and functional dependencies. And for this project, we, inspired by the optional data-kind specifications supported by the \cmm language, alongside with requirements on various values being computed in compile-time or link-time, then decided to model those in the inference as well. This was very experimental and it provided many insights into intricacies of type systems.
 
-This turned out to be a decision significantly affecting the implementation process as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible materials on primitives that would ensure efficient computability. In this section, we will show the design of such driven by the \cmm{} subtypes as a motivation.
+This turned out to be a decision significantly affecting the implementation process as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible materials on primitives that would ensure efficient computability. In this section, we will show the design of such driven by the \cmm subtypes as a motivation.
 
 As a result of incrementally building the type system alongside the prototype implementation, the implementation does not currently cover the whole type system space. It required many redesigns and some of its assumptions on the theory had to be either swapped for stronger versions, or completely removed (removed in case of bijections between types and their properties, which we will explore later). The implementation was changed to reflect these refinements in the theory, but it was later concluded, since the theory matured enough, that a complete redesign would be preferable.
 

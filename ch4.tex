@@ -1,9 +1,9 @@
 \chapter{Results and discussion}
 \label{chap4}
 
-In this chapter, we show the possibilities of use of the extended \cmm{}.
+In this chapter, we show the possibilities of use of the extended \cmm.
 
-\section{Prototype compiler of typed \cmm{}}
+\section{Prototype compiler of typed \cmm}
 
 \subsection{Type-inferring local declarations}
 
@@ -129,11 +129,11 @@ c2 = _Madd_$f$Lb64...(a2, b2);
 
 \subsection{\xxx{Simplified references to memory}}
 
-In \cmm{}, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter, or, from the result. Any inferred type of the result or the address parameter then propagates to the other one. We use this in \cref{lst:fieldAccessors}.
+In \cmm, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter, or, from the result. Any inferred type of the result or the address parameter then propagates to the other one. We use this in \cref{lst:fieldAccessors}.
 
 \subsection{Translation into the LLVM assembly language}
 
-The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases unusual assignment statement, which are a feature of \cmm{}.
+The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases unusual assignment statement, which are a feature of \cmm.
 
 \subsection{Improvements over Damas-Milner Algorithm W}
 
@@ -753,7 +753,7 @@ F$else_3:
 
 \subsection{Subtyping in systems programming}
 
-The subset of subtyping modelled by our proposed type system can be used to check and infer various secondary properties of objects. Throughout the thesis, we demonstrated its use on constnesses and data kinds of the \cmm{} language. Connecting the analysis of these secondary properties to the type system allows for tying the constraints on these properties only to a particular typing (as defined in \cref{sec:typesystem}), for example, by defining each type class instance with a different set of constraints.
+The subset of subtyping modelled by our proposed type system can be used to check and infer various secondary properties of objects. Throughout the thesis, we demonstrated its use on constnesses and data kinds of the \cmm language. Connecting the analysis of these secondary properties to the type system allows for tying the constraints on these properties only to a particular typing (as defined in \cref{sec:typesystem}), for example, by defining each type class instance with a different set of constraints.
 
 \subsection{C subtyping}
 
@@ -807,7 +807,7 @@ The kernel coding style guide proposes the following convention:
   The goto statement comes in handy when a procedure exits from multiple locations and some common work such as cleanup has to be done. If there is no cleanup needed then just return directly.
 \end{quotation}
 
-We propose the automatic resource management features introduced by the extended \cmm{} as an alternative to this convention. The cleanup section is replaced by a definition of an resource-representing object and accompanying \li{drop} procedure.
+We propose the automatic resource management features introduced by the extended \cmm as an alternative to this convention. The cleanup section is replaced by a definition of an resource-representing object and accompanying \li{drop} procedure.
 
 In order to fully serve as a practical alternative to the \li{goto cleanup} pattern in a general case, we also propose the use of a special statement \li{dropped}. Our introduced \li{dropped} statement takes a named alias to the object representing the resource and removes the implicit calls on all procedure exits following this statement, still allowing for explicit calls whenever the user specifies.
 

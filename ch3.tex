@@ -18,7 +18,7 @@ We will describe the purpose and the function of each of the components of the c
 
 \section{Flattening and blockifying}
 
-Flattening and blockifying phase convert a possibly nested \cmm{} source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks as defined by \cite{llvmBB}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward transcription to the SSA form of LLVM.
+Flattening and blockifying phase convert a possibly nested \cmm source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks as defined by \cite{llvmBB}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward transcription to the SSA form of LLVM.
 
 \begin{remark}
     It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource object (see \cref{RAII}) and these calls' types then have to be type-inferred in order to perform the desired resource management actions.
@@ -26,7 +26,7 @@ Flattening and blockifying phase convert a possibly nested \cmm{} source code in
 
 LLVM basic block is defined as a sequence of consecutive (non-terminating, if not malformed) statements that starts with a label (or an entry point of a procedure) and ends with a `terminator' statement, such as a branch, a return, an explicitly marked unreachable statement, or an implicit fallthrough to another basic block. Notably, basic blocks can not contain labels other than the initial ones.
 
-For \cmm{}, we work with even more restricted definition of a basic block that only allows branch statements at the end of the basic blocks and we transform the code to specifically this form.
+For \cmm, we work with even more restricted definition of a basic block that only allows branch statements at the end of the basic blocks and we transform the code to specifically this form.
 
 \subsection{Flattening}
 
@@ -74,7 +74,7 @@ F_fi_1:
 
 Flattening moves the nested bodies of each \li{if} statement to the same level as the \li{if} statement, replacing them with a single \li{goto} statement and adding other \li{goto}s where needed to preserve the semantics. Deeply nested code is flattened recursively. For consistency in subsequent processing, it also generates an explicit \li{goto} for each fallthrough.
 
-The resulting code structure can be directly transcribed into LLVM (see \cref{translation}). After flattening, each of \li{if} statements' nested bodies (notably, else body is always present) consist of just a single branch expression. This makes the \li{if} statements directly related to LLVM conditional branches. We perform the transformation similarly for \li{switch} statements. Although \cmm{} does not specify any other control flow statements with nested bodies, the flattening would be applicable even for \li{while} statements and other, more complex conditional execution.
+The resulting code structure can be directly transcribed into LLVM (see \cref{translation}). After flattening, each of \li{if} statements' nested bodies (notably, else body is always present) consist of just a single branch expression. This makes the \li{if} statements directly related to LLVM conditional branches. We perform the transformation similarly for \li{switch} statements. Although \cmm does not specify any other control flow statements with nested bodies, the flattening would be applicable even for \li{while} statements and other, more complex conditional execution.
 
 After transforming all function bodies into flat forms, the flattening phase also reorders the bodies of functions so that all declarations are at the top. This is not necessary, but it improves the readability of the generated code for programmers, and also simplifies the implementation of several other parts of the compiler pipeline. Note that the order of declarations in procedure bodies is irrelevant and the names are visible throughout the whole procedure \cite{ramsey2005c}.
 
@@ -207,7 +207,7 @@ In \cref{st_dim}, we introduced that subtype dimension are non-affecting type cl
 
 \section{Type Inference}
 
-In the modified \cmm{} language, we do not support existentials (as discussed in \cref{sys_defer}) and all polymorphic definitions have to be at top level (or they are easily representable as such: definitions of methods and their instances). This allows the solver to solve more eagerly, since there is no need for context levels, deferring the constraints only on two cases (see \cref{main_loop}).
+In the modified \cmm language, we do not support existentials (as discussed in \cref{sys_defer}) and all polymorphic definitions have to be at top level (or they are easily representable as such: definitions of methods and their instances). This allows the solver to solve more eagerly, since there is no need for context levels, deferring the constraints only on two cases (see \cref{main_loop}).
 
 \subsection{Type inference preliminaries}
 

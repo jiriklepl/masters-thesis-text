@@ -158,7 +158,7 @@ This different approach differs in only the part of the pipeline which is direct
 
 The benefit of this approach is that it, apart from being a much easier implementation and have more space for performance optimization, allows for type-guided constant propagation and all violations to constexpr-related and linkexpr-related constraints are reported as type errors. \xxx{It also allows for writing algorithm akin to \li{template<int N> int f(int &args[N]) \{ ... \}}}.
 
-The other, more significant benefit, is that, instead of defaulting to some default value whenever a data kind is omitted in the \cmm{} code, it is inferred.
+The other, more significant benefit, is that, instead of defaulting to some default value whenever a data kind is omitted in the \cmm code, it is inferred.
 
 We believe that the significance of the primitives used in this design surpass the significance of the proposed implementation. \xxx{maybe move to the very front}
 

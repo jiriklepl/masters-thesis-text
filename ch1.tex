@@ -398,7 +398,7 @@ In this thesis, we use an algorithm based on the Deferred Inference algorithm be
 
 In our type system, we do not support existentials, as we want the maximal transparency of the resulting code for possible use in systems programming. Existentials generate irremovable witnesses as we explained in \cref{defer_solve}, because the actual type of the input existentials is known only in run-time (\citet{grossman2002existential} provides a closer exploration of this topic). This approach guarantees type-safety as it ensures the witnesses are passed properly, but it does so at a cost we would like to not have.
 
-Further, we extended the type system with a highly specialized version of subtyping, which can provide us the necessary means of type-checking and type-inferring whether a variable is semantically a compile-time constant and also what is its `data kind' (we introduce those in \cref{chap2}, which describes the language specifics).
+We extended the type system with a highly specialized version of subtyping, necessary for type-checking and type-inferring secondary properties of variables defined in \cmm (we introduce those in \cref{chap2}, which describes the language specifics).
 
 Then, we also introduce functional dependencies. These are implemented via a rewriting scheme that takes precedence over the class constraint resolution. We specify the details in \cref{chap3}.
 
