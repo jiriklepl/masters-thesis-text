@@ -3,9 +3,9 @@
 \label{chap3}
 
 \begin{figure}
-    \includegraphics[width=\linewidth]{img/out/arch.pdf}
 \caption{Overview schema of the architecture of the prototype compiler.}
 \label{fig:arch}
+    \includegraphics[width=\linewidth]{img/out/arch.pdf}
 \end{figure}
 
 \section{Overview}
@@ -85,7 +85,7 @@ One more task for the flattening phase in the scope of this programming language
 \subsection{Blockifying}
 \label{sec:blockify}
 
-The blockifying phase follows the flattening phase and it annotates each statement of functions with block annotations while collecting some further information we will describe shortly.
+The blockifying phase follows the flattening phase and it annotates each statement of functions with block annotations while collecting some further information we will describe shortly. The annotated code can be seen in \cref{lst:blockified}.
 
 \begin{defn}[Block annotations]
     Block annotations, given to each statement of a procedure, state whether the statement:
@@ -94,15 +94,14 @@ The blockifying phase follows the flattening phase and it annotates each stateme
         \item starts a basic block, given by index
         \item is part of a basic block given by index
         \item is not a part of any basic block (and for such, generates warnings).
+
+        A statement is not a part of any basic block, for example, when it follows a \li{goto} statement and is not preceded by any label.
     \end{enumerate}
 \end{defn}
 
-\begin{remark}
-    A statement is not a part of any basic block, for example, when it follows a \li{goto} statement and is not preceded by any label.
-\end{remark}
-
-\begin{ex}
-    An example of a result of blockifying:
+\begin{listing}
+    \caption{An example of a code annotated by blockifying}
+    \label{lst:blockified}
     \begin{lstlisting}
 while: // starts 1
 if x == 0 { goto _then; } // p. of 1; reads "x"; cf += (1, 2)
@@ -119,31 +118,27 @@ _fi: // starts 4
     \end{lstlisting}
 
     The control flow graph contains: $\{(1,2), (1,3), (2,4), (3,4)\}$
-\end{ex}
+\end{listing}
 
 For the identified basic blocks, there is generated an accompanying control flow graph, a blocks table and blocks data.
 
-\begin{defn}[Control flow graph]
-    Control flow graph is a graph on the set of basic blocks of the given procedure with edges specified by branches (represented by \li{goto}s, possibly in \li{if} statements and \li{switch} statements) in pairs $(\mtt{fromIdx}, \mtt{toIdx})$ and a special basic block called entry block which begins the procedure and is never branched to.
-\end{defn}
+\begin{description}
+    \item[Control flow graph] is a graph on the set of basic blocks of the given procedure with edges specified by branches (represented by \li{goto}s, possibly in \li{if} statements and \li{switch} statements) in pairs $(\mtt{fromIdx}, \mtt{toIdx})$ and a special basic block called \emph{entry block} which begins the procedure and is never branched to.
 
-\begin{defn}[Blocks table]
-    Blocks table is a mapping from each basic block index to its respective name. This allows representing the blocks with unique identifiers while also later allowing them to have the original names in the translated representation.
-\end{defn}
+    \item[Blocks table] is a mapping from each basic block index to its respective name. This allows representing the blocks with unique identifiers while also later allowing them to have the original names in the translated representation.
 
-\begin{defn}[Blocks data]
-    Blocks data is a mapping from each pair \linebreak \li{(blockIdx, varName)} to a triple \li{(reads before write, writes, requests alive)}. The first two values of the triples are filled in by the blockifier (they are given syntactically) and the last one by the subsequent live-range analysis, which we will describe later in this section.
+    \item[Blocks data] is a mapping from each pair \li{(blockIdx, varName)} to a triple \li{(reads before write, writes, requests alive)}. The first two values of the triples are filled in by the blockifier (they are given syntactically) and the last one by the subsequent live-range analysis, which we will describe later in this section.
 
-    This mapping, together with control flow graph, is then used in translation (\cref{translation}) for rewriting the code into SSA form required by LLVM, more specifically, for generating so-called ``phi nodes''.
-\end{defn}
+    This mapping, together with the control flow graph, is then used in translation (\cref{translation}) for rewriting the code into SSA form required by LLVM, more specifically, for generating `phi nodes'.
+\end{description}
 
-Phi nodes are operands introduced by the \emph{phi} instruction. This instruction takes arguments in \li{(operand, label)} pairs, where the first value of each pair is the operand stored in the phi node during execution in the case the execution was preceded by the basic block specified (using its label) in the second value of the given pair.
+\emph{Phi nodes} are operands introduced by the \emph{phi} instruction. This instruction takes arguments in \li{(operand, label)} pairs, where the first value of each pair is the operand stored in the phi node during execution in the case the execution was preceded by the basic block specified (using its label) in the second value of the given pair.
 
 \subsubsection{Blockifying algorithm}
 
 Blockifying is performed by reading the code sequentially while annotating the statements with the block annotations, generating the control flow graph, blocks table as described by \cref{alg:blockifying} (for simplicity, we assume just one procedure in the algorithm; for more procedures, assign unique identifier to each entry block as well). This is then followed by live-range analysis, which updates blocks table.
 
-\begin{algorithm}
+\begin{algorithm}[t]
     \caption{Simplified blockifying algorithm for a single procedure}
     \label{alg:blockifying}
     \begin{algorithmic}
@@ -186,24 +181,28 @@ After the blockifier builds the whole control flow graph and blocks data, live-r
 
 \section{Type System}
 
-We implemented the type system as defined in \cref{sec:typesystem}. But there were many flaws in the original design. First, and the most significant flaw, was assuming that the types are equal if they are equal in every subtype dimension and their typing. This fatal flaw was removed from the system, but we include it here as a warning for any attempt at a similar design. The following example shows an inconsistency caused by such an assumption:
+We implemented the type system as defined in \cref{sec:typesystem}. During the development, we identified many flaws of the practical implementations of the simple original design, which we briefly comment in this section. First, and the most significant flaw, was assuming that the types are equal if they are equal in every subtype dimension and their typing. This fatal flaw was removed from the system, but we include it here as a warning for any attempt at a similar design. \cref{inconsistency} shows an inconsistency caused by such an assumption:
 
-\begin{ex}[Inconsistency of assuming type equality equivalent to combination of typing equality and subtype equality in all dimensions]
+\begin{lemma}Type system from \cref{sec:typesystem} is generally inconsistent if equality of all typing dimensions dimension implies type equality
     \label{inconsistency}
-    Let us assume that the types $t$ and $t'$ are equal in every subtype dimension and the typing dimension. That is, $t =_s t'$ for every subtype dimension $s$ and also $t =_T t'$ (see \cref{typing_def} and \cref{st_dim}).
+    \begin{proof}
+        Let us assume that the types $t$ and $t'$ are equal in every subtype dimension and the typing dimension. That is, $t =_s t'$ for every subtype dimension $s$ and also $t =_T t'$ (see \cref{def:typing,def:stDim}).
 
-    More specifically, if they are type applications $\alpha \beta$ and $\alpha' \beta'$, respectively, then from $t =_T t'$, it also follows that $\alpha =_T \alpha'$ and $\beta =_T \beta'$, but it does not follow that $\alpha =_s \alpha'$ and $\beta =_s \beta'$ for a general subtype dimension. We will offer a counterexample.
+        More specifically, if they are type applications $\alpha \beta$ and $\alpha' \beta'$, respectively, then from $t =_T t'$, it also follows that $\alpha =_T \alpha'$ and $\beta =_T \beta'$, but it does not follow that $\alpha =_s \alpha'$ and $\beta =_s \beta'$ for a general subtype dimension. We will offer a counterexample.
 
-    Let us say, $t$ and $t'$ are pointers to functions that take a 32-bit bitvector and return the same type, they are both compile-time constants and the both pointers are stored on the same types of registers (they have the same data kind). This means that $t$ and $t'$ follow the assumptions listed above. But one of them can be constrained to be a pointer to a function that takes an integer and returns an integer, while the other can be constrained to be a pointer to a function that takes a float number and returns a float number (can be shown by a function defined similarly to $id$ known from Haskell). If we assumed that $t = t'$, we would have to solve the constraint $\mtt{float} = \mtt{int}$, where both operands are constants. This would lead to a contradiction as defined by \cref{def:contra}
+        Let us say, $t$ and $t'$ are pointers to functions that take a 32-bit bitvector and return the same type, they are both compile-time constants and the both pointers are stored on the same types of registers (they have the same data kind). This means that $t$ and $t'$ follow the assumptions listed above. But one of them can be constrained to be a pointer to a function that takes an integer and returns an integer, while the other can be constrained to be a pointer to a function that takes a float number and returns a float number (can be shown by a function defined similarly to $id$ known from Haskell). If we assumed that $t = t'$, we would have to solve the constraint $\mtt{float} = \mtt{int}$, where both operands are constants. This would lead to a contradiction as defined by \cref{def:contra}.
+    \end{proof}
+\end{lemma}
 
-    Note that there can be systems with different subtype dimensions, in which the two relations (equality of types, equality of all dimensions of types) can indeed be defined as equivalent. An example of such a system would be a system with no subtype dimensions.
-\end{ex}
+Note that there can be systems with different subtype dimensions, in which the two relations (equality of types, equality of all dimensions of types) can indeed be defined as equivalent. An example of such a system would be a system with no subtype dimensions.
 
 \subsection{Type system limitations}
 
-Consider \cref{congruence} and \cref{inconsistency}. Notice that if we have two function types $t \equiv \alpha \to \beta$ and $t' \equiv \alpha' \to \beta'$ and $t \leq t'$, then the only derivable constraints on $\alpha, \alpha', \beta, \beta'$ are $\alpha \sim_T \alpha'$ and $\beta \sim_T \beta'$. In the prototype implementation, this does not pose any problems as we do not assign references to functions.
+Consider \cref{congruence}, which describes why subtypes do not commute with type algebra, and \cref{inconsistency}, which describes why we do not consider two types having the same dimensions necessarily the same.
 
-In \cref{st_dim}, we introduced that subtype dimension are non-affecting type class resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing new constraints after deciding the typings according to the desired semantics (for example, $\alpha \leq \alpha' \land \beta' \leq \beta$).
+Notice that if we have two function types $t \equiv \alpha \to \beta$ and $t' \equiv \alpha' \to \beta'$ and $t \leq t'$, then the only derivable constraints on $\alpha, \alpha', \beta, \beta'$ are $\alpha \sim_T \alpha'$ and $\beta \sim_T \beta'$. This means that if we assign a reference to a function to a variable, the subtype constraints on its arguments are ``forgotten''. In the prototype implementation, this does not pose any problems as we consider only direct references to functions in call statements. But, In general case, it should be addressed as we describe here:
+
+In \cref{def:stDim}, we introduced that subtype dimension are non-affecting type class resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing appropriate constraints after deciding the typings according to the desired semantics (for example, $\alpha \leq \alpha' \land \beta' \leq \beta$).
 
 \section{Type Inference}
 
@@ -215,31 +214,16 @@ The basic idea of the implementation of type inference used in the prototype com
 
 In the prototype compiler, the type inferencer keeps track of the type definitions of all known types in the terms of a type constructor applied to variables representing each of its immediate subterms (introducing so-called \emph{primitive patterns}). For each type variable, the inferencer then contains a handle, which (in contrast to primitive patterns) stores its fully substituted values of all dimensions (typings stored in a similar form to Algorithm W resulting unifications - see \cite{damas1982principal}, constnesses and data kinds). In addition to these two ``databases'' of \emph{alive variables}, it also keeps the mapping from each variable's original name (as it appears in the AST with so-called \emph{elaborations}, see \cref{preprocessing}). This mapping is necessary as the algorithm performs many unifications of the alive type variables and their corresponding records in aforementioned ``databases'' may not be stored under the original type variables.
 
-The reason behind such intricate design was the necessity to capture the semantics of the various dimensions, most notably the typing dimension (see \cref{typing_def}, focus on the requirement that typings commute with type structure). The primitive patterns ensure that the inference algorithm can model these semantics - specifically type application and type decomposition. In \cref{new_approach}, we introduce a simpler, more practical, design more akin to the design of Deferred Solving described in \cref{defer_solve}. The prototype design can serve as a basis for a theoretic model, which models the inference of the proposed type system.
+The reason behind such intricate design was the necessity to capture the semantics of the various dimensions, most notably the typing dimension (see \cref{def:typing}, focus on the requirement that typings commute with type structure). The primitive patterns ensure that the inference algorithm can model these semantics - specifically type application and type decomposition. In \cref{new_approach}, we introduce a simpler, more practical, design more akin to the design of Deferred Solving described in \cref{defer_solve}. The prototype design can serve as a basis for a theoretic model, which models the inference of the proposed type system.
 
 \subsubsection{Representation of type-related values}
 
-\begin{defn}[Type variables]
-    \label{def:tyvar}
-    We call the space of type variables $\mathbb{V}$.
-
-    Each type variable is represented by an unique integer identifier, its type kind, and a reference to a parent type variable, if it has any.
-
-    \emph{Type variable identifier} is an unique number generated by incrementing a specific counter in the preprocessor state and then later in the inferencer state.
-
-    \emph{Reference to a parent type variable} is a reference to a variable, which uniquely represents the nested scope in which the variable was generated. The references to parent variables are a generalization of the idea of context levels in the Deferred Inference algorithm (see \cref{defer_solve}). They are used mainly for deciding whether a given type variable is defined in the scope of a certain procedure (this is specific to the prototype implementation, but it demonstrates a possible usefulness of this generalization of a context level).
-\end{defn}
-
-\begin{defn}[Alive type variable]
-    We call \emph{alive variables} the variables, which are not renamed to another variable by the algorithm. Renaming is performed every time two distinct variables are unified.
-\end{defn}
-
-\begin{defn}[Typing and types]
-    \label{typing_gram}
-    $\mathbb{T}$ is a space of typings defined inductively by \cref{lang:typing}.
-
-    We use the same space to specify types.
-\end{defn}
+\xxx{fix dis}
+\label{def:tyvar}
+\label{typing_gram}
+\label{def:primpat}
+\label{const_kind_def}
+\label{def:properties}
 
 \begin{lang}
   \def\grammarP{0.6}
@@ -255,14 +239,51 @@ The reason behind such intricate design was the necessity to capture the semanti
   \label{lang:typing}
 \end{lang}
 
-\begin{defn}[Primitive patterns]
-    \label{def:primpat}
-    Primitive patterns $\mathbb{P}$ follow the same grammar as typings (see \cref{typing_gram}) but without the very first grammar case ($\mathbb{V}$) and with type variables ($\mbb{V}$) appearing in the grammar cases in place of typings ($\mbb{T}$) wherever applicable.
+\begin{description}
+    \item[Type Variable] Uniquely represents a type inferred by the type inference. Each type variable is represented by an unique integer identifier, its type kind, and a reference to a parent type variable, if it has any.
+
+    We call the space of type variables $\mathbb{V}$.
+
+    \emph{Type variable identifier} is a unique number generated by incrementing a specific counter in the preprocessor state and then later in the inferencer state.
+
+    \emph{Reference to a parent type variable} is a reference to a type variable, which uniquely represents the nested scope in which the variable was generated. The references to parent variables are a generalization of the idea of context levels in the Deferred Inference algorithm (see \cref{defer_solve}). They are used mainly for deciding whether a given type variable is defined in the scope of a certain procedure (this is specific to the prototype implementation, but it demonstrates a possible usefulness of this generalization of a context level).
+
+    We call \emph{alive variables} the variables, which are not renamed to another variable by the algorithm. Renaming is performed every time two distinct variables are unified.
+
+    \item[Typing and types] Typings are the main dimension of each type as described in \cref{sec:typesystem}. Type inference represents them by the space $\mathbb{T}$, which is defined inductively by \cref{lang:typing}.
+
+    We use the same space to specify types.
+
+    \item[Primitive patterns] Primitive patterns $\mathbb{P}$ follow the same grammar as typings (see \cref{typing_gram}) but without the very first grammar case ($\mathbb{V}$) and with type variables ($\mbb{V}$) appearing in the grammar cases in place of typings ($\mbb{T}$) wherever applicable.
 
     Primitive patterns represent the definition of types broken up into single applications of type constructors.
-\end{defn}
 
-\begin{remark}[Bijection between type variables and primitive patterns]
+    \item[Subtype dimensions] The algorithm recognizes two subtype dimensions, \emph{constness dimension} and \emph{data kind dimension}:
+
+    \begin{itemize}
+        \item  The \emph{constness dimension}, represented by space of constness constants $\mathbb{C}$ represents the bounds of constraints on when the value of each variable has to be known (upper-bound), and, when it can be known (lower-bound). The constness constants are defined as follows:
+
+\begin{center}\begin{grammar}
+  \firstcase{\mathbb{C}}{\mathtt{Regular}}{regular runtime variables}
+  \otherform{\mathtt{Linkexpr}}{variables known at linkage}
+  \otherform{\mathtt{Constexpr}}{variables known at compilation}
+\end{grammar}\end{center}
+
+        We define linear ordering on constnesses:
+        $$\bot = \mathtt{Constexpr} < \mathtt{Linkexpr} < \mathtt{Regular} = \top$$
+
+        \item The \emph{data kind dimension} represents the bounds of constraints on on which registers (register types) the variables can be stored. For the types in returned tuples, for example, this can specify whether the variable is integral or a floating point number.
+
+        $\mathbb{K}$ is the space of data kinds, each data kind is a subset of the power set of the set of registers on the given architecture. The kinds are ordered by the relation of being a subset. The concrete specification of its constants is architecture-specific.
+    \end{itemize}
+
+    \item[Type properties] Type properties represent the various dimension of a type. The functions that project objects from $\mbb{D}$ to the respective properties are called $t$, $c$ and $k$.
+
+    $\mathbb{D}$ is the space of type properties given as tuples:
+    $$(typing: \mathbb{T}, constness: \mathbb{V}, kind: \mathbb{V})$$
+
+
+    \item[Bijection between type variables and primitive patterns]
     A bijective mapping from type variables to primitive patterns is used to:
 
     \begin{itemize}
@@ -272,54 +293,25 @@ The reason behind such intricate design was the necessity to capture the semanti
     \end{itemize}
 
     Keeping a consistent mapping of primitive patterns is quite costly, but it allows for many experiments in type inference and it can also help in debugging (it allows for lookup of subterms of a given type, all represented by type variables).
-\end{remark}
+\end{description}
 
-\begin{defn}[Type reconstruction]
-    Type reconstruction is evaluated by substituting primitive patterns for type variables iteratively until no type variable is possible to be substituted with a primitive pattern. The algorithm starts with a single type variable.
-\end{defn}
+\subsubsection{Type reconstruction}
+
+\emph{Type reconstruction} is evaluated by substituting primitive patterns for type variables iteratively until no type variable is possible to be substituted with a primitive pattern. The algorithm starts with a single type variable.
 
 \begin{lemma}[Primitive patterns]
     \label{typesObs}
     Every type $t$ can be equivalently represented by a type variable, by its primitive pattern (if it has any), and by its reconstructed type acquired by type reconstruction.
+
+    \begin{proof}
+        For types, the theory assumes that  $\alpha \beta = \alpha' \beta' \GetsTo \alpha = \alpha' \land \beta = \beta'$  (generalized to all constructors listed in \cref{lang:typing}). And then $t = \alpha \beta \land t' = \alpha' \beta' \Leftrightarrow t = t'$. The above statement is a direct consequence of these assumptions; for reconstruction, shown by induction.
+    \end{proof}
 \end{lemma}
 
-\begin{proof}
-    For types, the theory assumes that  $\alpha \beta = \alpha' \beta' \GetsTo \alpha = \alpha' \land \beta = \beta'$  (generalized to all constructors listed in \cref{lang:typing}). And then $t = \alpha \beta \land t' = \alpha' \beta' \Leftrightarrow t = t'$. The above statement is a direct consequence of these assumptions; for reconstruction, shown by induction.
-\end{proof}
-
-\begin{defn}[Subtype dimensions]
-    \label{const_kind_def}
-    The algorithm recognizes two subtype dimensions, \emph{constness dimension} and \emph{data kind dimension}:
-
-    \begin{itemize}
-        \item  The \emph{constness dimension}, represented by space of constness constants $\mathbb{C}$ represents the bounds of constraints on when the value of each variable has to be known (upper bound), and, when it can be known (lower bound). The constness constants are defined as follows:
-
-\begin{center}\begin{grammar}
-  \firstcase{\mathbb{C}}{\mathtt{Regular}}{regular runtime variables}
-  \otherform{\mathtt{Linkexpr}}{variables known at linkage}
-  \otherform{\mathtt{Constexpr}}{variables known at compilation}
-\end{grammar}\end{center}
-
-        We define the ordering on constnesses: $\bot = \mathtt{Constexpr} < \mathtt{Linkexpr} < \mathtt{Regular} = \top$. And the whole system of constnesses follows a linear ordering.
-
-        \item The \emph{data kind dimension} represents the bounds of constraints on on which registers (register types) the variables can be stored. For the types in returned tuples, for example, this can specify whether the variable is integral or a floating point number.
-
-        $\mathbb{K}$ is the space of data kinds, each data kind is a subset of the power set of the set of registers on the given architecture. The kinds are ordered by the relation of being a subset. The concrete specification of its constants is architecture-specific.
-    \end{itemize}
-\end{defn}
-
-\begin{defn}[Type properties]
-    \label{def:properties}
-    Type properties represent the various dimension of a type. The functions that project objects from $\mbb{D}$ to the respective properties are called $t$, $c$ and $k$.
-
-    $\mathbb{D}$ is the space of type properties given as tuples: $(typing: \mathbb{T}, constness: \mathbb{V}, kind: \mathbb{V})$
-\end{defn}
 
 \subsubsection{Modifications to the constraints language of deferred inference}
 
-\begin{defn}[Constraints]
-    $\mbb{W}$ Stands for a flat constraint or an implication constraint similarly to \cref{def:defer_constr}, the space of flat constraints $\mathbb{F}$ is defined inductively by a grammar as \cref{lang:flat}.
-\end{defn}
+$\mbb{W}$ Stands for a flat constraint or an implication constraint similarly to \cref{def:defer_constr}, the space of flat constraints $\mathbb{F}$ is defined inductively by a grammar as \cref{lang:flat}.
 
 \begin{lang}
   \caption{The language $\mathbb{F}$ of flat constraints and their basic semantics.}
@@ -339,79 +331,75 @@ The reason behind such intricate design was the necessity to capture the semanti
   \end{grammar}
 \end{lang}
 
-\begin{remark}[Derived constraints]
-    Sometimes we use derived constraints like $\mathbb{T} \leq_K \mathbb{K}$, $\mathbb{T} =_K \mathbb{T}$, etc. These are either special cases of the aforementioned constraints, or compositions of multiple constraints. The most complicated derived constraint we use is the \emph{SubType} constraint, $\mathbb{T} \leq \mathbb{T}$, which is a combination of $\mathbb{T} \sim_T \mathbb{T}$, $\mathbb{T} \leq_K \mathbb{T}$ and $\mathbb{T} \leq_C \mathbb{T}$.
-\end{remark}
+\pagebreak % TODO: remove this as needed
 
-\begin{remark}[Impossible constraints]
-    It should be noted that, within the defined language, we cannot state (or anyhow derive) the constraints $\mathbb{T} \not\sim_T \mathbb{T}$, $\mathbb{T} \not\leq_K \mathbb{T}$, $\mathbb{T} \not\leq_C \mathbb{T}$ and $\mathbb{T} \not\sqsupseteq_M \mathbb{T}$ and thus these (and similar ones) are not considered derived constraints.
-\end{remark}
+In the context of constraints, we use some specific constructs and naming:
+\begin{description}
+    \item[Derived constraints] Sometimes we use derived constraints like $\mathbb{T} \leq_K \mathbb{K}$, $\mathbb{T} =_K \mathbb{T}$, etc. These are either special cases of the aforementioned constraints, or compositions of multiple constraints. The most complicated derived constraint we use is the \emph{SubType} constraint, $\mathbb{T} \leq \mathbb{T}$, which is a combination of $\mathbb{T} \sim_T \mathbb{T}$, $\mathbb{T} \leq_K \mathbb{T}$ and $\mathbb{T} \leq_C \mathbb{T}$.
 
+    \item[Impossible constraints] It should be noted that, within the defined language, we cannot state (or anyhow derive) the constraints $\mathbb{T} \not\sim_T \mathbb{T}$, $\mathbb{T} \not\leq_K \mathbb{T}$, $\mathbb{T} \not\leq_C \mathbb{T}$ and $\mathbb{T} \not\sqsupseteq_M \mathbb{T}$ and thus these (and similar ones) are not considered derived constraints.
 
-\begin{defn}[Bounds]
-    We call the right-hand operand of a bounds constraint the upper-bound and the left-hand operand the lower-bound.
-\end{defn}
+    \item[Bounds] We call the right-hand operand of a bounds constraint the upper-bound and the left-hand operand the lower-bound.
 
-\begin{defn}[Trivial bounds]
-    If a constraint $F$ states $k_1 \leq_K \tau \leq_K k_2$ and $k_2 \leq k_1$, or $c_1 \leq_C \tau \leq_C c_2$ and $c_2 \leq c_1$, we call such a bounds constraint trivial.
+    \item[Trivial bounds] If a constraint $F$ states $k_1 \leq_K \tau \leq_K k_2$ and $k_2 \leq k_1$, or $c_1 \leq_C \tau \leq_C c_2$ and $c_2 \leq c_1$, we call such a bounds constraint trivial.
 
-\end{defn}
+    If the bounds of a trivial bounds constraint are equal, the type constnesses of the types constrained by such a constraint have to be the same and we can unify them.
 
-\begin{lemma}[Trivial bounds]
-    \label{trivBoundsObs}
-    \begin{enumerate}
-        \item If the bounds of a trivial bounds constraint are equal, the type constesses of the types constrained by such a constraint have to be the same and we can unify them.
-        \item If, for a bounds constraint, the upperbound is lower than the lowerbound, the constraint cannot be satisfied. We mark it an absurd bounds constraint and we include it in an error report.
-    \end{enumerate}
-\end{lemma}
+    If, for a bounds constraint, the upper-bound is lower than the lower-bound, the constraint cannot be satisfied. We mark it an \emph{absurd bounds constraint} and we include it in an error report.
 
-\begin{defn}[Functional dependency set]
-    We define a space $\mbb {FD}$ of functional dependency sets $FD$.
+    \item[Functional dependency set] We define a space $\mbb {FD}$ of functional dependency sets $FD$.
 
     Functional dependency set $FD$ on a sequence of type variables $V \in 2^{\mbb V}$ is a set of rules, each a mapping $V \to \{\mtt {FROM}, \mtt {TO}, \mtt {UNDEFINED}\}$. This set of rules always contains a \emph{trivial rule} $r_0$ such that $\forall v \in V . r_0(v) = \mtt{FROM}$, this trivial rule is implicit and can be omitted when defining a functional dependency set. If a constraint $C \vect \alpha$ (where $\vect \alpha = V$) follows a functional dependency set $FD$ (this is always explicitly specified), then, for each proof $C! \vect t$ (for simplicity, written without any assumptions; otherwise, include them appropriately in the following) of this constraint and for every corresponding rule $r \in FD$, we generate a new proof of the form $\forall \{v \pipe v \gets \vect \alpha, r(v) = \mtt {TO}\} . \{v \sim t \pipe (v, t) \gets (\mtt {zip}\ \vect \alpha\ \vect t), r(v) = \mtt {TO} \} \To C_r! [\mtt {if}\ r(v) = \mtt {FROM}\ \mtt {then}\ t\ \mtt {else}\ v \pipe (v, t) \gets (\mtt {zip}\ \vect \alpha\ \vect t), r(v) \neq \mtt {UNDEFINED}]$ (informally: the \li{TO} types in the proof are replaced with type variables, which are then unified with the original types in the assumptions of the proof, the type variables are then added to the quantification of the proof; we borrowed haskell syntax for more succinct formal definition). The generated proofs then replace the proof $C \vect t$.
 
     We then, similarly to proofs, replace each constraint $C? \vect t$ with constraints $C_r? \vect t_r$ for each corresponding rule $r$.
 
     The written notation for defining a functional dependency set $FD$ for a certain class is a list of statements of the form $\vect \alpha_1 \to \vect \alpha_2$ where $\vect \alpha_1, \vect \alpha_2 \subseteq V$, $V$ is the set of variables of the corresponding class. Each such statement then corresponds to a new rule $r$, where $r(v) := \mtt {FROM}$ if $v \in \alpha_1$, otherwise if $v \in \alpha_2$, then $r(v) := \mtt {TO}$, for each variable $v \in V$. $FD := FD \cup \{r\}$
-\end{defn}
+
+\end{description}
 
 \subsection{Type inference preprocessing}
 \label{preprocessing}
 
-The type inference preprocessing, also called \emph{constraint generation}, takes the AST representation of the source code as its input, annotates each node with \emph{elaborations}, and for each of these elaborations, generates constraints (described in \cref{lang:flat}) capturing the semantics of the code. We will not describe the whole process in detail as it is language-specific and the cases, albeit simple, are numerous.
+The type inference preprocessing, also called \emph{constraint generation}, takes the AST representation of the source code as its input, annotates each node with \emph{elaborations}, and for each of these elaborations, generates constraints (described in \cref{lang:flat}) capturing the semantics of the code. We will not describe the whole process in detail as it is language-specific and the cases, albeit simple, are quite numerous. An example of the result of this process is demonstrated by \cref{lst:elab}.
 
-\begin{ex}[Elaborations]
-    \label{ex:elab}
-    Simplified example for a call statement:
+\begin{listing}
+    \caption{Generated elaborations and constraints for a call statement}
+    \label{lst:elab}
 
     \begin{lstlisting}
-x = f(a->b);
-// x {elaboration: v1}
-// f {elaboration: instance v2 v_f (pair instance scheme)}
-// a {elaboration: v3}
-// a->b {elaboration: member v4 v5 v_getB
-//                     (triple return instance scheme)}
+x = f(a->b); // the considered call statement
     \end{lstlisting}
 
-    The generated constraints (without subtyping, replace all $\leq$ with $=$):
+    Elaborations for subexpressions of the call statement:
     \begin{itemize}
-        \item $f$: $\{v_2 \sqsupseteq_M v_f\}$ ($v_f$ is the variable representing the function scheme)
-        \item $a$: $\emptyset$
-        \item $a \to b$: $\{v5 \sqsupseteq_M v_{getB}; v_5 \sim v_8 \to v_9; v_3 \leq v_8; v_9 \leq v_4\}$ (describes the field accessor and two assignments)
-        \item $x = f(a \to b)$: $\{v_2 \sim v_6 \to v_7; v_4 \leq v_6; v_7 \leq v_1\}$ (describes the function and two assignments)
+        \item \li{x} elaboration: $v_1$
+
+        \item \li{f} elaboration: $\mtt instance\ v_2 v_f$ (pair instance scheme)
+
+        \item \li{a} elaboration: $v_3$
+
+        \item \li{a->b} elaboration: $\mtt member\ v_4 v_5 v_{getB}$ (triple return instance scheme)
     \end{itemize}
-\end{ex}
+
+    The generated constraints (for a version without subtyping, replace all $\leq$ with $=$):
+    \begin{itemize}
+        \item \li{f}: $\{v_2 \sqsupseteq_M v_f\}$ ($v_f$ is the variable representing the function scheme)
+
+        \item \li{a}: $\emptyset$
+
+        \item \li{a->b}: $\{v5 \sqsupseteq_M v_{getB}; v_5 \sim v_8 \to v_9; v_3 \leq v_8; v_9 \leq v_4\}$ (describes the field accessor and two assignments)
+
+        \item \li{x = f(a->b)}: $\{v_2 \sim v_6 \to v_7; v_4 \leq v_6; v_7 \leq v_1\}$ (describes the function and two assignments)
+    \end{itemize}
+\end{listing}
 
 The output of type inference preprocessing is the list of constraints and the \emph{elaborated AST}. The list of constraints is then given to the type inference algorithm and after that the inferred type assignments stored in the state of the inferencer are paired with the annotated AST, resulting in AST with type annotation.
 
-\begin{remark}[Elaborations]
-    Elaborations are simple structures that contain zero, one or multiple type variables depending on the type of the elaboration (zero if the node has no type semantics). They help to distinguish, for example, whether an named reference is an instantiation of some polymorphic object (as can be seen in \cref{ex:elab}).
-\end{remark}
+\begin{description}
+    \item[Elaborations] Elaborations are simple structures that contain zero, one or multiple type variables depending on the type of the elaboration (zero if the node has no type semantics). They help to distinguish, for example, whether an named reference is an instantiation of some polymorphic object (as can be seen in \cref{lst:elab}).
 
-\begin{defn}[Fresh type variable]
-    \label{def:prefresh}
-    A fresh type variable is a type variable (see \cref{def:tyvar}) with the given kind and parent and with a new unique identifier (in our implementation, chosen by a specific counter).
-\end{defn}
+    \item[Fresh type variable] A fresh type variable is a type variable (see \cref{def:tyvar}) with the given kind and parent and with a new unique identifier (in our implementation, chosen by a specific counter).
+\end{description}
 
 \subsubsection{Type inference preprocessing algorithm}
 
@@ -523,52 +511,94 @@ By $<_{\mathcal{K}}$ and $<_{\mathcal{C}}$ we understand that there is a directi
 The prototype type inference algorithm is designed to have the following intrastate invariants (the list is nonexhaustive, these will be used in various descriptions of the algorithm's steps):
 
 \begin{description}
-    \item[Active and forgotten variables] $Var(\mathcal{F}) \cup Var(\mathcal{P}) \cup Var(\mathcal{D}) \cup Var(\mathcal{K}) \cup Var(\mathcal{C}) = Var(\mathcal{V})$ and $Var(\mathcal{V}) \cap Var(\mathcal{G}) = \emptyset$.
+    \item[Active and forgotten variables]
+    Active type variables $\mcal V$ contain all type variables that represent the current state and they do not overlap with forgotten variables $\mcal G$.
+
+    $$Var(\mathcal{F}) \cup Var(\mathcal{P}) \cup Var(\mathcal{D}) \cup Var(\mathcal{K}) \cup Var(\mathcal{C}) = Var(\mathcal{V})$$ $$Var(\mathcal{V}) \cap Var(\mathcal{G}) = \emptyset$$
 
     \item[Type properties] $\mathcal{V}$ is projected into $\mathcal{D}$  by the type properties function $d$.
 
     \item[Type definitions] The subset $\mathcal{V}_p \subseteq \mathcal{V}$ and the set $\mathcal{P}$ are bijected by the type definition function $p$ and its inverse $p^{-1}$. Note that there generally are many types with no known definition.
 
-    \item[Subtype invariants] If we have two type variables $v, v' \in \mathcal{V}$ representing two types, then:
-        \begin{description}
-            \item[Graph $\mathcal{K}$ has no strongly connected components] $k (v) =_{\mathcal{K}} k (v') \To k (v) = k(v')$
+    \item[Subtype invariants] For any type variables $v, v' \in \mathcal{V}$ representing two types:
+        \begin{itemize}
+            \item Graph $\mathcal{K}$ has no strongly connected components:
+            $$k (v) =_{\mathcal{K}} k (v') \To k (v) = k(v')$$
 
-            \item[Graph $\mcal C$ has no strongly connected components] $c (v) =_{\mathcal{C}} c (v') \To c (v) = c(v')$
+            \item Graph $\mcal C$ has no strongly connected components:
+            $$c (v) =_{\mathcal{C}} c (v') \To c (v) = c(v')$$
 
-            \item[Trivially bound by the same data kind] If $b_K (k (v)) = b_K (k (v')) = [k_1, k_1]$ for some kind $k_1 \in \mathbb{K}$, then $k (v) = k (v')$
+            \item Trivially bound by the same data kind:
 
-            \item[Absurdly-bound data kinds considered same] If $b_K (k (v)) = b_K (k (v')) = [k_1, k_2]$ for some kinds $k_1, k_2 \in \mathbb{K}$, $k_2 < k_1$, then $k (v) = k (v')$ and it is an invalid data kind
+            If $b_K (k (v)) = b_K (k (v')) = [k_1, k_1]$ for some kind $k_1 \in \mathbb{K}$, \\
+            then $k (v) = k (v')$.
 
-            \item[Trivially bound by the same constness] If $b_C (c (v)) = b_C (c (v')) = [c_1, c_1]$ for some constness $c_1 \in \mathbb{C}$, then $c (v) = c (v')$
+            \item Absurdly-bound data kinds considered same:
 
-            \item[Absurdly-bound constnesses considered same] If $b_C (c (v)) = b_C (c (v')) = [c_1, c_2]$ for some constnesses $c_1, c_2 \in \mathbb{K}$, $c_2 < c_1$, then $c (v) = c (v')$ and it is an invalid constness
+            If $b_K (k (v)) = b_K (k (v')) = [k_1, k_2]$ for kinds $k_1, k_2 \in \mathbb{K}$, $k_2 < k_1$, \\
+            then $k (v) = k (v')$ and it is an invalid data kind.
 
-            \item[Data kind bounds propagate transitively] If $k (v) <_{\mathcal{K}} k (v')$, then for bounds $k_1, k_2, k_3, k_4$ such that $b_K (k (v)) = [k_1, k_3]$, and $b_K (k (v')) = [k_2, k_4]$ it holds that $k_1 \leq k_2$ and $k_3 \leq k_4$
+            \item Trivially bound by the same constness:
 
-            \item[Constness bounds propagate transitively] If $c (v) <_{\mathcal{C}} c (v')$, then for bounds $c_1, c_2, c_3, c_4$ such that $b_C (c (v)) = [c_1, c_3]$, and $b_C (c (v')) = [c_2, c_4]$ it holds that $c_1 \leq c_2$ and $c_3 \leq c_4$
-        \end{description}
+            If $b_C (c (v)) = b_C (c (v')) = [c_1, c_1]$ for some constness $c_1 \in \mathbb{C}$, \\
+            then $c (v) = c (v')$.
 
-    \item[Typings propagate with definitions] If a type represented by a type variable $v$ has a known definition (if $v \in \mathcal{V}_p$), then $t (d (v)) = p(v) \left[ \tau := t (d (\tau)) | \tau \in \mathrm{free} (p (d))\right]$. In other words, the typing of the type represented by $v$ follows the typing generated from the typings of the types via which it is defined.
+            \item Absurdly-bound constnesses considered same:
+
+            If $b_C (c (v)) = b_C (c (v')) = [c_1, c_2]$ for constnesses $c_1, c_2 \in \mathbb{K}$, $c_2 < c_1$, \\
+            then $c (v) = c (v')$ and it is an invalid constness.
+
+            \item Data kind bounds propagate transitively:
+
+            If $k (v) <_{\mathcal{K}} k (v')$, \\
+            then, for bounds $k_1, k_2, k_3, k_4$ such that $
+            \left(\begin{array}{r}b_K (k (v)) = [k_1, k_3] \\ \text{and}\ b_K (k (v')) = [k_2, k_4]\end{array}\right)$, \\
+            it holds that $k_1 \leq k_2$ and $k_3 \leq k_4$.
+
+            \item Constness bounds propagate transitively:
+
+            If $c (v) <_{\mathcal{C}} c (v')$, \\
+            then, for bounds $c_1, c_2, c_3, c_4$ such that $\left(\begin{array}{r}b_C (c (v)) = [c_1, c_3] \\\text{and}\ b_C (c (v')) = [c_2, c_4]\end{array}\right)$, \\
+            it holds that $c_1 \leq c_2$ and $c_3 \leq c_4$.
+        \end{itemize}
+
+    \item[Typings propagate with definitions] The typing of the type represented by $v$ follows the typing generated from the typings of the types via which it is defined.
+
+    If a type represented by a type variable $v$ has a known definition (if $v \in \mathcal{V}_p$), \\
+    then $t (d (v)) = p(v) \left[ \tau := t (d (\tau)) | \tau \in \mathrm{free} (p (d))\right]$.
 \end{description}
 
 \subsubsection{Interstate invariants}
 
 The algorithm is designed to have the following interstate invariants: (we use the indices to distinguish a successor state variable from its predecessor, we will always assume $n < m \in \mathbb{N}$, we then use these indices in all derived functions too; the list is not exhaustive, these are the ones important to consider when studying the algorithm)
 
-\begin{description}
-    \item[Forgotten variables stay forgotten] $v \in \mathcal{G}_n \Rightarrow v \in \mathcal{G}_m$.
-    \item[Forgotten variables used to be alive] $v \in \mathcal{G}_m \Rightarrow \exists n . v \in \mathcal{V}_n$.
-    \item[All free variables from constraints are considered by the algorithm] $v \in \free {\mathcal{F}_n} \Rightarrow v \in \mathcal{V}_n$.
-    \item[Assumed subtype constraints are monotonically restricted] \quad
+\begin{itemize}
+    \item Forgotten variables stay forgotten:
+    $$v \in \mathcal{G}_n \Rightarrow v \in \mathcal{G}_m$$
+
+    \item Forgotten variables used to be alive:
+    $$v \in \mathcal{G}_m \Rightarrow \exists n . v \in \mathcal{V}_n$$
+
+    \item All free variables from constraints are considered by the algorithm:
+    $$v \in \free {\mathcal{F}_n} \Rightarrow v \in \mathcal{V}_n$$
+
+    \item Assumed subtype constraints are monotonically restricted: \quad
     \begin{itemize}
         \item For kinds: $v \in {\mathcal{V}}_n \Rightarrow {b_K}_m (k_m(u_m(v))) \subseteq {b_K}_n (k_n(v))$
         \item For constnesses: $v \in {\mathcal{V}}_n \Rightarrow {b_C}_m (c_m(u_m(v))) \subseteq {b_C}_n (c_n(v))$.
     \end{itemize}
-    \item[Typings do not get forgotten] $v \in {\mathcal{V}}_n \Rightarrow \exists s . s (t_n(v)) = t_m(u_m (v))$, where $s$ is a substitution
-    \item[Explanations do not get forgotten] $v \in {\mathcal{V}_p}_n \Rightarrow \exists s . s(p_n(v)) = p_m(u_m (v))$.
-    \item[Results are results of results] $u_m = u_m (u_n)$.
-    \item[Schemes do not get forgotten] $fs_n \subseteq fs_m, cs_n \subseteq cs_m, cf_n \subseteq  cf_m, fd_n \subseteq  fd_m$. Note the lack of applying $u$.
-\end{description}
+
+    \item Typings do not get forgotten:
+    $$v \in {\mathcal{V}}_n \Rightarrow \exists s . s (t_n(v)) = t_m(u_m (v));\quad s \text{ is a substitution}$$
+
+    \item Explanations do not get forgotten:
+    $$v \in {\mathcal{V}_p}_n \Rightarrow \exists s . s(p_n(v)) = p_m(u_m (v))$$
+
+    \item Results are results of results: $u_m = u_m (u_n)$.
+
+    \item Schemes do not get forgotten: (note the lack of applying $u$)
+    $$fs_n \subseteq fs_m, cs_n \subseteq cs_m, cf_n \subseteq  cf_m, fd_n \subseteq  fd_m$$
+\end{itemize}
 
 \subsubsection{Unifications}
 \label{unifications}
@@ -595,17 +625,12 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
     This updates the variables $\mcal D, \mcal C, b_C$.
 \end{enumerate}
 
-\subsection{Type inference algorithm primitives}
+\subsection{Type inference algorithm routines}
 
-\begin{defn}[Fresh variable]
-    \label{freshVar}
-    An identifier for a fresh variable is chosen according to: \linebreak $\min \left(\mathbb{V} \setminus \mathcal{V} \setminus \mathcal{G}\right)$. It is given a ``generic'' type kind, which then is unified with whatever kind the fresh variable is assigned to represent. And the parent is set to $cp$, the current parent.
-\end{defn}
+\begin{description}
+    \item[\textsc{Fresh variable}] An identifier for a fresh variable is chosen according to: \linebreak $\min \left(\mathbb{V} \setminus \mathcal{V} \setminus \mathcal{G}\right)$. It is given a ``generic'' type kind, which then is unified with whatever kind the fresh variable is assigned to represent. And the parent is set to $cp$, the current parent.
 
-\begin{defn}[Algorithm repair steps]
-    \label{middlesteps}
-
-    After each step of the algorithm that transforms one of the state variables (mainly $\mathcal{G}$ and $\mathcal{P}$, $\mcal{D}$) into a new state, we perform the minimal necessary unifications (possibly recursively):
+    \item[\textsc{Repair step}] After each step of the algorithm that transforms one of the state variables (mainly $\mathcal{G}$ and $\mathcal{P}$, $\mcal{D}$) into a new state, we perform the minimal necessary unifications (possibly recursively):
 
     \begin{enumerate}
         \item To ``repair'' the injections $d$ and bijection $p$ (intrastate invariants about \emph{type properties} and \emph{type definitions}; this translates into using all four unifications).
@@ -614,30 +639,21 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
     \end{enumerate}
 
     This directly relates to subsection \emph{Unifications} in \cref{unifications}, see it for more details.
-\end{defn}
 
-\begin{remark}[Algorithm repair steps]
-    The algorithm may, \emph{correctly}, fail during the repair steps. This can be shown by \cref{trivBoundsObs} and by unification errors specified in subsection \emph{Unifications} in \cref{unifications}. This is followed up by generating an error.
-\end{remark}
+    The algorithm may, \emph{correctly}, fail during the repair steps. It can determine an absurd bounds constraint or fail by unification errors specified in subsection \emph{Unifications} in \cref{unifications}. This is followed up by generating an error.
 
-\begin{defn}[Introducing a new variable (not necessarily fresh)]
-    \label{introVar}
-    We introduce a new variable by extending the sets $\mathcal{V}$ and $\mathcal{D}$
-    and the type definition function $d$ by the argument $v$ and its image $i = (typing: v, constness: v, kind: v)$, formally: $\mathcal{V}' = \mathcal{V} \cup \{v\}$, $\mathcal{D}' = \mathcal{D} \cup \{i\}$, $d' = d [v := i]$, where $v$ is the new variable.
-\end{defn}
-\begin{defn}[Algorithm preparation step for a given constraint]
-    \label{presteps}
+    \item[\textsc{Introduction of a new variable}] We introduce a new variable (not necessarily fresh) by extending the sets $\mathcal{V}$ and $\mathcal{D}$ and the type definition function $d$ by the argument $v$ and its image $i = (typing: v, constness: v, kind: v)$, formally: $\mathcal{V}' = \mathcal{V} \cup \{v\}$, $\mathcal{D}' = \mathcal{D} \cup \{i\}$, $d' = d [v := i]$, where $v$ is the new variable.
 
-    All the flat constraints generally use complicated types, before each step of the algorithm, we replace the types in the given constraint with type variables that represent the types. Storing the structure of each input type $t$ to the variable $\mathcal P$ under the mapping $p$, generating a fresh type variable for each immediate subterm not represented in $\mcal P$, recursively.
+    \item[\textsc{Preparation step} for a given constraint] All the flat constraints generally use complicated types, before each step of the algorithm, we replace the types in the given constraint with type variables that represent the types. Storing the structure of each input type $t$ to the variable $\mathcal P$ under the mapping $p$, generating a fresh type variable for each immediate subterm not represented in $\mcal P$, recursively.
 
-    The replacement is performed according to the observation \ref{typesObs}, changing the state variables $\mathcal{P}$, $\mathcal{D}$, $\mathcal{V}$, $p$ and $d$ accordingly. We then, starting from the type variables representing the leafs of the structural tree of the type $t$, update the typing of all newly registered subterms of $t$ to adhere to the intrastate invariant about \emph{typings propagation}, each such update just collecting the typings of immediate children (from $\mcal D$), applying appropriate type constructor and updating the parent's record in $\mcal D$. For the (sub)terms' types not represented by any type variable before this step, we perform the steps explained in definitions \ref{freshVar} and \ref{introVar}.
-\end{defn}
+    The replacement is performed according to the observation \ref{typesObs}, changing the state variables $\mathcal{P}$, $\mathcal{D}$, $\mathcal{V}$, $p$ and $d$ accordingly. We then, starting from the type variables representing the leafs of the structural tree of the type $t$, update the typing of all newly registered subterms of $t$ to adhere to the intrastate invariant about \emph{typings propagation}, each such update just collecting the typings of immediate children (from $\mcal D$), applying appropriate type constructor and updating the parent's record in $\mcal D$. For the (sub)terms' types not represented by any type variable before this step, we generate \textsc{Fresh variable} and then we perform the \textsc{Introduction of a new variable}.
 
-\begin{defn}[Algorithm initialization]
-    The initial state is: $\mathcal{V} = \mathcal{G} = \mathcal{P} = \mathcal{D} = \mathcal{K} = \mathcal{C} = p = d = u = b_K = b_C = cp = fs = cs = cf = fd = \emptyset$ and $\mathcal{F}$ is the list of constraints to be satisfied.
+    \item[\textsc{Algorithm initialization}] The initial state is: $\mathcal{V} = \mathcal{G} = \mathcal{P} = \mathcal{D} = \mathcal{K} = \mathcal{C} = p = d = u = b_K = b_C = cp = fs = cs = cf = fd = \emptyset$ and $\mathcal{F}$ is the list of constraints to be satisfied.
 
-    Before the algorithm starts, we introduce the variables encountered in $\mathcal{F}$ according to the definition \ref{introVar} and we update the counter of variables so the next fresh variable has an unique identifier.
-\end{defn}
+    Before the algorithm starts, we perform \textsc{Introduction of a new variable} to introduce each of the variables encountered in $\mathcal{F}$ and we update the counter of variables so the next fresh variable has an unique identifier.
+\end{description}
+
+
 
 \begin{algorithm}
     \small
@@ -648,7 +664,7 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
         \State $\mcal F_p \gets \emptyset$ \Comment {deferred constraints}
         \While {$\mcal{F} \neq \emptyset$}
             \State take an arbitrary constraint $f$ from $\mcal F \setminus \mcal F_p$
-            \State perform the preparation step, see \cref{presteps}
+            \State perform the \textsc{Preparation step}
             \State $\mcal F \gets \mcal F \setminus \{f\}$ \Comment {$f$ is speculatively removed}
             \If {$f \equiv t_1 \sim t_2$}
                 \State unify $t_1$ and $t_2$ by the unification \ref{tUni}
@@ -684,7 +700,7 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
                     \State $ \mcal F \gets \mcal F \cup \{f\}; \mcal F_p \gets \mcal F_p \cup \{f\}$ \Comment {$f$ is deferred}
                 \EndIf
             \EndIf
-            \State perform a repair step, see \cref{middlesteps}
+            \State perform the \textsc{Repair step}
         \EndWhile
         \State \Return $\mcal F_p$
     \end{algorithmic}
@@ -697,11 +713,13 @@ Because of not supporting nested constraints (see the introduction of this secti
 The type inference pipeline then consists of the following steps:
 
 \begin{enumerate}
-    \item We repeatedly perform \cref{main_loop} until the resulting list $\mcal F_p$ of deferred constraints covers the whole $\mcal{F}$.
+    \item We perform the \textsc{Algorithm initialization}
 
-    \item If there are any instantiation constraints present in $\mcal F$, we know we have an unclosed function. We collect the instantiation constraints and then we construct an ``instantiation'` graph with edges of the form ``(instantiated, instantiated by)''. We then analyze the topological ordering of this graph, identifying the strongly connected components and relations between them.
+    \item We then repeatedly perform \cref{main_loop} until the resulting list $\mcal F_p$ of deferred constraints covers the whole $\mcal{F}$.
 
-    \item We then take the functions in the component that do not have any connected edges with the ``instantiated by'' end outside of the component. And we rewrite the instantiation constraints in these functions referring the other functions into equality constraints. We then continue with \cref{main_loop}. \label{do_inst_graph}
+    \item If there are any instantiation constraints present in $\mcal F$, we know we have an unclosed function (at least one). We collect the instantiation constraints and then we construct an ``instantiation'' graph with edges of the form \li{(instantiated, instantiated by)}. We then analyze the topological ordering of this graph, identifying the strongly connected components and relations between them.
+
+    \item We then collect the functions in the component that do not have any connected edges with the \li{instantiated by} end outside of the component. And we rewrite the instantiation constraints in these functions referring the other functions into equality constraints. We then continue with \cref{main_loop}. \label{do_inst_graph}
 
     \item We then collect all the type variables free in the currently solved component, we minimize the subtypes according to \cref{sec:inferSub}. We translate the resulting subtype variable definitions by suprema back into constraints, and we collect the unsolved constraints on the free variables of the component, we also include, for each free type variable, the constraints derived from the type descriptions (records in $\mcal{D}$) and subtype bounds (edges from/to the type variable in $\mcal K, \mcal C$), kind-bound (from $\mcal b_K$) and const-bound (from $\mcal b_C$) constraints. We close the component, generating a scheme for each function of this component, quantifying the free variables and assuming all the collected constraints. \label{closing}
 
@@ -712,9 +730,7 @@ The type inference pipeline then consists of the following steps:
     \item If there are none, we determine whether there are some unresolved constraints and if there are, we report an error. If there are none, the code is ready to be monomorphized.
 \end{enumerate}
 
-\begin{remark}
-    The algorithm, if implemented entirely, is correct as described in \cref{defer_solve} and \cref{sec:typesystem}. The various variables ($\mcal D, \mcal P, \mcal C, \mcal K, \dots$) represent the input constraints (and derived constraints) in a more centralized, equivalent, form (demonstrated by the step \ref{closing}, which translates this form back into constraints), while the invariants (see \cref{sec:invariants}) ensure the updates to the variables are equivalent to rewriting used in Deferred Solving. The invariants also ensure that the information is updated whenever possible. Note that because of non-nested contexts, there are no skolem constants nor context levels in the algorithm.
-\end{remark}
+The algorithm, if implemented entirely, is correct as described in \cref{defer_solve} and \cref{sec:typesystem}. The various variables ($\mcal D, \mcal P, \mcal C, \mcal K, \dots$) represent the input constraints (and derived constraints) in a more centralized, equivalent, form (demonstrated by the step \ref{closing}, which translates this form back into constraints), while the invariants (see \cref{sec:invariants}) ensure the updates to the variables are equivalent to rewriting used in Deferred Solving. The invariants also ensure that the information is updated whenever possible. Note that because of non-nested contexts, there are no skolem constants nor context levels in the algorithm.
 
 \section{Monomorphization}
 
@@ -731,7 +747,7 @@ The two phases of monomorphization are:
 \end{enumerate}
 
 \begin{listing}
-    \caption{Example of code before and after monomorphization.}
+    \caption{Example of code before and after monomorphization. For the specific ``mangled'' names given to the copies of \li{id}, see \cref{sec:mangling}.}
     \label{lst:mono}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -742,12 +758,14 @@ id (auto x) {
     return (x);
 }
 
-foreign "C" f(bits32 x){
+foreign "C"
+f(bits32 x){
     x = id(x);
     return (x);
 }
 
-foreign "C" g(bits64 x){
+foreign "C"
+g(bits64 x){
     x = id(x);
     return (x);
 }
@@ -772,35 +790,36 @@ foreign "C" g(bits64 x) {
 }
 \end{lstlisting}
     \end{minipage}
-    For the specific ``mangled'' names given to the copies of \li{id}, see \cref{sec:mangling}.
+
     \end{center}
 \end{listing}
 
-Note that if there was no limit on monomorphization (observe step \ref{steptwo}), it could potentially continue forever (we usually choose the limit so it is safely bigger than the monomorphization depth of majority of practical programs; this is precedented, for example, by Haskell \cite{haskell2010}):
+Note that if there was no limit on monomorphization (observe step \ref{steptwo}), it could potentially continue forever as seen in \cref{lst:nonTermination}. We usually choose the limit so it is safely bigger than the monomorphization depth of majority of practical programs; this is precedented, for example, by Haskell \cite{haskell2010}.
 
-\begin{ex}[non-terminating monomorphization]
-    Suppose the following program:
+\begin{listing}
+    \caption{Non-terminating monomorphization}
+    \label{lst:nonTermination}
 
     \begin{lstlisting}
-        class C a {
-            c() -> auto (a);
-        }
+class C a {
+    c() -> auto (a);
+}
 
-        instance C ptr(auto(a)) => C auto (a) {
-            c() {
-                auto x;
-                auto y;
+instance C ptr(auto(a)) => C auto (a) {
+    c() {
+        auto x;
+        auto y;
 
-                x = c();
-                y = [x];
+        x = c();
+        y = [x];
 
-                return (y);
-            }
-        }
+        return (y);
+    }
+}
     \end{lstlisting}
 
-    The program is semantically valid, but a successful monomorphization of its use would require an infinite set of subsequent definitions for the instances of c.
-\end{ex}
+    The program is semantically valid, but a successful monomorphization of its use would require an infinite set of subsequent definitions for the instances of \li{c}.
+\end{listing}
 
 In the prototype implementation, the monomorphization queue is separated into waves. The zeroth wave consists of monomorphic top level definitions, then the first consist of the top level definitions being instantiated from references in the zeroth level, etc. This allows the monomorphization depth be checked by a simple counter (without waves, we can check the monomorphization depth by adding an extra argument to each record in the queue).
 
@@ -864,9 +883,9 @@ LR$procedure0:
 Apart from the postprocessed monomorphized code, translation takes three variables from the \emph{blockifier} (see \cref{sec:blockify}):
 
 \begin{description}
-    \item[Control flow] The edges of the control flow graph, for each procedure.
-    \item[Block data] The mapping from each block's index and variable name relevant in the context of the corresponding block to a two-valued tuple \linebreak \li{(writes, requests alive)} where each entry is a boolean (note that in \cref{sec:blockify}, we introduced this variable as a triple, we siply strip the first value of each record away).
-    \item[Blocks table] The mapping from each block's index to its name, so we can use the blocks' actual names in the generated code.
+    \item[\textsc{Control flow}] The edges of the control flow graph, for each procedure.
+    \item[\textsc{Block data}] The mapping from each block's index and variable name relevant in the context of the corresponding block to a two-valued tuple \linebreak \li{(writes, requests alive)} where each entry is a boolean (note that in \cref{sec:blockify}, we introduced this variable as a triple, we siply strip the first value of each record away).
+    \item[\textsc{Blocks table}] The mapping from each block's index to its name, so we can use the blocks' actual names in the generated code.
 \end{description}
 
 The translator first restructures the code so that all the struct definitions are at the top and the procedures are at the bottom. Then it collects the definitions of all structs and represents each of them using a pair  \li{([(field_alias, field_index)], [field_type])}. The second value (list of a structure's fields) in each such pair corresponds to how llvm-hs-pure represents the structures, while the first maps each field accessor name to the index of the corresponding field, again, directly usable when generating the relevant LLVM instructions. After the translator collects all the struct definitions, it starts translating the procedures as described in \cref{trans_proc}.
@@ -880,18 +899,21 @@ The translator first restructures the code so that all the struct definitions ar
         \State Open the entry basic block
         \State $f \gets \emptyset$ \Comment{a mapping from variable names to their operands}
         \State $\forall \mtt{formal\ argument}\ \alpha . f \gets f [ \alpha := \mtt{newOperand}]$
-        \For{$\mtt{datum}\ d \in$ \li{stackdata \{ ... \}} $\in \mtt{declarationsOfProcedure}$ }
+        \For {$\mtt{datum}\ d \in$ \li{stackdata \{ ... \}} $\in \mtt{declarationsOfProcedure}$}
             \State Generate \li{alloca} for $d$, resulting in $d'$
             \State $\forall  a\ \mtt{aliasOf}\ d .  r \gets r[a := d']$. \Comment{add the appropriate pairs to $r$ mapping}
         \EndFor
         \State $B \gets \mtt{breakIntoBasicBlocks} (S)$ \Comment{according to blockifier's annotations}
-        \State from $B$, take the entry block $E$ and the rest $R$
-        \State generate $ph$, a mapping of placeholder operands for each record in the \emph{block data} without the entry block such that \li{writes} or \li{requests alive} is set
-        \State translate the statements (\cref{transl_stmt}) in the entry block $E$, each given $f$, while updating the mapping $f$ accordingly after each statement's translation
-        \For{block $b \in R$}
-            \State translate the block using \cref{transl_block} with the index of the basic block, list of its statements, $r$, $f$ and $ph$
+        \State $E,R \gets \mtt {entryAndOtherBasicBlocks}(B)$
+        \State $ph \gets$ placeholder operands for each record in the \textsc{block data} (variable from the blockifier) without the entry block such that \li{writes} or \li{requests alive} is set
+        \For {$s \in E$}
+            \State $f \gets \mtt {translate}(r, f, s)$ \Comment{\cref{transl_stmt}}
         \EndFor
-        \State Collect the \textbf{return}ed mappings from each block into $exports$
+        \State $exports \gets \emptyset$ \Comment{Actual values for the placeholders in $ph$}
+        \For{block $b \in R$}
+            \State $vars \gets \mtt {translate}(idx(b), r, f, ph, b)$ \Comment{\cref{transl_block}}
+            \State $exports \gets exports \cup (idx(b),vars)$
+        \EndFor
         \State Create a mapping $s$ from the placeholders in $ph$ to their corresponding images in $exports$
         \State use $s$ to rewrite all placeholders in all phi nodes generated in each block in $R$
     \end{algorithmic}
@@ -924,16 +946,23 @@ The translator first restructures the code so that all the struct definitions ar
         \Require $f$ \Comment{mapping from entry block's variables to operands}
         \Require $ph$ \Comment{mapping from \li{(blockIdx, varName)} to placeholder operands}
         \Require $B$ \Comment{the list of consecutive statements of the basic block}
-        \State translate the first statement (\cref{transl_stmt}) of $B$ \Comment{opens a LLVM basic block, variables not relevant here (label statements do not access them)}
+        \State $l, S \gets \mtt {firstAndOtherStatements}(B)$
+        \State $\emptyset \gets \mtt{translate}(r, \emptyset, s)$ \Comment{\cref{transl_stmt}; opens a LLVM basic block}
         \State $vars \gets \emptyset$ \Comment{a mapping from variable names to their corresponding operands}
         \For {$v$ a variable requested alive}
             \State generate a phi node $\varphi$
-            \For {$(idx', idx)$ in the control flow graph}
-                \State add an operand $f(idx', v)$ (if $idx'$ is the entry block) or $ph(idx', v)$ (otherwise) labeled $\mtt{blocks\ table}(idx')$ \Comment{labeled with $idx'$ block's name}
+            \For {$(idx', idx)$ in the \textsc{control flow} graph from the blockifier}
+                \If {$idx'$ is the entry block}
+                    \State $\varphi \gets \varphi \cup (f(v), \text{\textsc{blocks table}}(idx'))$
+                \Else
+                    \State $\varphi \gets \varphi \cup (ph(idx', v), \text{\textsc{blocks table}}(idx'))$
+                \EndIf \Comment {\text{\textsc{blocks table}} is from the blockifier}
             \EndFor
             \State $vars \gets vars[v := \varphi]$ \Comment{add the phi node to the $vars$ mapping}
         \EndFor
-        \State translate the statements of $B$ (\cref{transl_stmt}), starting from the second, each given $vars$, while updating $vars$ accordingly after each statement translation
+        \For {$s \in S$}
+            \State $vars \gets \mtt {translate} (r, vars, s)$ \Comment {\cref{transl_stmt}}
+        \EndFor
         \State \Return $vars$
     \end{algorithmic}
 \end{algorithm}
