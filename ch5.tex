@@ -1,11 +1,11 @@
 \chapter{Lessons learned and discussion}
 \label{chap5}
 
-\section{Issues with the prototype compiler}
+In this section, we discuss and evaluate various design decisions made during the implementation of the prototype compiler. The prototype offered a good insight into the intricacies of extending type inference by parametric polymorphism with typeclasses and subtyping, and some of the design decisions that were initially considered good have turned to be suboptimal. We summarize such findings, and describe several alternatives that may alleviate the issues we encountered. Finally, we highlight how the implementation in a functional language simplified various complicated compiler constructions.
 
-In this section, we discuss various design decisions made when implementing the prototype compiler. The prototype compiler offered good insight into intricacies of extending type inference with parametric polymorphism with typeclasses and subtyping. We identified some problematic design decisions and
+\section{Compiler architecture drawbacks and possible improvements}
 
-\subsection{Complicated inferencer state}
+\subsection{Complexity of the inferencer state}
 \label{sec:state}
 
 The biggest issue with the prototype compiler is that it transforms all input constraints into a centralized inner state with numerous invariants that have to be explicitly ensured by various ``repair steps''. The reason behind this design decision was that:
@@ -20,12 +20,16 @@ The biggest issue with the prototype compiler is that it transforms all input co
 
 Since both of these attempts showed no practical use and the subtype system matured into different way, there are no lasting reasons for this design.
 
-\subsection{Inferencer state required to interpret elaborations}
-\label{sec:inferInter}
+\paragraph{Possible improvement} The inferencer state can be vastly simplified by introducing special type variables with a separate namespace for each (subtype) dimension $s$ and, for each, two extra constraints instead of $t \leq_s t'$:
 
-A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state. This means that this state has to be passed to all subsequent phases. This is most significant during monomorphization, which has to change type elaborations of monomorphic copies of polymorphic top-level definitions. It has to repeatably perform lookups of type interpretations for each elaboration present in the given top-level definition.
+\begin{itemize}
+    \item $t \to_s v$, which binds a type to a subtype dimension (variable, constant, or $\sup_s$ applied to a set of such)
+    \item $v \leq_s v'$, which represents inequality on subtype dimensions
+\end{itemize}
 
-\subsection{Global type inference without context levels}
+If we extend this with the $\sup_s$ operator, we can model the same subtyping system with just constraints instead of the complicated structure of state variables. In turn, constraints in the form $t \to_s v$ substitute the functionality variable $\mcal D$, constraints of the form $v \leq_s v'$ replace the variables $\mcal C$, $\mcal K$, $b_C$ and $b_K$, and the variable $\mcal P$ is not required at all.
+
+\subsection{Omission of context levels}
 \label{sec:global}
 
 The prototype compiler performs most constraint solving steps on the whole program globally (on all constraints) and not just on strongly connected subprogram components (top-level definitions with cyclic dependencies). This then called for reimplementation of even stronger construct than context levels, ``references to parent type variables'' (each uniquely representing a top-level definition). This is required in the prototype design for deciding what type variables (representing types) are present in each top-level definition.
@@ -34,44 +38,30 @@ When the type inference of a top-level definition is closed, the compiler looks 
 
 Another consequence of this is the ``instantiation constraint'' introduced by the prototype compiler. If the compiler solved each subprogram component separately, these constraints could be immediately replaced with appropriate instantiations or just unifications, depending on whether the `polytype' operand is present in the same component or in already solved component.
 
+\paragraph{Possible improvement}
+It would be much easier to implement the inference in such a way that each subprogram component is solved separately in their topological order.
+
+In such case, the references to parent type variables are not required, because all considered type variables are relevant to the given component and we solve each subprogram component with different variables. Similarly, the instantiation constraint is completely unnecessary. During inference preprocessing for the given component, we already know what references are pointing to polytypes, and we can generate the appropriate constraints.
+
+\subsection{Inferencer state required to interpret elaborations}
+\label{sec:inferInter}
+
+A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state. This means that this state has to be passed to all subsequent phases. This is most significant during monomorphization, which has to change type elaborations of monomorphic copies of polymorphic top-level definitions. It has to repeatably perform lookups of type interpretations for each elaboration present in the given top-level definition.
+
+\paragraph{Possible improvement}
+Alternatively, we can elaborate each node of the inferred code with a fully substituted type (or qualified type for local reference to a polytype; type scheme for a polytype top-level definition).
+
+That way, the qualified types would take a witness of the corresponding instance, and they would also contain the instantiated type of the instance, making the monomorphization (and partially also the subsequent compilation phases) much easier.
+
 \subsection{Weakness in propagating subtype inequalities}
 \label{sec:weakness}
 
-The type system does not propagate subtype inequalities as discussed in \cref{sec:state}. This has an effect of ``forgetting'' appropriate subtypes for arguments, when a reference to a procedure is passed. This is more closely explored in \cref{sec:tsLims}.
+The type system does not propagate subtype inequalities as discussed in \cref{sec:state}. This has an effect of ``forgetting'' appropriate subtypes for arguments, when a reference to a procedure is passed. We have explored the implications more closely in \cref{sec:tsLims}.
 
-\section{Solutions to the issues}
+\paragraph{Possible improvement}
+We could add an extra subtype dimension $a$ with only one constant $\bot_a$. For each assignment (for example, \li{x = y}, function argument passing, etc.), we still consider the left-hand operand to be more general in all dimensions than the right-hand operand, including the $a$ dimension.
 
-\subsection{Solution to the inferencer state}
-
-The issues in \cref{sec:state} can be solved by introducing special type variables with a separate namespace for each (subtype) dimension $s$ and, for each, two extra constraints instead of $t \leq_s t'$:
-
-\begin{itemize}
-    \item $t \to_s v$ binding a type to a subtype dimension (variable, constant, or $\sup_s$ applied to a set of such)
-    \item $v \leq_s v'$ inequality on subtype dimensions
-\end{itemize}
-
-If we extend this with the $\sup_s$ operator, we can model the same subtyping system with just constraints instead of a complicated structure of state variables. $t \to_s v$ substitutes the $\mcal D$ variable, $v \leq_s v'$ the variables $\mcal C, \mcal K, b_C, b_K$, $\mcal P$ variable is not required at all.
-
-\subsection{Solution to the interpretation of types}
-
-The issues in \cref{sec:inferInter} can be solved by elaborating each node of the inferred code with fully substituted type (or qualified type for local reference to a polytype; type scheme for a polytype top-level definition).
-
-The qualified types take a witness of the corresponding instance and they also contain the instantiated type of the instance, making monomorphization (and, partially, the subsequent phases) much easier.
-
-\subsection{Solution to the problems with global inference}
-\label{sec:solGlob}
-
-It is much easier to implement the inference in such a way that each subprogram component is solved separately in their topological order. This solves the issues in \cref{sec:global}.
-
-The references to parent type variables are not required as all considered type variables are relevant to the given component, we solve each subprogram component with different variables. And the instantiation constraint is completely unnecessary. During inference preprocessing for the given component, we already know what references are to polytypes and we can generate appropriate constraints.
-
-\subsection{Solution to the weakness in propagating subtype inequalities}
-
-We can solve the issue in \cref{sec:weakness} by adding an extra subtype dimension $a$ with only one constant $\bot_a$. For each assignment (for example, \li{x = y}; generalized to arguments, etc.), we still consider the left-hand operand more general in all dimension than the right-hand operand, including the $a$ dimension.
-
-We then solve the typings in each \emph{program} (external binding with predefined subtype dimensions of arguments) and, for all pairs of types $t, t'$ such that $t \geq_a t'$. We add more constraints for the desired semantics in other subtype dimensions. For example, if $t \equiv (\alpha \to \beta)$ and $t' \equiv (\alpha' \to \beta')$, we might add the constraints $\alpha \sim \alpha'$ and $\beta' \sim \beta$ (if we require the arguments and the returns of subtype functions be the same).
-
-There are multiple ways to implement this depending on the desired semantics for the concrete language.
+With that, after we solve the typings in each \emph{program} (external binding with predefined subtype dimensions of arguments), for all pairs of types $t, t'$ such that $t \geq_a t'$, we add more constraints for the desired semantics in other subtype dimensions. For example, if $t \equiv (\alpha \to \beta)$ and $t' \equiv (\alpha' \to \beta')$, we might add the constraints $\alpha \sim \alpha'$ and $\beta' \sim \beta$ (if we require the arguments and the returns of subtype functions be the same).
 
 \section{Useful functional constructs for compiler implementation}
 
