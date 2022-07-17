@@ -256,7 +256,7 @@ The constraints can be solved by the following assignments $@a := \mtt{Int}, @b 
 
 The Deferred Inference algorithm performs the type inference by rewriting a set of constraints that was generated during the code elaboration into an equivalent, simpler set of constraints in each step, until it either solves all constraints or ends up with a set of constraints that can not be reduced further. \cite{peytonjones2019type}
 
-Our simplified presentation of the algoritm (\Cref{deferred_loop}) is further subdivided to a special case that handles a class constraint (\Cref{case_class}) and an equality constraint (\Cref{case_equality}).
+Our simplified presentation of the algorithm (\Cref{deferred_loop}) is further subdivided to a special case that handles a class constraint (\Cref{case_class}) and an equality constraint (\Cref{case_equality}).
 
 \begin{algorithm}
     \caption{Main loop of Deferred Inference algorithm (simplified, from \citet{peytonjones2019type})}

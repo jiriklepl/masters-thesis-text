@@ -197,12 +197,13 @@ We implemented the type system as defined in \cref{sec:typesystem}. During the d
 Note that there can be systems with different subtype dimensions, in which the two relations (equality of types, equality of all dimensions of types) can indeed be defined as equivalent. An example of such a system would be a system with no subtype dimensions.
 
 \subsection{Type system limitations}
+\label{sec:tsLims}
 
 Consider \cref{congruence}, which describes why subtypes do not commute with type algebra, and \cref{inconsistency}, which describes why we do not consider two types having the same dimensions necessarily the same.
 
 Notice that if we have two function types $t \equiv \alpha \to \beta$ and $t' \equiv \alpha' \to \beta'$ and $t \leq t'$, then the only derivable constraints on $\alpha, \alpha', \beta, \beta'$ are $\alpha \sim_T \alpha'$ and $\beta \sim_T \beta'$. This means that if we assign a reference to a function to a variable, the subtype constraints on its arguments are ``forgotten''. In the prototype implementation, this does not pose any problems as we consider only direct references to functions in call statements. But, In general case, it should be addressed as we describe here:
 
-In \cref{def:stDim}, we introduced that subtype dimension are non-affecting typeclass resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing appropriate constraints after deciding the typings according to the desired semantics (for example, $\alpha \leq \alpha' \land \beta' \leq \beta$).
+In \cref{def:stDim}, we introduced that subtype dimension are non-affecting typeclass resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing appropriate constraints after deciding the typings according to the desired semantics (for example, $\alpha \sim \alpha' \land \beta' \sim \beta$).
 
 \section{Type Inference}
 
