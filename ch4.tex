@@ -138,9 +138,9 @@ In \cmm, a reference to memory (used for indirect write on indirect read) has to
 
 The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases an fairly unusual assignment statement, which is a feature of \cmm.
 
-\subsection{Improvements over the Algorithm W}
+\subsection{Improvements over the algorithm W}
 
-In our previous work \cite{klepl2020type}, we used an variation of Algorithm W based on THIH \cite{jones1999typing}. We concluded that such approach did not allow for multi-parameter typeclasses (\emph{MPTC}s) and general use of field accessors to \li{struct} fields, we required each field to have a unique name.
+In our previous work \cite{klepl2020type}, we used an variation of algorithm W based on THIH \cite{jones1999typing}. We concluded that such approach did not allow for multi-parameter typeclasses (\emph{MPTC}s) and general use of field accessors to \li{struct} fields, we required each field to have a unique name.
 
 In the prototype compiler, we address this and the prototype compiler's type inference interprets both MPTCs and field accessors without requirement on unique names.
 \begin{listing}
@@ -388,7 +388,7 @@ id_y = _Mid_$f$Lb64...(y);
 
 Field accessors allow us to introduce further semantics into structs. This is useful in situations, where each object in a certain model has to contain some information that characterizes the given object. It can be the object's identifier, or age, and perhaps, it can have different types for different objects. For example, one part of the model can use 32-bit wide identifiers and another 64-bit wide. This is where the approach from the previous work did not suffice.
 
-With the prototype implementation based on Deferred Solving with MPTCs and functional dependencies, type-inferring general field accessors is possible as shown in \cref{lst:fieldAccessors}. The compiler type-infers all relevant types, only \li{struct} definitions are typed explicitly.
+With the prototype implementation based on deferred solving with MPTCs and functional dependencies, type-inferring general field accessors is possible as shown in \cref{lst:fieldAccessors}. The compiler type-infers all relevant types, only \li{struct} definitions are typed explicitly.
 
 \begin{listing}
     \caption{Example use of field accessors (some names truncated for brevity)}
@@ -833,10 +833,10 @@ In order to fully serve as a practical alternative to the \li{goto cleanup} patt
 
 One possible improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple resource-representing objects, each such action then possibly being prevented by a separate \li{dropped} statement on some subset of control flow paths.
 
-\section{Comparison to other languages offering automatic resource management}
+\section{Comparison to other resource management systems}
 \label{sec:OtherRAII}
 
-There are multiple constructs that implement the automatic resource management mechanism. We will look into two: C++ RAII and C\# \li{try\{...\} finally\{...\}} (for simplicity, we will call them by the respective language's names).
+There are multiple constructs in other languages that implement the automatic resource management mechanism. We will look into two: C++ RAII and C\# \li{try\{...\} finally\{...\}} (for simplicity, we will call them by the respective language's names).
 
 Neither of approaches of C++ and C\# allow for explicit use-specified special cases to the resource management mechanism. If the given language has no predefined optimization for the specific situation (C++, notably, defines ``trivially destructible'' objects, which do not issue the resource management action), the resource management action has to happen regardless of circumstances (as long as the program follows the language specification).
 
