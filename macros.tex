@@ -63,6 +63,12 @@
 \DeclareNewFloatType{lang}{}
 \floatsetup[lang]{style=Boxed}
 
+\counterwithin{codex}{chapter}
+\counterwithin{listing}{chapter}
+\counterwithin{algorithm}{chapter}
+\counterwithout{figure}{chapter}
+
+
 \DeclareCaptionStyle{thesis}{style=base,font={small,sf},labelfont=bf,labelsep=quad}
 \DeclareCaptionStyle{thesisbox}{style=boxed,font={small,sf},labelfont=bf,labelsep=quad}
 \captionsetup{style=thesis}
@@ -98,14 +104,27 @@
 \else\floatname{lang}{Jazyk}\fi
 
 \lstset{ % use this to define styling for any other language
-  language=C++,
+  language=C,
   tabsize=2,
   showstringspaces=false,
+  morekeywords={foreign, dropped, bits32, bits64, class, instance, ptr, new, stackdata},
+  deletekeywords={while},
   basicstyle=\footnotesize\tt\color{black!75},
   identifierstyle=\bfseries\color{black},
   commentstyle=\color{green!50!black},
   stringstyle=\color{red!50!black},
-  keywordstyle=\color{blue!75!black}}
+  keywordstyle=\color{blue!75!black}
+}
+
+\lstdefinestyle{haskellStyle}{
+  language=Haskell,
+  morekeywords={Foldable, Traversable, Data, forall}
+}
+
+\lstdefinestyle{llvmStyle}{
+  language=LLVM,
+  morekeywords={undef, ccc}
+}
 
 % Czech versions of the used cleveref references (It's not as convenient as in
 % English because of declension, cleveref is limited to sg/pl nominative. Use
@@ -140,7 +159,12 @@
 \fi
 
 
+\providecommand{\free}[1]{\mtt{free} (#1)}
+\providecommand{\dom}[1]{\mtt{Dom} (#1)}
+\providecommand{\ran}[1]{\mtt{Ran} (#1)}
+\def\cmm{\mbox{C-\phantom{}-}\xspace}
 \providecommand{\vect}[1]{\overrightarrow{#1}}
+\renewcommand{\algorithmiccomment}[1]{\hfill\textcolor{green!50!black}{$\triangleright$~\textit{#1}}}
 
 % grammar tuning
 \def\grammarP{0.666}

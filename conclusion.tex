@@ -3,7 +3,7 @@
 
 In this thesis, we have described and implemented a rather complex extension of the deferred type inference algorithm, and applied it for inference of types of an extended variant of the \cmm language that features types and a simple but powerful type-driven form of resource management. The output of the thesis, a prototype compiler, translates the typed \cmm language into lower-level, simpler LLVM assembly code, which can be further used to produce executables and libraries.
 
-In particular, we have successfully achieved the following goals:
+In particular, we have successfully achieved the following main goals:
 
 \begin{description}
     \small
@@ -27,9 +27,7 @@ In particular, we have successfully achieved the following goals:
 
     Less-significantly, we compared the type system introduced into \cmm to the one we introduced into C in the previous work and we concluded that it solves the unreached goals of that work.
 
-    \item[User-specifiable semantics of constants] We iteratively developed a subtyping system, with an attempt to model propagation of constants. The relevant theory suggested that even quite simple such systems are either undecidable or not time-efficiently solvable \cite{tiuryn1992subtype, frey1997subtype}. This development was about  exploring the fragile balance between some practical usability and efficient solvability without ambiguities. The formulation we concluded on (in \cref{sec:typesystem}) is solvable and without ambiguities, although not very practical for traditional systems languages. For each subprogram (strongly connected component of definitions and declarations), it works in two phases. The first phase solves the typings of all semantic nodes (typings are during this phase indistinguishable from types). The second phase then minimizes subtype inequalities of certain free variables in the given subprogram. This is solvable by graph algorithms that concern topology orderings.
-
-    The prototype algorithm does not cover the proposed subtyping system. And furthermore, it was concluded that this system is incomplete for systems with first-class functions and pointers, as it, due to solvability, does not propagate inequalities onto derived types. \citet{tiuryn1992subtype, frey1997subtype} conclude, such an approach would, without significant limitations, mean the system would not be efficiently solvable.
+    \item[User front-end for customizable subtyping systems] While, in \cref{sec:typesystem}, we have shown that the subtyping system is capable of inferring user-specified semantics of subtypes -- for example, giving a possibility for the user to simulate various levels of constantness known from C++ (\li{constexpr}), we did not develop a practical front-end that would allow programmers to interact with this feature directly.
 \end{description}
 
 % \section*{The overall quality of the solution}

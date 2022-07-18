@@ -76,7 +76,7 @@ One such finding is the design pattern we used for defining the AST nodes in Has
 \begin{listing}
     \caption{Definition of an AST node \texttt{TopLevel}}
     \label{lst:topLevel}
-    \begin{lstlisting}[language=Haskell]
+    \begin{lstlisting}[style=haskellStyle]
 data TopLevel a
     = TopSection StrLit [Annot Section a]
     | TopDecl (Annot Decl a)
@@ -111,7 +111,7 @@ The \li{go = gmapM go `extM` lValueCase} pattern does not look that impressive a
 \begin{listing}
     \caption{Possible benefits of deriving the \texttt{Data} class}
     \label{lst:dataGenerics}
-    \begin{lstlisting}[language=Haskell]
+    \begin{lstlisting}[style=haskellStyle]
 -- The following function traverses the AST and replaces
 --   the nodes of the type 'AST.LValue' with mangled versions
 mangle n@(_ `Annot` (_ :: a)) = go n

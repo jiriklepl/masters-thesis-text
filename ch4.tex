@@ -1,16 +1,16 @@
 \chapter{Results and discussion}
 \label{chap4}
 
-In this chapter, we show the possibilities of use of the extended \cmm.
+In this chapter, we show the possibilities of use of the extended \cmm compiled by the prototype compiler described in \cref{chap3}. \xxx{link to repo, appendix}
 
-\section{Prototype compiler of typed \cmm}
+\section{Functionality of the prototype compiler}
 \label{sec:protoComp}
 
-\subsection{Type-inferring local declarations}
+\subsection{Type inference of local declarations}
 
 First, we demonstrate simple properties of the type system. As expected, the compiler is able to infer types of local declarations. On a simple example of \li{gcd} procedure (\cref{lst:localDecl}) that contains variables declared with ``auto'' type, it is able to deduce the correct type for a local variable and the return value.
 
-\begin{listing}
+\begin{codex}
     \caption{Example of type-inferring local declarations}
     \label{lst:localDecl}
     \begin{center}
@@ -54,9 +54,9 @@ foreign "C" gcd(bits32 u,
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
-\subsection{Reduction of code using polymorphism}
+\subsection{Generic programming using polymorphism}
 \label{sec:reduction}
 
 Type inference allows us to write polymorphic procedures, which are then correctly interpreted by the compiler and rewritten into an efficient code with correctly filled types for each each use in different context. The user does not have to define a procedure for each use separately. This is demonstrated by \cref{lst:reduction}. The code is ``monomorphized'' into code containing monomorphic definitions replacing the user-provided polymorphic ones with correctly inferred types.
@@ -65,8 +65,8 @@ Notably, compared to some other solutions (for example: Java, Python), which pro
 
 This constitutes ``mangling'' the names of monomorphic copies of polymorphic procedures depending on their types. This is performed so each generated definition has a unique name and they can be correctly referenced from their corresponding call sites.
 
-\begin{listing}
-    \caption{Example of reduction of code (some names truncated for brevity)}
+\begin{codex}
+    \caption{Example use of generic programming (some names are truncated for brevity)}
     \label{lst:reduction}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -128,7 +128,7 @@ c2 = _Madd_$f$Lb64...(a2, b2);
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
 \subsection{Simplified pointer dereferences}
 
@@ -143,9 +143,9 @@ The prototype compiler translates the input code into the LLVM assembly language
 In our previous work \cite{klepl2020type}, we used an variation of algorithm W based on THIH \cite{jones1999typing}. We concluded that such approach did not allow for multi-parameter typeclasses (\emph{MPTC}s) and general use of field accessors to \li{struct} fields, we required each field to have a unique name.
 
 In the prototype compiler, we address this and the prototype compiler's type inference interprets both MPTCs and field accessors without requirement on unique names.
-\begin{listing}
+\begin{codex}
     \small
-    \caption{Example of translation into LLVM}
+    \caption{Example of translation of an input source code into LLVM}
     \label{lst:translex}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -154,7 +154,7 @@ In the prototype compiler, we address this and the prototype compiler's type inf
 // Source code
 foreign "C" f(bits32 u,
               bits32 w)
-              -> bits32{
+              -> bits32 {
   auto r;
 
   if u == w {
@@ -175,7 +175,7 @@ foreign "C" f(bits32 u,
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
     \begin{minipage}{0.5\linewidth}
-    \begin{lstlisting}[language=LLVM]
+    \begin{lstlisting}[style=llvmStyle]
 ; Output LLVM assembly
 define external ccc  <{i32}>
 @f(i32  %u_0, i32  %w_0)    {
@@ -200,21 +200,22 @@ F$else_1:
   %7 = insertvalue <{i32}>
         undef, i32 %6, 0
   ret <{i32}> %7
+
   ; the last three statements
-  ; were unreachable
+  ;  were unreachable
 }
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
 \subsubsection{Multi-parameter typeclasses}
 \label{sec:mptcs}
 
 Multi-parameter typeclasses allow us to overload procedures with more than one type argument, this is useful for situations when the procedure is to be implemented differently depending on the parameter types. Perhaps, the procedure can be implemented more efficiently, when the input types are the same. The example in \cref{lst:mptcs} shows exactly that. If both of the types are \li{bits32}, the instance adds the inputs together and returns the result. If the second argument is a pointer, it performs some more complicated operation on the first argument, represented by multiplication.
-\begin{listing}
+\begin{codex}
     \small
-    \caption{Example of MPTC usage in the extended \cmm (some names truncated for brevity)}
+    \caption{Example of MPTC usage in the extended \cmm (some names are truncated for brevity)}
     \label{lst:mptcs}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -257,7 +258,7 @@ g(bits32 x) {
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
     \begin{minipage}{0.5\linewidth}
-    \begin{lstlisting}[language=LLVM, basicstyle=\scriptsize\ttfamily]
+    \begin{lstlisting}[style=llvmStyle, basicstyle=\scriptsize\ttfamily]
 ; Output LLVM assembly
 define external ccc  <{i32}>
   @_Mm_$f$Lb32b64...(
@@ -307,7 +308,7 @@ LR$procedure4:
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
 \subsubsection{User-specified functional dependencies}
 \label{sec:uspecFD}
@@ -316,8 +317,8 @@ Sometimes, a procedure can have returns of different types depending on the give
 
 The prototype compiler allows definition of functional dependencies for arbitrary user-defined typeclass. A simple use of this is demonstrated in \cref{lst:fundeps}. The compiler correcly type-infers the result types according to the given functional dependency.
 
-\begin{listing}
-    \caption{Example use of functional dependencies (some names truncated for brevity)}
+\begin{codex}
+    \caption{Example use of functional dependencies (some names are truncated for brevity)}
     \label{lst:fundeps}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -382,7 +383,7 @@ id_y = _Mid_$f$Lb64...(y);
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
 \subsubsection{Field accessors}
 
@@ -390,8 +391,8 @@ Field accessors allow us to introduce further semantics into structs. This is us
 
 With the prototype implementation based on deferred solving with MPTCs and functional dependencies, type-inferring general field accessors is possible as shown in \cref{lst:fieldAccessors}. The compiler type-infers all relevant types, only \li{struct} definitions are typed explicitly.
 
-\begin{listing}
-    \caption{Example use of field accessors (some names truncated for brevity)}
+\begin{codex}
+    \caption{Example use of field accessors (some names are truncated for brevity)}
     \label{lst:fieldAccessors}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -440,7 +441,7 @@ y = access_id(b);
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
     \begin{minipage}{0.55\linewidth}
-    \begin{lstlisting}[language=LLVM,basicstyle=\scriptsize\ttfamily]
+    \begin{lstlisting}[style=llvmStyle,basicstyle=\scriptsize\ttfamily]
 ; Output LLVM assembly
 define external ccc  <{}>
   @_Mupdate...A({i32}*  %s_0,
@@ -483,7 +484,7 @@ LR$procedure1:
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
 \subsection{Typeclass-based resource management}
 \label{sec:tcResMan}
@@ -492,9 +493,9 @@ Let us say, we want to perform some resource managemet action on every procedure
 
 If an object carries the \li{new} specialization, the compiler calls \li{drop} procedure on the pointer reference to the object before every exit from the procedure. This \li{drop} call then carries out the resource management action as defined for the object's type. This is demonstrated by \cref{lst:resource}
 
-\begin{listing}
+\begin{codex}
     \small
-    \caption{Example use of automatic resource management (some names truncated for brevity)}
+    \caption{Example use of automatic resource management (some names are truncated for brevity)}
     \label{lst:resource}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -541,7 +542,7 @@ f(bits32 a) {
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
-    \begin{lstlisting}[language=LLVM]
+    \begin{lstlisting}[style=llvmStyle]
 ; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...X({i32}*  %u_0) {
@@ -580,15 +581,15 @@ LR$procedure3:
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
 \subsubsection{Type-inferred resource management}
 
-It may happen the resource management action depends on a type parameter. Perhaps due to architectural specifics of the target platform, or due to specifics of a certain component. For this, we can combine automatic resource management and type inference of the resource objects (with or without typeclass overloading) as demonstrated by \cref{lst:polyResource}
+It may happen that the resource management action depends on a type parameter. Perhaps, this can be due to architectural specifics of the target platform, or due to specifics of a certain component. The system is ready for such situation -- we can combine automatic resource management and type inference of the resource objects (with or without typeclass overloading) as demonstrated by \cref{lst:polyResource}
 
-\begin{listing}
+\begin{codex}
     \small
-    \caption{Example use of type-inferred resource management (some names truncated for brevity)}
+    \caption{Example use of type-inferred resource management (some names are truncated for brevity)}
     \label{lst:polyResource}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -628,7 +629,7 @@ f(ptr(X) s,
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
-    \begin{lstlisting}[language=LLVM]
+    \begin{lstlisting}[style=llvmStyle]
 ; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...(i32*  %u_0) {
@@ -668,16 +669,16 @@ LR$procedure1:
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
-\subsection{Automatic resource management with \texttt{dropped} statements}
+\subsubsection{Automatic resource management with \texttt{dropped} statements}
 
 Sometimes, when we use automatic resource management, there exists a special case, in which we do not want to perform the resource management action. This may apply to cases where the resource is a file handle of a file we failed to open. In the prototype compiler, we can use \li{dropped} statement with a named reference to a resource object to specify that the corresponding resource management action is not to be performed automatically (but may be still manually). We demonstrate its use in \cref{lst:manual}.
 
 
-\begin{listing}
+\begin{codex}
     \small
-    \caption{Example use of automatic resource management with \li{dropped} statements (some names truncated for brevity)}
+    \caption{Example use of automatic resource management with \li{dropped} statements (some names are truncated for brevity)}
     \label{lst:manual}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
@@ -722,7 +723,7 @@ f(bits32 a) {
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
-    \begin{lstlisting}[language=LLVM]
+    \begin{lstlisting}[style=llvmStyle]
 ; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...(i32*  %a_0) {
@@ -766,9 +767,9 @@ F$else_3:
     \end{lstlisting}
     \end{minipage}
     \end{center}
-\end{listing}
+\end{codex}
 
-\section{Applicability to other languages}
+\section{Possible applications to other languages}
 
 \subsection{Subtyping in systems programming}
 
@@ -821,24 +822,97 @@ We leave this for future work together with considering the possibility of gener
 
 We show how to use the results of this thesis to simplify the resource management in system programming languages.
 
-The kernel coding style guide proposes the following convention:
+\citet{kernelStyle} proposed the following convention in \citetitle{kernelStyle}:
 
-\begin{quotation}[\citet{kernelStyle}]
+\begin{quote}
   The goto statement comes in handy when a procedure exits from multiple locations and some common work such as cleanup has to be done. If there is no cleanup needed then just return directly.
-\end{quotation}
+\end{quote}
 
-We propose the automatic resource management features introduced by the extended \cmm as an alternative to this convention. The cleanup section is replaced by a definition of an resource-representing object and accompanying \li{drop} procedure.
+In \cref{cex:cleanup}, we show that the automatic resource management features introduced by the extended \cmm can serve as an alternative to this convention. In particular, the cleanup section is replaced by a definition of an resource-representing object and accompanying \li{drop} procedure.
 
-In order to fully serve as a practical alternative to the \li{goto cleanup} pattern in a general case, we also propose the use of a special statement \li{dropped}. Our introduced \li{dropped} statement takes a named alias to the object representing the resource and removes the implicit calls on all procedure exits following this statement, still allowing for explicit calls whenever the user specifies.
+\paragraph{``If there is no cleanup needed then just return directly''} In order to fully serve as a practical alternative to the \li{goto cleanup} pattern in a general case, we also introduce \li{dropped} statement. \li{dropped} statement takes a named alias to the resource-representing object and the resource management action is not performed for this object on exits, which follow in the control flow of the given procedure.
 
-One possible improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple resource-representing objects, each such action then possibly being prevented by a separate \li{dropped} statement on some subset of control flow paths.
+One improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple resource-representing objects, each such action then possibly being prevented by a separate \li{dropped} statement on some subset of control flow paths.
 
-\section{Comparison to other resource management systems}
+\begin{codex}
+  \caption{Automatic resource management as an alternative to the \texttt{goto cleanup} design-pattern (the C code taken from \citetitle{kernelStyle} \cite{kernelStyle}; \texttt{drop} procedure is written just once for multiple buffers)}
+  \label{cex:cleanup}
+  \begin{minipage}{0.5\linewidth}
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+// C
+int fun(int a)
+{
+  // explicit types,
+  //  'result' used just
+  //  to store the return
+  int result = 0;
+  char *buffer;
+
+  buffer = kmalloc(SIZE,
+                   GFP_KERNEL);
+  if (!buffer)
+    return -ENOMEM;
+
+  if (condition1) {
+    while (loop1) {
+      ...
+    }
+    // if there was just return
+    //  (not obviously incorrect use)
+    //  the buffer would leak
+    result = 1;
+    goto out_free_buffer;
+  }
+  ...
+out_free_buffer:
+  kfree(buffer);
+  return result;
+}
+    \end{lstlisting}
+  \end{minipage}%
+  \begin{minipage}{0.5\linewidth}
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+// Extended C--
+drop(ptr (ptr (bits8)) buffer) -> {
+  kfree([buffer]);
+  return ();
+}
+
+foreign "C"
+fun(bits32 a) -> bits32 {
+  stackdata {
+    buffer: new auto;
+  }
+
+  [buffer] = kmalloc(SIZE,
+                     GFP_KERNEL);
+  if [buffer] != 0 {
+    dropped buffer;
+    // no call to 'drop(buffer)'
+    return -(ENOMEM);
+  }
+
+  if condition1 {
+    while:
+    if loop1 {
+      ...
+      goto while;
+    }
+    return (1);
+  }
+  ...
+  return (0);
+}
+    \end{lstlisting}
+  \end{minipage}%
+\end{codex}
+
+\section{Relation to other resource management systems}
 \label{sec:OtherRAII}
 
 There are multiple constructs in other languages that implement the automatic resource management mechanism. We will look into two: C++ RAII and C\# \li{try\{...\} finally\{...\}} (for simplicity, we will call them by the respective language's names).
 
-Neither of approaches of C++ and C\# allow for explicit use-specified special cases to the resource management mechanism. If the given language has no predefined optimization for the specific situation (C++, notably, defines ``trivially destructible'' objects, which do not issue the resource management action), the resource management action has to happen regardless of circumstances (as long as the program follows the language specification).
+\xxx{Neither of approaches of C++ and C\# allow for explicit user-specified special cases to the resource management mechanism. If the given language has no predefined optimization for the specific situation (C++, notably, defines ``trivially destructible'' objects, which do not issue the resource management action), the resource management action has to happen regardless of circumstances (as long as the program follows the language specification).}
 
 One other differences is that both approaches define a symmetric preparation action for the resource management action we consider. C++ calls the resource management action \emph{destructor} and the symmetric action \emph{constructor} (constructors can generally have more possible cases). C\# then puts the preparation action inside the \li{try\{...\}} block of the pattern.
 

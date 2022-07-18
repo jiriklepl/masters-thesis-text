@@ -175,7 +175,7 @@ As this work is our first compiler with no significant dependencies on an establ
 \begin{itemize}
     \item One such finding is the design pattern we used for defining the AST nodes in Haskell. We will explain it on an example:
 
-    \begin{lstlisting}[language=Haskell]
+    \begin{lstlisting}[style=haskellStyle]
 data TopLevel a
     = TopSection StrLit [Annot Section a]
     | TopDecl (Annot Decl a)
@@ -199,7 +199,7 @@ data TopLevel a
     \begin{ex}[mangle function]
         The following function traverses the AST and replaces the nodes of the type \li{AST.LValue}. This showcases the possible benefits of deriving the \li{Data} class.
 
-        \begin{lstlisting}[language=Haskell]
+        \begin{lstlisting}[style=haskellStyle]
 mangle n@(_ `Annot` (_ :: a)) = go n
   where
     go :: Data d => d -> Inferencer d

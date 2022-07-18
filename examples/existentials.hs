@@ -12,9 +12,5 @@ xs = [MkT 5 , MkT "String"]
 -- f :: T -> String
 f MkT { getT = a } = show a
 
-main = traverse_ putStr ( fmap f xs )
 -- prints : 5" hello "
--- 'fmap f xs' applies 'f' to each 'x' in 'xs'
--- and collects the results
--- 'traverse_ action values' performs 'action'
--- on each 'value' in 'values'
+main = traverse_ putStr ( fmap f xs )

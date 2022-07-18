@@ -84,7 +84,9 @@ In the HM type system with typeclasses, this constraint cannot be expressed at a
 
 In he THIH variation \cite{jones1999typing}, this can be indeed expressed (it is not reflected in the paper, but the supplementary implementation allows arbitrary number of arguments), and the algorithm is strong enough to type-check such construction for concrete types, but it lacks the ability to infer the obvious types of the previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b} and the expressions are defined by them.
 
-\subsection{Tackling the limitations of the algorithm W}
+\subsection{Tackling the limitations of syntax-driven inference}
+
+\xxx{syntax-driven W}
 
 In \cref{ex_structs}, the inability to type-infer the types of \lstinline{a.x} and \lstinline{b.x} could be possibly solved during the subsequent monomorphization phase, which would know that the type of a record type (\lstinline{a} or \lstinline{b}) determines the types of its fields and would (via lookup in a mapping constructed from their definitions) fill in the appropriate types. In a general case, this would mean that the subsequent monomorphization phase would have to be unnecessarily complex and it would function as a second type inference -- consider that solving a type field would allow for solving more constraints and then recursively. So we should address this issue in the type inference itself, in the algorithm W.
 
@@ -206,8 +208,8 @@ Before we start describing the construction of the type system based on constrai
 The Haskell code in \cref{cex:existentials} shows a definition of an type \lstinline{T} with existentially-typed field \lstinline{getT}, and then a list of variables of that type along with a function that consumes them, accessing the existential.
 
 \begin{codex}
-\lstinputlisting[language=Haskell]{examples/existentials.hs}
-\caption{Example use of existentials in a Haskell program}
+\lstinputlisting[style=haskellStyle]{examples/existentials.hs}
+\caption{Example use of existentials in a Haskell program (Functions \texttt{traverse\_}, \texttt{putStr}, \texttt{fmap} and \texttt{show} are taken from standard Haskell 2010 library)}
 \label{cex:existentials}
 \end{codex}
 
@@ -216,7 +218,7 @@ We would like to translate this example into the constraint language. We will de
 \begin{codex}
 \caption{Elaborated program from \cref{cex:existentials}.}
 \label{cex:exist-elab}
-\begin{lstlisting}[language=Haskell]
+\begin{lstlisting}[style=haskellStyle]
 MkT :: forall @x . (@y : Show @x) => @x -> T
 
 show :: forall @s . (@r : Show @s) => @s -> String
@@ -235,7 +237,7 @@ The observations from the code are collected into the set of constraints, which 
 \begin{codex}
 \caption{Constraints generated from \cref{cex:existentials}.}
 \label{cex:exist-constr}
-\begin{lstlisting}[language=Haskell]
+\begin{lstlisting}[style=haskellStyle]
 -- from xs:
 @a ~ Int,    @e : Show @a,
 @b ~ String, @f : Show @a
@@ -261,17 +263,17 @@ Our simplified presentation of the algorithm (\Cref{deferred_loop}) is further s
     \label{deferred_loop}
     \begin{algorithmic}
         \Require $\mtt {Ctx} \equiv \cdots \forall \vect \alpha_2 . A_2 \To \forall \vect \alpha_1 . A_1 \To \mcal W$ is the current context (possibly without the quantifications and corresponding qualifications; or with more)
-        \State \Comment $A_1, A_2, \cdots$ are assumptions of the current context $\mtt{Ctx}$
+        \State \Comment {$A_1, A_2, \cdots$ are assumptions of the current context $\mtt{Ctx}$}
         \State $\mtt{Level} \gets$ the number of quantifications in $\mtt{Ctx}$
         \State $P \gets \emptyset$ is a list of postponed constraints
         \State $\mtt{Continue} \gets \bot$ is a flag signifying whether to continue with postponed constraints
-        \While{$\mcal W$ is not empty} \Comment there are unsolved constraints
-            \If{$\mcal W = P$} \Comment all constraints are postponed
-                \If {$\mtt {Continue} = \top$} \Comment continue with postponed constraints
+        \While{$\mcal W$ is not empty} \Comment {There are unsolved constraints}
+            \If{$\mcal W = P$} \Comment {All constraints are postponed}
+                \If {$\mtt {Continue} = \top$} \Comment {Continue with postponed constraints}
                     \State $P \gets \emptyset$
                     \State $\mtt {Continue} = \bot$
                 \Else
-                    \State \Return $\mcal W$ \Comment residual set of constraints
+                    \State \Return $\mcal W$ \Comment {Residual set of constraints}
                 \EndIf
             \EndIf
             \State $c \gets $ choose from $\mcal W \setminus P$ (according to an arbitrary heuristic)
@@ -281,7 +283,7 @@ Our simplified presentation of the algorithm (\Cref{deferred_loop}) is further s
                 \State perform \cref{case_equality}
             \ElsIf{$c \equiv \forall \vect \beta . P \To \vect W$ is an implication constraint}
                 \If{$\vect W$ is empty}
-                    \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment remove the redundant constraint $c$
+                    \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment {Remove the redundant constraint $c$}
                 \Else
                     \State perform \cref{deferred_loop} with the context $\forall \vect \alpha . A_1 \To \forall \beta . P \To \vect W$, take the resulting $\vect W'$ and update context accordingly
                     \If {a failure $F$ is reported}
@@ -300,17 +302,17 @@ Our simplified presentation of the algorithm (\Cref{deferred_loop}) is further s
     \begin{algorithmic}
         \Require {$c \equiv d : C \vect t$}
         \If{$d$ is a witness of a concrete assumption or proof}
-            \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment remove the redundant constraint $c$
+            \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment {Remove the redundant constraint $c$}
         \ElsIf{$C \vect t$ is proven by some assumption $d' : C \vect t'$}
             \State unify $d$ and $d'$ and globally rewrite all constraints accordingly
-            \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment Solved the constraint $c$
+            \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment {Solved the constraint $c$}
         \ElsIf{$C \vect t$ matches some proof scheme $s \equiv \forall \vect \alpha . A \To d' : C \vect t'$}
             \State instantiate $s$ into $s' \equiv A' \To d' : C \vect t$
-            \State $\mcal{W} \gets \mcal{W} \cup A'$ \Comment add $A'$ to the current context
+            \State $\mcal{W} \gets \mcal{W} \cup A'$ \Comment {add $A'$ to the current context}
             \State unify $d$ and $d'$ and globally rewrite all constraints accordingly
-            \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment Solved the constraint $c$
+            \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment {Solved the constraint $c$}
         \Else
-            \State $P \gets P \cup \{c\}$ \Comment the constraint $c$ is postponed
+            \State $P \gets P \cup \{c\}$ \Comment {The constraint $c$ is postponed}
         \EndIf
     \end{algorithmic}
 \end{algorithm}
@@ -319,32 +321,34 @@ Our simplified presentation of the algorithm (\Cref{deferred_loop}) is further s
     \caption{Solving an equality constraint in deferred inference}
     \label{case_equality}
     \begin{algorithmic}
-        \Require {$\mtt {Ctx} \equiv \cdots \forall \vect \alpha_2 . A_2 \To \forall \vect \alpha_1 . A_1 \To \mcal W$ is the current context (possibly without the quantifications and corresponding qualifications; or with more)}
+        \Require {$\mtt {Ctx} \equiv \cdots \forall \vect \alpha_2 . A_2 \To \forall \vect \alpha_1 . A_1 \To \mcal W$} \Comment{the current context (possibly without the quantifications and corresponding qualifications; or with more)}
+        \Require $\mtt {Level}$ \Comment{The current context level}
         \Require {$c \equiv g : a \sim b$}
         \If{$a$ and $b$ are the same}
-        \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment remove the redundant constraint $c$
+        \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment {Remove the redundant constraint $c$}
         \ElsIf{$\mtt{Level} \geq 1 \land \vect \alpha_1 \cap (\free a \cup \free b) = \emptyset$}
-            \State ``promote'' the unification variables of the current context appearing in $c$, globally decreasing their context level, and ``float'' the constraint $c$, moving it into the enclosing (caller's) context; change all contexts (this and the contexts of enclosing loops) accordingly
+            \State $\mtt{globallyPromoteUnificationVariables}(\mtt {Level}, c)$ \Comment {\emph{promote} the unification variables of the current context appearing in $c$, globally decreasing their context level}
+            \State $\mtt {Ctx} \gets \mtt{floatConstraintHigher}(\mtt{Ctx}, c)$
         \ElsIf{Neither of $a$ and $b$ is a unification variable}
-            \If{$a \equiv T \vect s, b \equiv T \vect t, |\vect s| = |\vect t|$} \Comment $a$ and $b$ contain the same type constructor $T$ at the top
-                \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment remove the constraint $c$
-                \State $\mcal W \gets \mcal W \cup \{s_n \sim t_n | 1 \leq n \leq |s|\}$ \Comment more equality constraints with corresponding immediate subterms of $a$ and $b$
-            \ElsIf{$a \equiv S \vect s, b \equiv T \vect t, S \neq T \lor |\vect s| \neq |\vect t|$} \Comment {$a$ and $b$ contain different type constructors at the top}
+            \If{$a \equiv T \vect s, b \equiv T \vect t, |\vect s| = |\vect t|$}
+                \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment {Remove the constraint $c$}
+                \State $\mcal W \gets \mcal W \cup \{s_n \sim t_n | 1 \leq n \leq |s|\}$
+            \ElsIf{$a \equiv S \vect s, b \equiv T \vect t, S \neq T \lor |\vect s| \neq |\vect t|$}
                 \State \textbf{report unification failure} of $c$
                 \State \Return $\mcal W$
             \Else \Comment{Two skolems, type functions, etc.}
-            \State $P \gets P \cup \{c\}$ \Comment the constraint $c$ is postponed
+            \State $P \gets P \cup \{c\}$ \Comment {The constraint $c$ is postponed}
             \EndIf
         \Else
-            \ {W. L. O. G. Let us assume that $a$ is a unification variable and, if $b$ is one as well, $a$ has an context level greater or equal to $b$'s.}
+            \ \Comment{W. L. O. G. Let us assume that $a$ is a unification variable and, if $b$ is one as well, $a$ has an context level greater or equal to $b$'s.}
             \If {$a \in \free b$ }\Comment{Occurs check}
                 \State \textbf{report occurs failure} of $c$
                 \State \Return $\mcal W$
-            \ElsIf {$\mtt{Level} (a) = \mtt {Level}$}
+            \ElsIf {$\mtt{ctxLevel} (a) = \mtt {Level}$}
                 \State unify $a$ and $b$ and globally rewrite all constraints accordingly
-                \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment Solved the constraint $c$
+                \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment {Solved the constraint $c$}
             \Else
-                \State $P \gets P \cup \{c\}$ \Comment the constraint $c$ is postponed
+                \State $P \gets P \cup \{c\}$ \Comment {The constraint $c$ is postponed}
             \EndIf
         \EndIf
     \end{algorithmic}
@@ -375,7 +379,7 @@ Finally, the rules \ref{triv_assump} and \ref{lookup_t} can also be intuitively 
 We have introduced a new algorithm, which we use in the prototype compiler. We have shown that is is more general than the algorithm W as it allows us to cover the MPTCs, existentials (if we used them), and is easier to generalize, only requiring careful implementation of additional cases to the constraint solving loop.
 
 \begin{itemize}
-    \item  The solving of constraints can be performed in any arbitrary order as long as any possible algorithm extensions preserve its confluence property \cite{vytiniotis2011outsidein}.
+    \item  The solving of constraints can be performed in any arbitrary order as long as the extensions of the solver preserve its confluence property \cite{vytiniotis2011outsidein}.
 
     \item The solving is completely independent on the specifics of the typed language structure, this is achieved via the elaborating it with placeholders for types and witnesses, then, expressing the input for inference via those placeholders alone, and then finally filling in the placeholders back to the language.
 

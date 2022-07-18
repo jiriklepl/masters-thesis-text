@@ -22,7 +22,7 @@
 
 C-{}- is an assembler language used as the back-end for the Glasgow Haskell Compiler. It is designed to have a minimalistic C-like syntax that is capable of giving very specific computation and memory specifications to the runtime as well as constraints that allow for better optimization of the code.
 
-The previous work (bachelor thesis ``Type inference and polymorphism for C'') showcased the benefits of type inference and polymorphism in the context of the C language and identified multiple problems this work solves, examples: multiple-parameter type-classes for overloaded structure field accessors (multiple structures having fields with the same name), sub-typing support in the type inference algorithm (in the previous work referenced as \textit{\lstinline{const} specifiers} problem). The choice of C-{}- was guided by its closeness to C, its minimalism and its low-level orientation. The minimalistic syntax allows us to easily demonstrate the benefits of type inference and the implications of introducing it into an imperative language, while the low-level orientation of the language, which we preserve in the final design, makes the language viable for systems programming. Furthermore, C-{}- allows for expressing stronger and more flexible contracts (possible use-case: guiding alias analysis and branch analysis).
+The previous work (bachelor thesis ``Type inference and polymorphism for C'') showcased the benefits of type inference and polymorphism in the context of the C language and identified multiple problems this work solves, examples: multiple-parameter type-classes for overloaded structure field accessors (multiple structures having fields with the same name), sub-typing support in the type inference algorithm (in the previous work referenced as \emph{\lstinline{const} specifiers} problem). The choice of C-{}- was guided by its closeness to C, its minimalism and its low-level orientation. The minimalistic syntax allows us to easily demonstrate the benefits of type inference and the implications of introducing it into an imperative language, while the low-level orientation of the language, which we preserve in the final design, makes the language viable for systems programming. Furthermore, C-{}- allows for expressing stronger and more flexible contracts (possible use-case: guiding alias analysis and branch analysis).
 
 The syntax of a C-{}- program mainly consists of data declarations, functions, (virtual) registers and statements. The syntax of statements is a derivative of the syntax of the C language, but it is significantly constrained. Most notably:
 
@@ -39,7 +39,7 @@ The syntax of a C-{}- program mainly consists of data declarations, functions, (
 \begin{figure}[!h]
 	\caption{Euclid's algorithm (greatest common divisor)}
 	\label{Cmm-figure}
-	\begin{lstlisting}[language=C]
+	\begin{lstlisting}
 f(bits32 u, bits32 w) {
 	bits32 r;
 
@@ -62,11 +62,11 @@ foreign "C" gcd(bits32 u, bits32 v) {
 
 	return (r);
 }
-		
+
 	\end{lstlisting}
 \end{figure}
 
-Figure \ref{Cmm-figure} shows an implementation of Euclid's algorithm as a C-{}- function. As C-{}- lacks an explicit syntax for loops, we implement a \textit{while} loop via labels: we put a label before the condition and then branch to this label at the end of the nested block statement - this is how we would express any loop; and doing so could be abstracted via a language sugar that would introduce \textit{for} loops and \textit{while} loops into the language in a fashion similar to how they are introduced into the C language. 
+Figure \ref{Cmm-figure} shows an implementation of Euclid's algorithm as a C-{}- function. As C-{}- lacks an explicit syntax for loops, we implement a \textit{while} loop via labels: we put a label before the condition and then branch to this label at the end of the nested block statement - this is how we would express any loop; and doing so could be abstracted via a language sugar that would introduce \textit{for} loops and \textit{while} loops into the language in a fashion similar to how they are introduced into the C language.
 
 The \lstinline{foreign "C"} specifier before the ``gcd'' function specifies the function shall be subject to C-linkage (in C++, we would write \lstinline{extern "C"}) and it will be callable from C code.
 
