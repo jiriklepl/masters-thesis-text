@@ -235,7 +235,7 @@ Note that the unification failure is the top element of the typing lattice. Infe
 
 We can then simply extend the definition to apply to user-defined subtype dimensions, but that is not within the scope of this thesis.
 
-In the type system specific to this thesis, we use two subtype dimensions: \emph{data kinds} and \emph{constnesses}. We will specify them in \cref{const_kind_def}.
+In the type system specific to this thesis, we use two subtype dimensions: \emph{data kinds} and \emph{constnesses}. We will specify them in \cref{sec:repre}.
 
 \begin{remark}[Problems of subtype dimensions commuting with types]
     \label{congruence}
@@ -329,6 +329,7 @@ We call \emph{(closest) fixed lower bounds} of a subtype variable $v$ in a subty
 \end{observe}
 
 \subsubsection{Constructs for the inference of subtypes}
+\label{sec:iSubConstr}
 
 The \emph{suprema subtype constructor} $\sup_s$ is defined as a function from a set of values of a subtype dimension $s$ to a value in this dimension. It is defined by the suprema operation on the lattice defining the subtype dimension.
 
@@ -351,7 +352,7 @@ If we extend this mechanism to the type system with typeclasses, we have to rega
 
 Each subtype variable of a skolem constant, subtype dimension constant, or a subtype variable of a type variable appearing in a typeclass constraint is a fixed value.
 
-The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context, see \cref{constness_level}. This applies to their subtype dimensions as well. And then, in a context with a certain context level, we consider any subtype variable with a lower context level be a fixed value as well. We did not strive for representing existentials, as there has to be runtime type information included with them to interpret them (see \cref{sys_defer}), so we will not consider such system throughout this thesis. Yet, we specify it for any such extensions attempted by some future work.
+The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context, described in \cref{defer_solve}. This applies to their subtype dimensions as well. And then, in a context with a certain context level, we consider any subtype variable with a lower context level be a fixed value as well. We did not strive for representing existentials, as there has to be runtime type information included with them to interpret them (see \cref{sys_defer}), so we will not consider such system throughout this thesis. Yet, we specify it for any such extensions attempted by some future work.
 
 \subsection{Programs in the subtyping system}
 

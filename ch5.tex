@@ -4,14 +4,15 @@
 In this section, we discuss and evaluate various design decisions made during the implementation of the prototype compiler. The prototype offered a good insight into the intricacies of extending type inference by parametric polymorphism with typeclasses and subtyping, and some of the design decisions that were initially considered good have turned to be suboptimal. We summarize such findings, and describe several alternatives that may alleviate the issues we encountered. Finally, we highlight how the implementation in a functional language simplified various complicated compiler constructions.
 
 \section{Compiler architecture drawbacks and possible improvements}
+\label{sec:newApproach}
 
 \subsection{Complexity of the inferencer state}
 \label{sec:state}
 
-The biggest issue with the prototype compiler is that it transforms all input constraints into a centralized inner state with numerous invariants that have to be explicitly ensured by various ``repair steps''. The reason behind this design decision was that:
+The biggest issue with the prototype compiler is that it transforms all input constraints into a centralized inner state with numerous invariants that have to be explicitly ensured by various ``repair steps'' (described in \cref{sec:istate,sec:invariants}). The reason behind this design decision was that:
 
 \begin{enumerate}
-    \item The original vision of subtyping considered propagation of subtype inequalities with type algebra. This was later shown to be incompatible with the desired semantics. Two pointer types constructed from the same target type would share their subtype inequalities \xxx{cref}.
+    \item The original vision of subtyping considered propagation of subtype inequalities with type algebra. This was later shown to be incompatible with the desired semantics -- two pointer types constructed from the same target type would have to share their subtype inequalities, as described by \cref{inconsistency}.
 
     \item The original intent included an attempt to make typeclass resolution dependent on subtypes. We didn't manage to find any practical model without ambiguity or undecidability.
 
@@ -20,23 +21,23 @@ The biggest issue with the prototype compiler is that it transforms all input co
 
 Since both of these attempts showed no practical use and the subtype system matured into different way, there are no lasting reasons for this design.
 
-\paragraph{Possible improvement} The inferencer state can be vastly simplified by introducing special type variables with a separate namespace for each (subtype) dimension $s$ and, for each, two extra constraints instead of $t \leq_s t'$:
+\paragraph{Possible improvement} The inferencer state can be vastly simplified by introducing special type variables with a separate namespace for each (subtype) dimension $s$ and, for each, two extra constraints instead of $t \leq_s t'$ in \cref{lang:flat}:
 
 \begin{itemize}
     \item $t \to_s v$, which binds a type to a subtype dimension (variable, constant, or $\sup_s$ applied to a set of such)
     \item $v \leq_s v'$, which represents inequality on subtype dimensions
 \end{itemize}
 
-If we extend this with the $\sup_s$ operator, we can model the same subtyping system with just constraints instead of the complicated structure of state variables. In turn, constraints in the form $t \to_s v$ substitute the functionality variable $\mcal D$, constraints of the form $v \leq_s v'$ replace the variables $\mcal C$, $\mcal K$, $b_C$ and $b_K$, and the variable $\mcal P$ is not required at all.
+If we extend this with the $\sup_s$ operator (introduced in \cref{sec:iSubConstr}), we can model the same subtyping system with just constraints instead of the complicated structure of state variables. In turn, constraints in the form $t \to_s v$ substitute the functionality variable $\mcal D$, constraints of the form $v \leq_s v'$ replace the variables $\mcal C$, $\mcal K$, $b_C$ and $b_K$, and the variable $\mcal P$ is not required at all (for the variables, see \cref{sec:istate}).
 
 \subsection{Omission of context levels}
 \label{sec:global}
 
-The prototype compiler performs most constraint solving steps on the whole program globally (on all constraints) and not just on strongly connected subprogram components (top-level definitions with cyclic dependencies). This then called for reimplementation of even stronger construct than context levels, ``references to parent type variables'' (each uniquely representing a top-level definition). This is required in the prototype design for deciding what type variables (representing types) are present in each top-level definition.
+The prototype compiler performs most constraint solving steps on the whole program globally (on all constraints) and not just on strongly connected subprogram components (top-level definitions with cyclic dependencies). This then called for implementation of even stronger construct than context levels introduced in \cref{defer_solve}, ``references to parent type variables'' (defined in \cref{sec:repre}; each uniquely representing a top-level definition). This is required in the prototype design for deciding what type variables (representing types) are present in each top-level definition.
 
-When the type inference of a top-level definition is closed, the compiler looks up all type variables with the corresponding reference to parent type variable and constructs a scheme for the given definition, which is then added to the state. This is very inefficient and error-prone.
+When the type inference of a top-level definition is closed, the compiler looks up all type variables with the corresponding reference to parent type variable and constructs a scheme for the given definition, which is then added to the state, as described in \cref{sec:inferPipeline}. This is very inefficient and error-prone.
 
-Another consequence of this is the ``instantiation constraint'' introduced by the prototype compiler. If the compiler solved each subprogram component separately, these constraints could be immediately replaced with appropriate instantiations or just unifications, depending on whether the `polytype' operand is present in the same component or in already solved component.
+Another consequence of this is the ``instantiation constraint'' introduced by the prototype compiler in \cref{lang:flat}. If the compiler solved each subprogram component separately, these constraints could be immediately replaced with appropriate instantiations or just unifications, depending on whether the `polytype' operand is present in the same component or in already solved component.
 
 \paragraph{Possible improvement}
 It would be much easier to implement the inference in such a way that each subprogram component is solved separately in their topological order.
@@ -46,7 +47,7 @@ In such case, the references to parent type variables are not required, because 
 \subsection{Extracting results from the inferencer state}
 \label{sec:inferInter}
 
-A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state. This means that this state has to be passed to all subsequent phases. This is most significant during monomorphization, which has to change type elaborations of monomorphic copies of polymorphic top-level definitions. It has to repeatably perform lookups of type interpretations for each elaboration present in the given top-level definition.
+A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state described in \cref{sec:istate}. This means that this state has to be passed to all subsequent phases. This is most significant during monomorphization (\cref{sec:mono}), which has to change type elaborations of monomorphic copies of polymorphic top-level definitions. It has to repeatably perform lookups of type interpretations for each elaboration present in the given top-level definition.
 
 \paragraph{Possible improvement}
 Alternatively, we can elaborate each node of the inferred code with a fully substituted type (or qualified type for local reference to a polytype; type scheme for a polytype top-level definition).
@@ -68,6 +69,7 @@ With that, after we solve the typings in each \emph{program} (external binding w
 As this work is our first compiler with no significant dependencies on an established framework (with the exception of the code generation), our approach was at times, quite experimental. This lead to many design-related findings, some of which might be beneficial to any future work in similar areas.
 
 \subsection{Annotation wrappers}
+\label{sec:annotations}
 
 One such finding is the design pattern we used for defining the AST nodes in Haskell as shown in \cref{lst:topLevel}.
 
@@ -132,15 +134,14 @@ mangle n@(_ `Annot` (_ :: a)) = go n
 
 \end{listing}
 
-\subsection{\xxx{Second finding}}
-The second finding is the importance of separating the whole compilation into layers similarly to the UNIX philosophy. Each of such layers should do one job and do it well. This approach greatly improves the debugging and the analysis of the program.
+\subsection{Importance of separation}
 
-    As an anti-example, take the monomorphization layer. It has two (albeit very related) jobs: it stores the types inferred by the inference layer into the annotations in AST and it also monomorphizes the code -- those are two distinct responsibilities. Separating them into two layers would have an effect of it being possible to use the above pattern to simplify one of such layers into mere hundreds of lines of code.
+We made notice of importance of separating the whole compilation into layers similarly to the UNIX philosophy. Each of such layers should do one job and do it well. This approach greatly improves the debugging and the analysis of the program.
 
-    Good examples of using this principle are the modules \li{CMM.Mangle} (source of the above example \xxx{ref}) and \li{CMM.FillElabs}.
+As an anti-example, take the monomorphization layer. It has two (albeit very related) jobs: it stores the types inferred by the inference layer into the annotations in AST and it also monomorphizes the code -- those are two distinct responsibilities. Separating them into two layers would have an effect of it being possible to use the above pattern to simplify one of such layers into mere hundreds of lines of code.
 
-\subsection{\xxx{Third finding}}
-The third finding is the benefit of defining the layers with no assumptions on the actual structure of the node annotations but requiring a typeclass which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.
+Good examples of using this principle are the modules \li{CMM.Mangle} (source of \cref{lst:dataGenerics}) and \li{CMM.FillElabs}.
 
-\subsection{\xxx{Fourth finding}}
-The fourth finding is the benefit of adding unnecessary debug information to the data passed around \xxx{the comment constraints in preprocessing; that is not recommended by any source}. And it is especially if this generation of debug information can be turned off by a build option. This principle extends to explicit invariant checks.
+\subsection{Generic AST annotations}
+
+We found out the benefit of defining the layers with no assumptions on the actual structure of the node annotations described in \cref{sec:annotations} but requiring a typeclass which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.

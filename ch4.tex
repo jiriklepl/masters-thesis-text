@@ -778,7 +778,7 @@ The subset of subtyping modelled by our proposed type system can be used to chec
 
 In the previous work \cite{klepl2020type}, we identified a weakness of the then-used type system with regards to the \li{const} qualifier from the C language \cite{cstandard2018}. Let us examine whether its semantics fit the type system we introduced in \cref{sec:typesystem}.
 
-The semantics of the C \li{const} qualifier (as specified by \cite{cstandard2018}), quite differ from the constness introduced in \cref{const_kind_def}, despite the similarity of names. For our purposes, we simplify the semantics into two cases:
+The semantics of the C \li{const} qualifier (as specified by \cite{cstandard2018}), quite differ from the constness introduced in \cref{sec:repre}, despite the similarity of names. For our purposes, we simplify the semantics into two cases:
 
 \begin{enumerate}
     \item If the \li{const} qualifier is applied to a variable (for example, \li{char *const p}), the type of the variable is the same as if it was not \li{const}-qualified. Any attempt to assign to this variable is an undefined behavior. \label{constvar}
@@ -823,7 +823,7 @@ We show how to use the results of this thesis to simplify the resource managemen
 
 The kernel coding style guide proposes the following convention:
 
-\begin{quotation}[\xxx{add pointer to kernel group}]
+\begin{quotation}[\citet{kernelStyle}]
   The goto statement comes in handy when a procedure exits from multiple locations and some common work such as cleanup has to be done. If there is no cleanup needed then just return directly.
 \end{quotation}
 
