@@ -4,6 +4,7 @@
 In this chapter, we show the possibilities of use of the extended \cmm.
 
 \section{Prototype compiler of typed \cmm}
+\label{sec:protoComp}
 
 \subsection{Type-inferring local declarations}
 
@@ -20,16 +21,16 @@ First, we demonstrate simple properties of the type system. As expected, the com
 foreign "C" gcd(bits32 u,
                 bits32 w)
                 -> auto {
-    auto r;
-    while:
-    if w != 0 {
-        r = w;
-        w = u % w;
-        u = r;
-        goto while;
-    }
+  auto r;
+  while:
+  if w != 0 {
+    r = w;
+    w = u % w;
+    u = r;
+    goto while;
+  }
 
-    return (u);
+  return (u);
 }
     \end{lstlisting}
     \end{minipage}%
@@ -47,13 +48,16 @@ foreign "C" gcd(bits32 u,
     u = r;
     goto while;
   }
+
   return (u);
 }
     \end{lstlisting}
     \end{minipage}
     \end{center}
 \end{listing}
+
 \subsection{Reduction of code using polymorphism}
+\label{sec:reduction}
 
 Type inference allows us to write polymorphic procedures, which are then correctly interpreted by the compiler and rewritten into an efficient code with correctly filled types for each each use in different context. The user does not have to define a procedure for each use separately. This is demonstrated by \cref{lst:reduction}. The code is ``monomorphized'' into code containing monomorphic definitions replacing the user-provided polymorphic ones with correctly inferred types.
 
@@ -69,11 +73,10 @@ This constitutes ``mangling'' the names of monomorphic copies of polymorphic pro
     \begin{minipage}{0.5\linewidth}
     \begin{lstlisting}
 // Shorter input code
-
 // User-provided
 // polymorphic definition
 add(auto x, auto y) {
-    return (x + y);
+  return (x + y);
 }
 
 ...
@@ -127,13 +130,13 @@ c2 = _Madd_$f$Lb64...(a2, b2);
     \end{center}
 \end{listing}
 
-\subsection{\xxx{Simplified references to memory}}
+\subsection{Simplified pointer dereferences}
 
 In \cmm, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter, or, from the result. Any inferred type of the result or the address parameter then propagates to the other one. We show this in \cref{lst:fieldAccessors}.
 
-\subsection{Translation into the LLVM assembly language}
+\subsection{Translation into LLVM}
 
-The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases unusual assignment statement, which are a feature of \cmm.
+The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases an fairly unusual assignment statement, which is a feature of \cmm.
 
 \subsection{Improvements over the Algorithm W}
 
@@ -148,6 +151,7 @@ In the prototype compiler, we address this and the prototype compiler's type inf
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.5\linewidth}
     \begin{lstlisting}
+// Source code
 foreign "C" f(bits32 u,
               bits32 w)
               -> bits32{
@@ -172,6 +176,7 @@ foreign "C" f(bits32 u,
     \end{minipage}%
     \begin{minipage}{0.5\linewidth}
     \begin{lstlisting}[language=LLVM]
+; Output LLVM assembly
 define external ccc  <{i32}>
 @f(i32  %u_0, i32  %w_0)    {
 LR$procedure0:
@@ -204,6 +209,7 @@ F$else_1:
 \end{listing}
 
 \subsubsection{Multi-parameter typeclasses}
+\label{sec:mptcs}
 
 Multi-parameter typeclasses allow us to overload procedures with more than one type argument, this is useful for situations when the procedure is to be implemented differently depending on the parameter types. Perhaps, the procedure can be implemented more efficiently, when the input types are the same. The example in \cref{lst:mptcs} shows exactly that. If both of the types are \li{bits32}, the instance adds the inputs together and returns the result. If the second argument is a pointer, it performs some more complicated operation on the first argument, represented by multiplication.
 \begin{listing}
@@ -213,7 +219,8 @@ Multi-parameter typeclasses allow us to overload procedures with more than one t
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.5\linewidth}
-    \begin{lstlisting}
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+// Source code
 class C a b {
   m (auto (a) x, auto (b) y)
     -> auto (a);
@@ -250,7 +257,8 @@ g(bits32 x) {
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
     \begin{minipage}{0.5\linewidth}
-    \begin{lstlisting}[language=LLVM]
+    \begin{lstlisting}[language=LLVM, basicstyle=\scriptsize\ttfamily]
+; Output LLVM assembly
 define external ccc  <{i32}>
   @_Mm_$f$Lb32b64...(
     i32  %u_0, i64*  %w_0) {
@@ -302,6 +310,7 @@ LR$procedure4:
 \end{listing}
 
 \subsubsection{User-specified functional dependencies}
+\label{sec:uspecFD}
 
 Sometimes, a procedure can have returns of different types depending on the given arguments. In many instances, these types are closely related to the argument types and they can be derived from type algebra. For such cases, regular (multi-parameter) typeclasses are enough as demonstrated by other examples. But, sometimes the types of the returned values are not algebraicly dependent on the argument types. One example of this are the oftenly mentioned field accessors.
 
@@ -313,8 +322,11 @@ The prototype compiler allows definition of functional dependencies for arbitrar
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.5\linewidth}
-    \begin{lstlisting}
-// defines a dependency: a -> b
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+// Source code
+
+// a type class with
+//  a fun. dependency: a -> b
 class Id a b | a -> b {
   id (auto (a) x) -> auto (b);
 }
@@ -344,7 +356,10 @@ id_y = id(y);
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
     \begin{minipage}{0.5\linewidth}
-    \begin{lstlisting}
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+// Monomorphized code
+//  with interpreted
+//  functional dependencies
 _Mid_$f$Lb32...(bits32 u) {
   return (u);
 }
@@ -382,34 +397,35 @@ With the prototype implementation based on Deferred Solving with MPTCs and funct
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.45\linewidth}
     \begin{lstlisting}[basicstyle=\footnotesize\ttfamily]
+// Source code
 struct A {
-    id: bits32;
+  id: bits32;
 }
 
 struct B {
-    id: bits64;
+  id: bits64;
 }
 
 update_id(auto s,
           auto x) {
-    // indirect write
-    // to 'id' field
-    [s->id] = x;
-    return ();
+  // indirect write
+  // to 'id' field
+  [s->id] = x;
+  return ();
 }
 
 access_id(auto s) {
-    auto x;
-    // indirect read
-    x = [s->id];
-    return (x);
+  auto x;
+  // indirect read
+  x = [s->id];
+  return (x);
 }
 
 ...
 
 stackdata {
-    a: A;
-    b: B;
+  a: A;
+  b: B;
 }
 
 auto x;
@@ -425,6 +441,7 @@ y = access_id(b);
     \end{minipage}%
     \begin{minipage}{0.55\linewidth}
     \begin{lstlisting}[language=LLVM,basicstyle=\scriptsize\ttfamily]
+; Output LLVM assembly
 define external ccc  <{}>
   @_Mupdate...A({i32}*  %s_0,
                 i32  %x_0) {
@@ -469,6 +486,7 @@ LR$procedure1:
 \end{listing}
 
 \subsection{Typeclass-based resource management}
+\label{sec:tcResMan}
 
 Let us say, we want to perform some resource managemet action on every procedure exit. Perhaps, we opened a file and we want to close it. In practice, this is quite common, and it let to, for example, developing RAII in C++, or try/finally pattern in C\#. For this purpose, in the prototype compiler, we can use \li{new}-specialized stack-allocated objects.
 
@@ -482,6 +500,7 @@ If an object carries the \li{new} specialization, the compiler calls \li{drop} p
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.35\linewidth}
     \begin{lstlisting}
+// Source code
 struct X {
   x: bits32;
 }
@@ -523,6 +542,7 @@ f(bits32 a) {
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
     \begin{lstlisting}[language=LLVM]
+; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...X({i32}*  %u_0) {
 LR$procedure1:
@@ -574,6 +594,7 @@ It may happen the resource management action depends on a type parameter. Perhap
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.35\linewidth}
     \begin{lstlisting}
+// Source code
 struct X {
   x: bits32;
 }
@@ -608,6 +629,7 @@ f(ptr(X) s,
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
     \begin{lstlisting}[language=LLVM]
+; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...(i32*  %u_0) {
 LR$procedure0:
@@ -661,8 +683,9 @@ Sometimes, when we use automatic resource management, there exists a special cas
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.35\linewidth}
     \begin{lstlisting}
+// Source code
 drop(auto a) {
-    return ();
+  return ();
 }
 
 foreign "C"
@@ -700,6 +723,7 @@ f(bits32 a) {
     \end{minipage}%
     \begin{minipage}{0.65\linewidth}
     \begin{lstlisting}[language=LLVM]
+; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...(i32*  %a_0) {
 LR$procedure0:
@@ -769,7 +793,7 @@ We can model the semantics of the case number \ref{pointerSubtype} (case number 
 \begin{defn}[C-const dimension]
     The C-const subtype dimension $C$ is defined by two constants $\mtt{NonConst}, \mtt{Const}$ and an ordering $\top = \mtt{Const} >_C \mtt{NonConst} = \bot$.
 
-    This dimension is only relevant to pointer types, other types being either unconstrained or constrained to specifically one of the constants (which is then sometimes called canonical - see \cite{tiuryn1999subtyping}).
+    This dimension is only relevant to pointer types, other types being either unconstrained or constrained to specifically one of the constants (which is then sometimes called canonical -- see \cite{tiuryn1999subtyping}).
 \end{defn}
 
 \begin{defn}[Assignment dimension]
@@ -793,6 +817,7 @@ These constraints are derived from the assignment dimension $A$ for each two typ
 We leave this for future work together with considering the possibility of generating all subtype constraints after deciding the typings for the given subprogram component.
 
 \subsection{Automatic resource management in practical systems programming}
+\label{sec:autoC}
 
 We show how to use the results of this thesis to simplify the resource management in system programming languages.
 
@@ -809,8 +834,9 @@ In order to fully serve as a practical alternative to the \li{goto cleanup} patt
 One possible improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple resource-representing objects, each such action then possibly being prevented by a separate \li{dropped} statement on some subset of control flow paths.
 
 \section{Comparison to other languages offering automatic resource management}
+\label{sec:OtherRAII}
 
-There are multiple constructs that implement the automatic resource management mechanism. We will look into two: C++ RAII and C\# \li{try\{...\}finally\{...\}} (for simplicity, we will call them by the respective language's names).
+There are multiple constructs that implement the automatic resource management mechanism. We will look into two: C++ RAII and C\# \li{try\{...\} finally\{...\}} (for simplicity, we will call them by the respective language's names).
 
 Neither of approaches of C++ and C\# allow for explicit use-specified special cases to the resource management mechanism. If the given language has no predefined optimization for the specific situation (C++, notably, defines ``trivially destructible'' objects, which do not issue the resource management action), the resource management action has to happen regardless of circumstances (as long as the program follows the language specification).
 

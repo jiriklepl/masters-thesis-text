@@ -17,6 +17,7 @@ The overall architecture of the prototype implementation is shown in \cref{fig:a
 We will describe the purpose and the function of each of the components of the compiler pipeline separately. The description and introduced primitives of each component should be the main takeaway from this chapter rather than the specific implementation itself.
 
 \section{Flattening and blockifying}
+\label{sec:flatBlock}
 
 Flattening and blockifying phase convert a possibly nested \cmm source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks as defined by \cite{llvmBB}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward transcription to the SSA form of LLVM.
 
@@ -206,16 +207,18 @@ Notice that if we have two function types $t \equiv \alpha \to \beta$ and $t' \e
 In \cref{def:stDim}, we introduced that subtype dimension are non-affecting typeclass resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing appropriate constraints after deciding the typings according to the desired semantics (for example, $\alpha \sim \alpha' \land \beta' \sim \beta$).
 
 \section{Type Inference}
+\label{sec:typeInf}
 
-In the modified \cmm language, we do not support existentials (as discussed in \cref{sys_defer}) and all polymorphic definitions have to be at top level (or they are easily representable as such: definitions of methods and their instances). This allows the solver to solve more eagerly, since there is no need for context levels, deferring the constraints only on two cases (see \cref{main_loop}).
+In this section, we describe the type inference and all its relevant parts. We start with laying down the used naming and preliminaries in \cref{sec:namingPrel}. In \cref{preprocessing}, we describe the first main part of type inference, the type inference preprocessing (constraint generation). In \cref{sec:istate,sec:invariants}, we describe the state variables of the type inferencer and their invariants. Inferencer represents the type inference state: interprets type variables into types, stores their dimensions and the corresponding subtype inequalities. And, in \cref{sec:inferRoutines,sec:inferPipeline}, we describe the type inference algorithm itself.
 
-\subsection{Type inference preliminaries}
+\subsection{Naming and preliminaries}
+\label{sec:namingPrel}
 
 The basic idea of the implementation of type inference used in the prototype compiler is that each type is represented by a type variable. And the semantic value of this variable is defined by the state of inferencer, structure that controls the inference algorithm.
 
-In the prototype compiler, the type inferencer keeps track of the type definitions of all known types in the terms of a type constructor applied to variables representing each of its immediate subterms (introducing so-called \emph{primitive patterns}). For each type variable, the inferencer then contains a handle, which (in contrast to primitive patterns) stores its fully substituted values of all dimensions (typings stored in a similar form to Algorithm W resulting unifications - see \cite{damas1982principal}, constnesses and data kinds). In addition to these two ``databases'' of \emph{alive variables}, it also keeps the mapping from each variable's original name (as it appears in the AST with so-called \emph{elaborations}, see \cref{preprocessing}). This mapping is necessary as the algorithm performs many unifications of the alive type variables and their corresponding records in aforementioned ``databases'' may not be stored under the original type variables.
+In the prototype compiler, the type inferencer keeps track of the type definitions of all known types in the terms of a type constructor applied to variables representing each of its immediate subterms (introducing so-called \emph{primitive patterns}). For each type variable, the inferencer then contains a handle, which (in contrast to primitive patterns) stores its fully substituted values of all dimensions (typings stored in a similar form to Algorithm W resulting unifications -- see \cite{damas1982principal}, constnesses and data kinds). In addition to these two ``databases'' of \emph{alive variables}, it also keeps the mapping from each variable's original name (as it appears in the AST with so-called \emph{elaborations}, see \cref{preprocessing}). This mapping is necessary as the algorithm performs many unifications of the alive type variables and their corresponding records in aforementioned ``databases'' may not be stored under the original type variables.
 
-The reason behind such intricate design was the necessity to capture the semantics of the various dimensions, most notably the typing dimension (see \cref{def:typing}, focus on the requirement that typings commute with type structure). The primitive patterns ensure that the inference algorithm can model these semantics - specifically type application and type decomposition. In \cref{new_approach}, we introduce a simpler, more practical, design more akin to the design of Deferred Solving described in \cref{defer_solve}. The prototype design can serve as a basis for a theoretic model, which models the inference of the proposed type system.
+The reason behind such intricate design was the necessity to capture the semantics of the various dimensions, most notably the typing dimension (see \cref{def:typing}, focus on the requirement that typings commute with type structure). The primitive patterns ensure that the inference algorithm can model these semantics -- specifically type application and type decomposition. In \cref{new_approach}, we introduce a simpler, more practical, design more akin to the design of Deferred Solving described in \cref{defer_solve}. The prototype design can serve as a basis for a theoretic model, which models the inference of the proposed type system.
 
 \subsubsection{Representation of type-related values}
 
@@ -230,7 +233,7 @@ The reason behind such intricate design was the necessity to capture the semanti
   \def\grammarP{0.6}
   \begin{grammar}
     \firstcaseP{\mathbb{T}}{\mathbb{V}}{Variable}
-    \otherformP{\left[\mathbb{T}\right] \to \mathbb{T}}{Function (each function takes a certain number of argument and returns a type - usually a tuple)}
+    \otherformP{\left[\mathbb{T}\right] \to \mathbb{T}}{Function (each function takes a certain number of argument and returns a type -- usually a tuple)}
     \otherformP{\left[\mathbb{T}\right]}{Tuple (function return type)}
     \otherformP{\mathbb{T}\ \mathbb{T}}{Type application (for structs and for constraints)}
     \otherformP{\mtt{Addr}\ \mathbb{T}}{address type (representing a pointer) }
@@ -326,8 +329,8 @@ $\mbb{W}$ Stands for a flat constraint or an implication constraint similarly to
     \otherformP{\mathbb{T} \leq_C \mathbb{T}}{SubConst (the right-hand operand has more general constness than the left-hand operand)}
     \otherformP{\mathbb{K} \leq_K \mathbb{T} \leq_K \mathbb{K}}{Kind bounds (the type has a data kind from the given range)}
     \otherformP{\mathbb{C} \leq_C \mathbb{T} \leq_C \mathbb{C}}{Const bounds (the type has a constness from the given range)}
-    \otherformP{C?\ \mathbb{T}^\ast}{Class constraint (the given types have to satisfy the given constraint - requires an instantiation of a proof)}
-    \otherformP{C!\ \mathbb{T}^\ast}{Class fact (the given types are known to satisfy the given constraint - provides the proof to $C?\ \mathbb{T}^\ast$)}
+    \otherformP{C?\ \mathbb{T}^\ast}{Class constraint (the given types have to satisfy the given constraint -- requires an instantiation of a proof)}
+    \otherformP{C!\ \mathbb{T}^\ast}{Class fact (the given types are known to satisfy the given constraint -- provides the proof to $C?\ \mathbb{T}^\ast$)}
     \otherformP{\mathbb{T} \sqsupseteq_M \mathbb{T}}{Instantiation constraint (the left-hand operand is a monotype instance of the polytype right-hand operand)}
   \end{grammar}
 \end{lang}
@@ -358,7 +361,7 @@ In the context of constraints, we use some specific constructs and naming:
 
 \end{description}
 
-\subsection{Type inference preprocessing}
+\subsection{Preprocessing}
 \label{preprocessing}
 
 The type inference preprocessing, also called \emph{constraint generation}, takes the AST representation of the source code as its input, annotates each node with \emph{elaborations}, and for each of these elaborations, generates constraints (described in \cref{lang:flat}) capturing the semantics of the code. We will not describe the whole process in detail as it is language-specific and the cases, albeit simple, are quite numerous. An example of the result of this process is demonstrated by \cref{lst:elab}.
@@ -504,7 +507,7 @@ By $<_{\mathcal{K}}$ and $<_{\mathcal{C}}$ we understand that there is a directi
     And finally, we extend the functions $t, k, c$ in such a way that for an arbitrary $v \in \mathcal{V}$ it holds that $t (v) = t (d (v))$, $k (v) = k (d (v))$, and $c (v) = c (d (v))$.
 \end{defn}
 
-\subsection{Type inferencer state invariants}
+\subsection{Inferencer state invariants}
 \label{sec:invariants}
 
 \subsubsection{Intrastate invariants}
@@ -611,7 +614,7 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
 
     This process ends with adding one of the type variables to the set of forgotten variables $\mcal G$ and adding the mapping from this type variable to the other to the function $u$.
 
-    This is followed by updating the variables $\mcal P, \mcal D, \mcal K, \mcal C, b_K, b_C$ and $\mcal F$. And any collisions in these variables (and occurrences of strongly connected components in $\mcal K, \mcal C$ or trivial bounds in $b_K, b_C$) have to be followed up (recursively) by further unifications so the required invariants are satisfied. Note that any unification of primitive patterns or typings can report failure (by unifying distinct type constructors, or by occurs check - which checks whether a typing variable is unified with a typing it occurs in, if it does, the unification reports a failure).
+    This is followed by updating the variables $\mcal P, \mcal D, \mcal K, \mcal C, b_K, b_C$ and $\mcal F$. And any collisions in these variables (and occurrences of strongly connected components in $\mcal K, \mcal C$ or trivial bounds in $b_K, b_C$) have to be followed up (recursively) by further unifications so the required invariants are satisfied. Note that any unification of primitive patterns or typings can report failure (by unifying distinct type constructors, or by occurs check -- which checks whether a typing variable is unified with a typing it occurs in, if it does, the unification reports a failure).
 
     \item Typing unification: we unify the typings of two input types (with an occurs check). We then apply the resulting unification to all other typings in considered by the algorithm. \label{tyUni}
 
@@ -626,7 +629,8 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
     This updates the variables $\mcal D, \mcal C, b_C$.
 \end{enumerate}
 
-\subsection{Type inference algorithm routines}
+\subsection{Inference algorithm routines}
+\label{sec:inferRoutines}
 
 \begin{description}
     \item[\textsc{Fresh variable}] An identifier for a fresh variable is chosen according to: \linebreak $\min \left(\mathbb{V} \setminus \mathcal{V} \setminus \mathcal{G}\right)$. It is given a ``generic'' type kind, which then is unified with whatever kind the fresh variable is assigned to represent. And the parent is set to $cp$, the current parent.
@@ -707,7 +711,8 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
     \end{algorithmic}
 \end{algorithm}
 
-\subsection{Type inference algorithm pipeline}
+\subsection{Inference algorithm pipeline}
+\label{sec:inferPipeline}
 
 Because of not supporting nested constraints (see the introduction of this section), we use implication constraints solely for expressing schemes: function schemes, class schemes and class facts. We present the prototype algorithm in a simplified form without considering how these schemes are added from the constraint language to the inferencer state as that is an implementation-specific detail not related to the type theory. For a full picture of the prototype algorithm, it is just important to note that $\mcal F$ contains each of the implication constraints representing an \emph{unclosed function}: a function not yet added to the function schemes $fs$.
 
@@ -724,7 +729,7 @@ The type inference pipeline then consists of the following steps:
 
     \item We then collect all the type variables free in the currently solved component, we minimize the subtypes according to \cref{sec:inferSub}. We translate the resulting subtype variable definitions by suprema back into constraints, and we collect the unsolved constraints on the free variables of the component, we also include, for each free type variable, the constraints derived from the type descriptions (records in $\mcal{D}$) and subtype bounds (edges from/to the type variable in $\mcal K, \mcal C$), kind-bound (from $\mcal b_K$) and const-bound (from $\mcal b_C$) constraints. We close the component, generating a scheme for each function of this component, quantifying the free variables and assuming all the collected constraints. \label{closing}
 
-    This demonstrates the impracticality of keeping information about each type in state variables - this information has to be then translated back into constraints.
+    This demonstrates the impracticality of keeping information about each type in state variables -- this information has to be then translated back into constraints.
 
     \item If there are more components in the instantiation graph, we construct a new instantiation graph by removing the currently closed component, we then continue with the step \ref{do_inst_graph}
 
@@ -734,6 +739,7 @@ The type inference pipeline then consists of the following steps:
 The algorithm, if implemented entirely, is correct as described in \cref{defer_solve} and \cref{sec:typesystem}. The various variables ($\mcal D, \mcal P, \mcal C, \mcal K, \dots$) represent the input constraints (and derived constraints) in a more centralized, equivalent, form (demonstrated by the step \ref{closing}, which translates this form back into constraints), while the invariants (see \cref{sec:invariants}) ensure the updates to the variables are equivalent to rewriting used in Deferred Solving. The invariants also ensure that the information is updated whenever possible. Note that because of non-nested contexts, there are no skolem constants nor context levels in the algorithm.
 
 \section{Monomorphization}
+\label{sec:mono}
 
 The monomorphization algorithm is a two-phase processes that is performed on a type-inferred code with elaborations present in an annotation of each node of the AST. It outputs a code, which is generated by a static interpretation of the callgraph (generalized to all references to top-level definitions) of the original code, starting from all monomorphic definitions, for each reference to a polymorphic definition, creating a monomorphic copy of the polymorphic definition, and continuing with references from the copy, recursively. The input and the output of this phase can be seen in \cref{lst:mono}.
 
@@ -742,7 +748,7 @@ The elaborations of the input AST contain directly interpretable type informatio
 The two phases of monomorphization are:
 
 \begin{enumerate}
-    \item We go through the top level definitions in the program and identify which ones are monomorphic. We add them to the queue of code to be instantiated. If we encounter any polymorphic functions marked \li{foreign "C"}, we report an error (note that \li{foreign "C"}-specified definitions are outside-world bindings - callable from code written in the C language, for example; they are required to be monomorphic).
+    \item We go through the top level definitions in the program and identify which ones are monomorphic. We add them to the queue of code to be instantiated. If we encounter any polymorphic functions marked \li{foreign "C"}, we report an error (note that \li{foreign "C"}-specified definitions are outside-world bindings -- callable from code written in the C language, for example; they are required to be monomorphic).
 
     \item We remove the first top level definition to be instantiated from the queue introduced in the first step, prepending the definition to the resulting program (initially empty). After that, we add all references to  definitions not yet instantiated to the desired types (types of the references) to the queue, the corresponding records consisting of pairs (polytype definition, type of the reference). We repeat this step as long as the queue is not empty or we do not reach some predefined monomorphization limit. \label{steptwo}
 \end{enumerate}
@@ -891,7 +897,7 @@ Apart from the postprocessed monomorphized code, translation takes three variabl
 
 The translator first restructures the code so that all the struct definitions are at the top and the procedures are at the bottom. Then it collects the definitions of all structs and represents each of them using a pair  \li{([(field_alias, field_index)], [field_type])}. The second value (list of a structure's fields) in each such pair corresponds to how llvm-hs-pure represents the structures, while the first maps each field accessor name to the index of the corresponding field, again, directly usable when generating the relevant LLVM instructions. After the translator collects all the struct definitions, it starts translating the procedures as described in \cref{trans_proc}.
 
-\begin{algorithm}
+\begin{algorithm}[t]
     \caption{Procedure translation}
     \label{trans_proc}
     \begin{algorithmic}[1]
@@ -930,9 +936,11 @@ The translator first restructures the code so that all the struct definitions ar
         \If {$s$ is a label}
             \State open a new LLVM basic block
         \Else
-            \State transcribe the semantics of $s$ into LLVM
-            \State \Comment {for any write to a variable, update $vars$ accordingly}
-            \State \Comment {for any reference, look up its corresponding operand in $vars$ or $r$, and if it is not present in either, generate an operand refering a global object}
+            \State $s' \gets \mtt {transcribeIntoLLVM}(s)$
+            \State \Comment {for any reference, look up its corresponding operand in $vars$, otherwise in $r$, and if it is not present in either, consider it a global reference}
+            \For {$(v, op) \in \mtt{getWrites}(s')$}
+                \State $vars \gets vars [v := op]$ \Comment{update variables}
+            \EndFor
         \EndIf
         \State \Return $vars$
     \end{algorithmic}

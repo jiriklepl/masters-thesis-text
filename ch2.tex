@@ -14,13 +14,15 @@ Cmm (a variant of \cmm) is used as a backend intermediate representation for GHC
     By referring to just \cmm, we will always refer to the second version of the language, \cmm 2.0 (as specified by \citet{ramsey2005c}).
 \end{remark}
 
-Just like Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} - a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular procedure call, which does not constitute stack manipulation.
+Just like Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users (frontend) to target for some specific architectural features, like specific register sizes, for example, \lstinline{bits32} -- a 32 bits long register. It also allows the user to specifically request a tail call instead of a regular procedure call, which does not constitute stack manipulation.
 
 The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent types in the context of \cmm.
 
 One of the main motivations for choosing this language was that it strives to be minimalistic compared to high-level languages while very robust and general, compared to assemblers, offering many features, which can be tied to type inference. It is due to the above reasons, it is usually categorized as pseudo-assembler.
 
-The algorithm our experimental approach is based on, so called ``Deferred Inference'' or the ``French Approach'' (described in \cref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
+Another strong motivation was that \cmm allows the user to provide various assertions on the control flow (for example, targets of indirect branches, calls) and does not have any hidden control flow in expressions.
+
+The algorithm our experimental approach is based on ``Deferred Inference'' (or the ``French Approach''; described in \cref{defer_solve}), was proposed to the general public by the same person, so there were even more arguments for this choice motivated by some overlaps in design philosophy and ideas.
 
 \section{Syntax and properties of \cmm}
 
@@ -63,6 +65,7 @@ Note that these data kinds are usually strictly separated from each other in man
 Data kinds can be modelled efficiently, as we will describe, with a very limited notion of lattice-based subtyping we introduce in the next section, where we consider the empty set of possible registered the bottom and all registers the top (this relates to work by \citet{tiuryn1999subtyping}, who shows \texttt{PSPACE}-completeness for a generalization of this idea).
 
 \section{Extended \cmm}
+\label{sec:extension}
 
 We extended the language with new syntactic constructs:
 
@@ -122,6 +125,7 @@ Superclasses are requirements that specify that each instance of the class has t
 We will often call instances ``proofs'', when discussing them in theory. We require them to be non-overlapping, as, if we allowed them to overlap, the resulting system would be ambiguous (consider, for example, \li{C Int a} and \li{C a Int} in Haskell notation).
 
 \subsection{Structures and member fields}
+\label{sec:structExt}
 
 We added \li{struct}s, a record structure syntax for a feature known from other C-like languages (among others).
 
@@ -210,7 +214,7 @@ We define the subtyping system as a minimization problem, where we first minimiz
 
 \begin{defn}[Typing dimension]
     \label{def:typing}
-    The typing dimension is a lattice on types with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation - notice the similarity of concepts: \emph{lowest upper bound} and \emph{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables, similarly to \citet{barendregt1992lambda}). Typing dimension is defined to have the same properties as types in the system without subtyping.
+    The typing dimension is a lattice on types with instantiation $\sqsubseteq$ serving as the $\leq_T$ operation (or, equivalently, unification serving as the $\lor$ operation -- notice the similarity of concepts: \emph{lowest upper bound} and \emph{most general unification}) and $\forall a . a$ being the bottom element (we assume equivalence under renaming the bound variables, similarly to \citet{barendregt1992lambda}). Typing dimension is defined to have the same properties as types in the system without subtyping.
 
     Typing inequality ($\leq_T$) commutes with type applications, quantification and type decomposition (for example, $\tau \leq_T \tau' \land \sigma \leq_T \sigma' \GetsTo \tau \sigma \leq_T \tau' \sigma'; \tau \leq_T \tau' \To (\forall \vect \alpha . \tau) \leq_T (\forall \vect \alpha . \tau')$).
 
@@ -235,7 +239,7 @@ In the type system specific to this thesis, we use two subtype dimensions: \emph
 
 \begin{remark}[Problems of subtype dimensions commuting with types]
     \label{congruence}
-    Unlike for the typing dimension, considering commuting a requirement for subtype dimensions would have impractical implications for our attempts: given two runtime objects of the same type and a pointer to each, there is no reason to constrain said pointers to have the same constness, one can be a runtime object as well and the other one a compile-time constant - compile-time pointers are equivalent to named references, for example.
+    Unlike for the typing dimension, considering commuting a requirement for subtype dimensions would have impractical implications for our attempts: given two runtime objects of the same type and a pointer to each, there is no reason to constrain said pointers to have the same constness, one can be a runtime object as well and the other one a compile-time constant -- compile-time pointers are equivalent to named references, for example.
 \end{remark}
 
 
@@ -284,7 +288,7 @@ Let there be some constness variables $x, y, w$ coming from some internal specif
 
 \centerline{\includegraphics[width=\linewidth / 2]{img/out/subtyping-idea.pdf}}
 
-If those are the only subtype constraints in the given component (we can consider just this subtype dimension, since they are required to be orthogonal), we can safely unify the constness variables $x$ and $w$ as they are limited by the same fixed values (upper-bounded by $c$ and $K$ and lower-bounded by $a$ and $b$). And we can clearly see that the minimal $x$ will be always equal to $w$ regardless of constnesses of $a$, $b$ and $c$ provided by outside contexts. Less obvious is, whether we can safely unify $x$ and $y$. And since the system is based on minimization, the minimal $y$ will be, again, always equal to $x$ (with an apparent exception of cases where $x$ is not solvable because of $K$; but we are interested in solving the whole program and not single values, so separating these cases does not make any sense - yet still, in practice, this is a good reason for keeping some outside meta-information about the bounds of the original variables for clearer error messages).
+If those are the only subtype constraints in the given component (we can consider just this subtype dimension, since they are required to be orthogonal), we can safely unify the constness variables $x$ and $w$ as they are limited by the same fixed values (upper-bounded by $c$ and $K$ and lower-bounded by $a$ and $b$). And we can clearly see that the minimal $x$ will be always equal to $w$ regardless of constnesses of $a$, $b$ and $c$ provided by outside contexts. Less obvious is, whether we can safely unify $x$ and $y$. And since the system is based on minimization, the minimal $y$ will be, again, always equal to $x$ (with an apparent exception of cases where $x$ is not solvable because of $K$; but we are interested in solving the whole program and not single values, so separating these cases does not make any sense -- yet still, in practice, this is a good reason for keeping some outside meta-information about the bounds of the original variables for clearer error messages).
 
 To conclude: we are interested in an algorithm that unifies variables $x$, $y$ and $w$ and annotates the type of the procedure with constraints $c \geq a, c \geq b, K \geq a, K \geq b$ for the ``outside subtype information'' (not containing any internal specifics) and $c \geq x, K \geq x, x \geq a, x \geq b$ for the ``inside subtype information'' (note that the other two variables are not mentioned, as they are unified with $x$).
 

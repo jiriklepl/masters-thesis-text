@@ -43,7 +43,7 @@ It would be much easier to implement the inference in such a way that each subpr
 
 In such case, the references to parent type variables are not required, because all considered type variables are relevant to the given component and we solve each subprogram component with different variables. Similarly, the instantiation constraint is completely unnecessary. During inference preprocessing for the given component, we already know what references are pointing to polytypes, and we can generate the appropriate constraints.
 
-\subsection{Inferencer state required to interpret elaborations}
+\subsection{Extracting results from the inferencer state}
 \label{sec:inferInter}
 
 A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state. This means that this state has to be passed to all subsequent phases. This is most significant during monomorphization, which has to change type elaborations of monomorphic copies of polymorphic top-level definitions. It has to repeatably perform lookups of type interpretations for each elaboration present in the given top-level definition.
@@ -53,7 +53,7 @@ Alternatively, we can elaborate each node of the inferred code with a fully subs
 
 That way, the qualified types would take a witness of the corresponding instance, and they would also contain the instantiated type of the instance, making the monomorphization (and partially also the subsequent compilation phases) much easier.
 
-\subsection{Weakness in propagating subtype inequalities}
+\subsection{Propagation of subtype inequalities}
 \label{sec:weakness}
 
 The type system does not propagate subtype inequalities as discussed in \cref{sec:state}. This has an effect of ``forgetting'' appropriate subtypes for arguments, when a reference to a procedure is passed. We have explored the implications more closely in \cref{sec:tsLims}.
@@ -67,9 +67,13 @@ With that, after we solve the typings in each \emph{program} (external binding w
 
 As this work is our first compiler with no significant dependencies on an established framework (with the exception of the code generation), our approach was at times, quite experimental. This lead to many design-related findings, some of which might be beneficial to any future work in similar areas.
 
-\begin{itemize}
-    \item One such finding is the design pattern we used for defining the AST nodes in Haskell. We will explain it on an example:
+\subsection{Annotation wrappers}
 
+One such finding is the design pattern we used for defining the AST nodes in Haskell as shown in \cref{lst:topLevel}.
+
+\begin{listing}
+    \caption{Definition of an AST node \texttt{TopLevel}}
+    \label{lst:topLevel}
     \begin{lstlisting}[language=Haskell]
 data TopLevel a
     = TopSection StrLit [Annot Section a]
@@ -80,21 +84,34 @@ data TopLevel a
     | TopStruct (Annot Struct a)
     deriving (Show, Functor, Foldable, Traversable, Data)
     \end{lstlisting}
+\end{listing}
 
-    This pattern is characterized by wrapping each nested node \li{n a} in an \li{Annot n a} structure. We then declare each node to derive \linebreak\li{Functor, Foldable, Traversable, Data}.
+This pattern is characterized by wrapping each nested node \li{n a} in an \li{Annot n a} structure. We then declare each node to derive \li{Functor}, \li{Foldable}, \li{Traversable} and \li{Data}.
 
-    This pattern allows us to represent the AST in a type-safe manner with arbitrary annotations. They can be directly referred to when performing some transformation or data mining process on the given node without \xxx{requiring} any external state.
+This allows us to represent the AST in a type-safe manner with arbitrary annotations. They can be directly referred to when performing some transformation or data mining process on the given node without requiring any external state.
 
-    The \li{Functor} class then gives us for free very easy way to strip all the annotations: simply by \li{void node}. Or, more generally, to transform each annotation with a pure function \li{f}: using similarly simple \li{f <\$> node}.
+\begin{itemize}
+    \item The \li{Functor} class then facilitates stripping all the annotations: simply by applying \li{void} to the given node: \li{void node}. Or, more generally, to transform each annotation with a pure function \li{f}: using similarly simple \li{f <\$> node}.
 
-    The \li{Foldable} class then allows us the abstraction to perform various folds on the node's annotations (perhaps, to collect some values from them), while \li{Traversable} allows us to perform monadic transformations on them (stateful transformations).
+    \item The \li{Foldable} class then allows us the abstraction to perform various folds on the node's annotations (perhaps, to collect some values from them), while \li{Traversable} allows us to perform monadic transformations on them (stateful transformations).
 
-    The \li{Data} class then allows us to write very succinct implementations for transformations of the AST which access only a handful of nodes of the whole structure. The best example of using these would be the implementation for the mangle function, which mangles the names in the AST.
+    \item The \li{Data} class then allows us to write very succinct implementations for transformations of the AST which access only a handful of nodes of the whole structure. The best example of using these would be the implementation for the mangle function, which mangles the names in the AST.
+\end{itemize}
 
-    \begin{ex}[mangle function]
-        The following function traverses the AST and replaces the nodes of the type \li{AST.LValue}. This showcases the possible benefits of deriving the \li{Data} class.
+\subsubsection{Possible benefits of deriving the \texttt{Data} class}
 
-        \begin{lstlisting}[language=Haskell]
+We, in many instances, use generics described by \citet{lammel2003scrap}. This is demonstrated by \cref{lst:dataGenerics}. The important part of the example, we want to show, is the function \li{go = gmapM go `extM` lValueCase}. This function, which can be extended with more \li{`extM` xCase} cases performs the monadic (= stateful) transformation \li{lValueCase} on the given input, or, if the type of the argument does not match the type expected by the case, it traverses all immediate subterms, again, attempting to perform one of the monadic transformations, and then recursively on their immediate subterms, etc., until each branch of the expression ends in a match or in a leaf.
+
+Notice that if the case matches the expected type, but not the expected value, we explicitly (using \li{gmapM go}) propagate the transformation to child nodes of the matched case.
+
+The \li{go = gmapM go `extM` lValueCase} pattern does not look that impressive at first, but it is a generalized visitor pattern that can quite significantly shorten the development time and the code complexity. For stateless transformations, use \li{gmapT} and \li{extT}.
+
+\begin{listing}
+    \caption{Possible benefits of deriving the \texttt{Data} class}
+    \label{lst:dataGenerics}
+    \begin{lstlisting}[language=Haskell]
+-- The following function traverses the AST and replaces
+--   the nodes of the type 'AST.LValue' with mangled versions
 mangle n@(_ `Annot` (_ :: a)) = go n
   where
     go :: Data d => d -> Inferencer d
@@ -111,24 +128,19 @@ mangle n@(_ `Annot` (_ :: a)) = go n
           return name
       return $ AST.LVName name' `Annot` a
     lValueCase lvRef = gmapM go lvRef
-        \end{lstlisting}
+    \end{lstlisting}
 
-        The important part of the example, we want to show, is the function \linebreak \li{go = gmapM go `extM` lValueCase}. This function, which can be extended with more \li{`extM` xCase} cases performs the monadic (= stateful) transformation \li{lValueCase} on the given input, or, if the type of the argument does not match the type expected by the case, it traverses all immediate subterms, again, attempting to perform one of the monadic transformations, and then recursively on their immediate subterms, etc., until each branch of the expression has match or ends in a leaf.
+\end{listing}
 
-        Notice that if the case matches the expected type, but not the expected value, we explicitly (using \li{gmapM go}) propagate the transformation to child nodes of the matched case.
-    \end{ex}
+\subsection{\xxx{Second finding}}
+The second finding is the importance of separating the whole compilation into layers similarly to the UNIX philosophy. Each of such layers should do one job and do it well. This approach greatly improves the debugging and the analysis of the program.
 
-    The \li{go = gmapM go `extM` lValueCase} pattern does not look that impressive at first, but it is a generalized visitor pattern which can quite significantly shorten the development time and the code complexity. For stateless transformations, use \li{gmapT} and \li{extT}.
-
-    \item The second finding is the importance of separating the whole compilation into layers similarly to the UNIX philosophy. Each of such layers should do one job and do it well. This approach greatly improves the debugging and the analysis of the program.
-
-    As an anti-example, take the monomorphization layer. It has two (albeit very related) jobs: it stores the types inferred by the inference layer into the annotations in AST and it also monomorphizes the code - those are two distinct responsibilities. Separating them into two layers would have an effect of it being possible to use the above pattern to simplify one of such layers into mere hundreds of lines of code.
+    As an anti-example, take the monomorphization layer. It has two (albeit very related) jobs: it stores the types inferred by the inference layer into the annotations in AST and it also monomorphizes the code -- those are two distinct responsibilities. Separating them into two layers would have an effect of it being possible to use the above pattern to simplify one of such layers into mere hundreds of lines of code.
 
     Good examples of using this principle are the modules \li{CMM.Mangle} (source of the above example \xxx{ref}) and \li{CMM.FillElabs}.
 
-    \item The third finding is the benefit of defining the layers with no assumptions on the actual structure of the node annotations but requiring a typeclass which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.
+\subsection{\xxx{Third finding}}
+The third finding is the benefit of defining the layers with no assumptions on the actual structure of the node annotations but requiring a typeclass which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.
 
-    \item The fourth finding is the benefit of adding unnecessary debug information to the data passed around \xxx{the comment constraints in preprocessing; that is not recommended by any source}. And it is especially if this generation of debug information can be turned off by a build option. This principle extends to explicit invariant checks.
-
-    \xxx{more findings}
-\end{itemize}
+\subsection{\xxx{Fourth finding}}
+The fourth finding is the benefit of adding unnecessary debug information to the data passed around \xxx{the comment constraints in preprocessing; that is not recommended by any source}. And it is especially if this generation of debug information can be turned off by a build option. This principle extends to explicit invariant checks.
