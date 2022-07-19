@@ -291,7 +291,7 @@ The reason behind such intricate design was the necessity to capture the semanti
 
 \subsubsection{Type reconstruction}
 
-\emph{Type reconstruction} is evaluated by substituting primitive patterns for type variables iteratively until no type variable is possible to be substituted with a primitive pattern. The algorithm starts with a single type variable.
+\emph{Type reconstruction} starts with a single type variable and then substitutes primitive patterns for corresponding type variables iteratively until no type variable is possible to be substituted. This is used to interpret a type represented by a type variable. The free type variables of the reconstructed type are the free variables of the matching type.
 
 \begin{lemma}[Primitive pattern equivalences]
     \label{typesObs}
@@ -630,6 +630,8 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
 \subsection{Inference algorithm routines}
 \label{sec:inferRoutines}
 
+Here we describe helper routines we use in \cref{sec:inferPipeline}.
+
 \begin{description}
     \item[$v \gets$ \textsc{FreshVariable()}] The identifier for a fresh variable $v$ is chosen according to: \linebreak $\min \left(\mathbb{V} \setminus \mathcal{V} \setminus \mathcal{G}\right)$. It is given a ``generic'' type kind, which then is unified with whatever kind the fresh variable is assigned to represent. And the parent is set to $cp$, the current parent.
 
@@ -886,9 +888,9 @@ LR$procedure0:
 Apart from the postprocessed monomorphized code, translation takes three variables from the \emph{blockifier} (see \cref{sec:blockify}):
 
 \begin{description}
-    \item[\textsc{Control flow}] The edges of the control flow graph, for each procedure.
-    \item[\textsc{Block data}] The mapping from each block's index and variable name relevant in the context of the corresponding block to a two-valued tuple \linebreak \li{(writes, requests alive)} where each entry is a boolean (note that in \cref{sec:blockify}, we introduced this variable as a triple, we siply strip the first value of each record away).
-    \item[\textsc{Blocks table}] The mapping from each block's index to its name, so we can use the blocks' actual names in the generated code.
+    \item[\textsc{ControlFlow}] The edges of the control flow graph, for each procedure.
+    \item[\textsc{BlockData}] The mapping from each block's index and variable name relevant in the context of the corresponding block to a two-valued tuple \linebreak \li{(writes, requests alive)} where each entry is a boolean (note that in \cref{sec:blockify}, we introduced this variable as a triple, we siply strip the first value of each record away).
+    \item[\textsc{BlocksTable}] The mapping from each block's index to its name, so we can use the blocks' actual names in the generated code.
 \end{description}
 
 \sloppy The translator first restructures the code so that all the struct definitions are at the top and the procedures are at the bottom. Then it collects the definitions of all structs and represents each of them using a pair  \li{([(field_alias, field_index)], [field_type])}. The second value (list of a structure's fields) in each such pair corresponds to how llvm-hs-pure represents the structures, while the first maps each field accessor name to the index of the corresponding field, again, directly usable when generating the relevant LLVM instructions. After the translator collects all the struct definitions, it starts translating the procedures as described in \cref{trans_proc}.
@@ -908,7 +910,7 @@ Apart from the postprocessed monomorphized code, translation takes three variabl
         \EndFor
         \State $B \gets \mtt{breakIntoBasicBlocks} (S)$ \Comment{according to blockifier's annotations}
         \State $E,R \gets \mtt {entryAndOtherBasicBlocks}(B)$
-        \State $ph \gets$ placeholder operands for each record in the \textsc{block data} (variable from the blockifier) without the entry block such that \li{writes} or \li{requests alive} is set
+        \State $ph \gets$ placeholder operands for each record in the \textsc{BlockData} (variable from the blockifier) without the entry block such that \li{writes} or \li{requests alive} is set
         \For {$s \in E$}
             \State $f \gets \mtt {translate}(r, f, s)$ \Comment{\cref{transl_stmt}}
         \EndFor
@@ -932,8 +934,9 @@ Apart from the postprocessed monomorphized code, translation takes three variabl
         \If {$s$ is a label}
             \State open a new LLVM basic block
         \Else
-            \State $s' \gets \mtt {transcribeIntoLLVM}(s)$
-            \State \Comment {for any reference, look up its corresponding operand in $vars$, otherwise in $r$, and if it is not present in either, consider it a global reference}
+            \State $\mtt {generateGlobal}(v) = \mtt {globalReference} [\mtt{to} := v]$
+            \State $\mtt {lookupVariable}(v) = \mtt {firstMatchIn} (v, [vars, r, \mtt{generateGlobal}])$
+            \State $s' \gets \mtt {transcribeIntoLLVM}(\mtt {lookupVariable}, s)$
             \For {$(v, op) \in \mtt{getWrites}(s')$}
                 \State $vars \gets vars [v := op]$ \Comment{update variables}
             \EndFor
@@ -956,12 +959,12 @@ Apart from the postprocessed monomorphized code, translation takes three variabl
         \State $vars \gets \emptyset$ \Comment{a mapping from variable names to their corresponding operands}
         \For {$v$ a variable requested alive}
             \State generate a phi node $\varphi$
-            \For {$(idx', idx)$ in the \textsc{control flow} graph from the blockifier}
+            \For {$(idx', idx)$ in the \textsc{ControlFlow} graph from the blockifier}
                 \If {$idx'$ is the entry block}
-                    \State $\varphi \gets \varphi \cup (f(v), \text{\textsc{blocks table}}(idx'))$
+                    \State $\varphi \gets \varphi \cup (f(v), \text{\textsc{BlocksTable}}(idx'))$
                 \Else
-                    \State $\varphi \gets \varphi \cup (ph(idx', v), \text{\textsc{blocks table}}(idx'))$
-                \EndIf \Comment {\text{\textsc{blocks table}} is from the blockifier}
+                    \State $\varphi \gets \varphi \cup (ph(idx', v), \text{\textsc{BlocksTable}}(idx'))$
+                \EndIf \Comment {\text{\textsc{BlocksTable}} is from the blockifier}
             \EndFor
             \State $vars \gets vars[v := \varphi]$ \Comment{add the phi node to the $vars$ mapping}
         \EndFor

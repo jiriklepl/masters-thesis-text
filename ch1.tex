@@ -4,13 +4,23 @@
 
 In this chapter, we discuss possibility of using a modification of the algorithm W \cite{damas1982principal} for type inference as was the approach of our previous work \cite{klepl2020type}. We then identify the challenges of this approach in the context of type-inferring a C-like language with a Hindley-Milner \cite{damas1982principal} type system extended by multi-parameter typeclasses for overloading. We then introduce an algorithm based on the `French approach', which is simpler to use in the given context and allows for better extensibility.
 
+As this thesis builds on our previous work \cite{klepl2020type}, we assume the same standard syntactic notation and semantics of the untyped lambda calculus, STLC, System F \cite{barendregt1992lambda}, Hindley-Milner type system (HM) \cite{damas1982principal}, and the HM type system with typeclasses described by Typing Haskell In Haskell (here shortened as THIH \cite{jones1999typing}).
+
+Before we begin, let us lay down two terms we extensively use in arguments:
+
+\begin{description}
+\item[Type inference] is a process of semantic analysis, which assigns a type (according to the given type system) to each node of the abstract syntax tree (AST) representing the input code, where it makes sense (expressions, procedures, record types, etc.). Each such type can be either monotype or polytype and the object then monomorphic or polymorphic, respectively. Polytypes are characterized, in contrast to monotypes, by being quantified and thus they can represent multiple monotypes.
+
+\item[Monomorphization] statically interprets the generalized callgraph (also including references to type definition) in a type-inferred code and, for every reference to a polymorphic object, it generates a monomorphic copy of this object, which has the polytype appropriately instantiated to the monotype fitting the current context.
+\end{description}
+
 \section{The algorithm W and its limitations}
 
-As this thesis builds on the work of the author's bachelor thesis \cite{klepl2020type}, we assume the same syntactic notation and semantics of the untyped lambda calculus, STLC, System F \cite{barendregt1992lambda}, Hindley-Milner type system (HM) \cite{damas1982principal}, and the HM type system with typeclasses described by Typing Haskell In Haskell (here shortened as THIH \cite{jones1999typing}).
+In the previous work, we concluded that, if a term is typable in the HM type system with typeclasses, the THIH variant of the algorithm W finds it's principal type -- principal type is a least generic polytype that instantiates to all valid monotype (unquantified) type assignment of the term.
 
-We concluded that, if a term is typable in these systems, the appropriate variation of algorithm W finds it's principal type (with an exception of the System F, type inference of which is undecidable \cite{wells1999typability}.
+Algorithm W is a type inference algorithm introduced by \citet{damas1982principal} that infers simple but practical polymorphic types for lambda calculus with let-construction. It takes an input in the language of lambda terms, outputting the inferred type assignments (a mapping from the input terms to types).
 
-Algorithm W is a type inference algorithm introduced by \citet{damas1982principal} that infers simple but practical polymorphic types for lambda calculus with let-construction. It takes an input in the language of lambda terms, outputting the inferred type assignments (a mapping from the input terms to types). Algorithm W follows the type inference rules listed in \cref{fig:wRules}. From this point forward, if not stated otherwise, by algorithm W, we understand the variation described by \citet{jones1999typing}. Context $\Gamma$ is the set of known type assignments and known predicates (possibly quantified and with further assumptions).
+When type inferring a term $x$, the algorithm W follows the inference rules listed in \cref{fig:wRules} with a certain \emph{context} $\Gamma$. Context $\Gamma$ is the set of assumed type assignments and, in the THIH extension, predicates (both possibly quantified and with some further assumed predicates). From this point forward, if not stated otherwise, by algorithm W, we understand the variation described by \citet{jones1999typing}.
 
 \begin{figure}
     \caption{Type inference rules for the Hindley-Milner type system}
@@ -27,14 +37,6 @@ Algorithm W is a type inference algorithm introduced by \citet{damas1982principa
 
 Throughout this section, we will show that the algorithm W provides a good basis for typechecking of the type system, but with more extensions, namely multi-parameter typeclasses with functional dependencies \cite{jones2000type} (we abbreviate them MPTCs), it becomes unnecessarily complex and inefficient if we want to use it for type inference as well. We will describe, how the same principles can be used to implement much simpler and more extensible two-phase algorithm based on constraint solving.
 
-Before we begin, let us lay down two terms we will extensively use:
-
-\begin{description}
-\item[Type inference] is a process of semantic analysis, which assigns a type (according to the given type system) to each node of the AST, where it makes sense (expressions, procedures, record types, etc.). Each such type can be either monotype or polytype and the object then monomorphic or polymorphic, respectively. Polytypes are characterized, in contrast to monotypes, by being quantified and thus they can represent multiple monotypes.
-
-\item[Monomorphization] statically interprets the generalized callgraph (also including references to type definition) in a type-inferred code and, for every reference to a polymorphic object, it generates a monomorphic copy of this object, which has the polytype appropriately instantiated to the monotype fitting the current context.
-\end{description}
-
 \subsection{Extensions of algorithm W}
 
 The algorithm W, which we used in the previous work \cite{klepl2020type}, assumed no recursion in the code and thus any real program with any trivial or nontrivial recursion had to be rewritten into a form where recursive functions were represented by the \lstinline{fix} operator applied to some argument. Type of the \lstinline{fix} operator is $\forall \alpha . \pars {\alpha \to \alpha} \to \alpha$.
@@ -45,7 +47,7 @@ For a nontrivial recursion (which we can identify using an algorithm for finding
 
 We demonstrated that it is indeed possible to represent the source code in the language of nonrecursive terms, however, doing so is complicated (every language feature has to be mapped to a term) and it does not scale well to possible extensions with more advanced language features (those might introduce further recursive patterns, requiring a redesign of the mapping to terms).
 
-\subsection{Type inference for record field accessors}
+\subsubsection{Type inference for record field accessors}
 \label{ex_structs}
 
 In the previous work, for our purposes of extending C to use a HM-style type system with typeclasses, we determined that the algorithm W, as described in THIH, is too weak. In the following subsections we explore a possible extension of the algorithm W and discuss its practicality and how it gives a motivation for the deferred solving algorithm introduced in \cref{defer_solve}.
@@ -61,9 +63,7 @@ What does this mean? Let us define two record types:
     struct B {float x} b;
 \end{lstlisting}
 
-Now, if we write \lstinline{a.x} or \lstinline{b.x}, it is obvious that these expressions have types \lstinline{int} and \lstinline{float}, respectively.
-
-If we renamed the field of \lstinline{B} to have different name (for example, \lstinline{y}), we could represent the field accessors as functions $.x : A \to int$ and $.y : B \to float$.
+Now, if we write \lstinline{a.x} or \lstinline{b.x}, it is obvious that these expressions have types \lstinline{int} and \lstinline{float}, respectively. If we renamed the field of \lstinline{B} to have different name (for example, \lstinline{y}), we could represent the field accessors as functions $.x : A \to int$ and $.y : B \to float$.
 
 But we do not want to bother the programmer with such strong constraints of requiring the fields to be uniquely named. To allow them have different types even though they share the same name, we have to overload the field accessor functions. Overloading is achieved via introducing a typeclass. We define the field accessors as two instances of a method \li{.x} of ``Has\_x'' typeclass with two type arguments, one for the record type and the other for the field type. The first type argument uniquely represents the instance of the field accessor and the second one allows us to specify the matching field type.
 
@@ -80,13 +80,10 @@ instance HasX A int {.x : A -> int}
 instance HasX B float {.x : B -> float}
 \end{lstlisting}
 
-In the HM type system with typeclasses, this constraint cannot be expressed at all as the class constraints can be defined solely in the terms of taking a single type variable.
-
-In he THIH variation \cite{jones1999typing}, this can be indeed expressed (it is not reflected in the paper, but the supplementary implementation allows arbitrary number of arguments), and the algorithm is strong enough to type-check such construction for concrete types, but it lacks the ability to infer the obvious types of the previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b} and the expressions are defined by them.
+In the HM type system with typeclasses, this constraint cannot be expressed at all as the class constraints can be defined solely in the terms of taking a single type variable. In the THIH variation \cite{jones1999typing}, this can be indeed expressed (it is not reflected in the paper, but the supplementary implementation allows arbitrary number of arguments), and the algorithm is strong enough to type-check such construction for concrete types, but it lacks the ability to infer the obvious types of the previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b} and the expressions are defined by them.
 
 \subsection{Tackling the limitations of syntax-driven inference}
-
-\xxx{syntax-driven W}
+\label{sec:tackle}
 
 In \cref{ex_structs}, the inability to type-infer the types of \lstinline{a.x} and \lstinline{b.x} could be possibly solved during the subsequent monomorphization phase, which would know that the type of a record type (\lstinline{a} or \lstinline{b}) determines the types of its fields and would (via lookup in a mapping constructed from their definitions) fill in the appropriate types. In a general case, this would mean that the subsequent monomorphization phase would have to be unnecessarily complex and it would function as a second type inference -- consider that solving a type field would allow for solving more constraints and then recursively. So we should address this issue in the type inference itself, in the algorithm W.
 
@@ -106,13 +103,12 @@ Unfortunately, in general, the termination of the process depended on the type s
 
 \subsection{Challenges of extending the algorithm W}
 
-In the previous section, we showed that each constraint can generate more constraints, and the algorithm W then solves each of these chains separately. The chains break into trees if one proof has two assumptions, for each of these, then possibly continuing with more assumptions.
 
-The modified algorithm W with recursion being present in the language alongside functional dependencies we deduced from the record types, is progressively more complicated with each extension, and it should be obvious from the previous examples that the modified algorithm W is now better described as a two-phase algorithm where the first phase generates some constraints and then the second one solves the constraints by instantiating proofs.
+Using the algorithm W requires nontrivial preprocessing in case of recursions or more complicated language sugar. After that, it works by assigning a principal type for each subterm of the solved (sub-)program in syntactically given order as demonstrated by \citet{jones1999typing}. This is often impossible when the language contains MPTCs. In \cref{sec:tackle}, we showed the difficulty of attempting to modify the algorithm to make this possible.
 
-Using the algorithm W requires some nontrivial preprocessing and mapping the subprogram to the resulting type (as demonstrated by \citet{jones1999typing}), and then, the subsequent constraint solving performs the very inefficient chains of nested proof lookups, as shown in the previous subsection.
+Then, the algorithm W has to match each constraint to a proof. This can generate further constraints, if the proofs have some assumptions, and thus form chains, or even trees of subsequent constraints.
 
-We will describe a two-phase algorithm, which does not require the described difficult preprocessing, and introduces \emph{witnesses}, which simplify solving the multiple class constraints.
+The solving could be simplified by collecting all relevant constraints on the types (equalities and predicates) and then subsequently solving the types independently on their order, while having some indication on predicates that would state whether they are already solved to avoid unnecessary computations. This is exactly the principles of deferred solving we describe in \cref{defer_solve}, a two-phase algorithm, which does not require the described difficult preprocessing nor syntactic mapping of subterms to types, and introduces \emph{witnesses} that simplify solving the multiple class constraints.
 
 \section{Deferred solving}
 \label{defer_solve}
@@ -353,7 +349,7 @@ Our simplified presentation of the algorithm (\Cref{deferred_loop}) is further s
                 \State \textbf{report occurs failure} of $c$
                 \State \Return $\mcal W$
             \ElsIf {$\mtt{ctxLevel} (a) = \mtt {Level}$}
-                \State unify $a$ and $b$ and globally rewrite all constraints accordingly
+                \State $\mtt {globallyUnify}(a,b)$  \Comment {rewrite all constraints accordingly}
                 \State $\mcal W \gets \mcal W \setminus \{c\}; \mtt{Continue} \gets \top$ \Comment {Solved the constraint $c$}
             \Else
                 \State $P \gets P \cup \{c\}$ \Comment {The constraint $c$ is postponed}
@@ -399,12 +395,8 @@ We have introduced a new algorithm, which we use in the prototype compiler. We h
 
 In this thesis, we use an algorithm based on the deferred inference algorithm because it provides a very easy to extend formalisms which require only small number of modifications to it to achieve the coverage of the desired set of typing capabilities. Namely, MPTCs.
 
+We extended the type system with a highly specialized version of subtyping, necessary for type-checking and type-inferring secondary properties of variables defined in \cmm (we introduce those in \cref{chap2}, which describes the language specifics). Then, we also introduce functional dependencies. These are implemented via a rewriting scheme that takes precedence over the class constraint resolution. We specify the details in \cref{chap3}.
+
 In our type system, we do not support existentials, as we want the maximal transparency of the resulting code for possible use in systems programming. Existentials generate irremovable witnesses as we explained in \cref{defer_solve}, because the actual type of the input existentials is known only in run-time (\citet{grossman2002existential} provides a closer exploration of this topic). This approach guarantees type-safety as it ensures the witnesses are passed properly, but it does so at a cost we would like to not have.
 
-We extended the type system with a highly specialized version of subtyping, necessary for type-checking and type-inferring secondary properties of variables defined in \cmm (we introduce those in \cref{chap2}, which describes the language specifics).
-
-Then, we also introduce functional dependencies. These are implemented via a rewriting scheme that takes precedence over the class constraint resolution. We specify the details in \cref{chap3}.
-
-Not using existentials in our type system allows us to completely omit the context levels from the deferred solving algorithm, which then allows us to solve all equality constraints eagerly, as the solvability of such constraints is limited only by the context levels.
-
-We also solve all constraints of the whole program globally. This turned out to be a working, but very inefficient approach as discussed in \cref{chap5}.
+Not using existentials in our type system allows us to completely omit the context levels from the deferred solving algorithm, which then allows us to solve all equality constraints eagerly, as the solvability of such constraints is limited only by the context levels. We also solve all constraints of the whole program globally. This turned out to be a working, but very inefficient approach as discussed in \cref{chap5}.

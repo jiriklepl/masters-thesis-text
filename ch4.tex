@@ -673,7 +673,7 @@ LR$procedure1:
 
 \subsubsection{Automatic resource management with \texttt{dropped} statements}
 
-Sometimes, when we use automatic resource management, there exists a special case, in which we do not want to perform the resource management action. This may apply to cases where the resource is a file handle of a file we failed to open. In the prototype compiler, we can use \li{dropped} statement with a named reference to a resource object to specify that the corresponding resource management action is not to be performed automatically (but may be still manually). We demonstrate its use in \cref{lst:manual}.
+Sometimes, when we use automatic resource management, there exists a special case, in which we do not want to perform the resource management action. This may apply to cases where the resource is a file handle of a file we failed to open. In the prototype compiler, we can use \li{dropped} statement with a named reference to a resource object to specify that the corresponding resource management action does not happen automatically (but may be still manually) in the given part of the scope. We demonstrate its use in \cref{lst:manual}.
 
 
 \begin{codex}
