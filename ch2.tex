@@ -49,7 +49,7 @@ The main syntactic difference from other C-like languages is the representation 
 
 \subsection{Continuations -- special labels in \cmm}
 
-To provide a good general concept of many advanced control flow constructs, \cmm provides \emph{continuations}. Those are a generalization of label statements that can be called (using a \emph{cut to} statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this cut to call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
+To provide a good general concept of many advanced control flow constructs, \cmm provides \li{continuation}s. Those are a generalization of label statements that can be called (using a \li{cut to} statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this cut to call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
 
 It might seem that these continuations serve as a thread model for the language, but it is not so, a \cmm implementation does not include any particular thread model nor any thread scheduler. Continuations offer well-defined hooks for front-end compilers, possibly used for callbacks and for more advanced stack use. \cite{ramsey2005c}
 
@@ -131,7 +131,7 @@ We added \li{struct}s, a record structure syntax for a feature known from other 
 Structures use the syntax derived from regular data notation for maximum consistency. One of the side-effects of this approach is that one field can have various name aliases demonstrated by \cref{cex:list}. This might seem inconsequential, but it can have very interesting consequences in polymorphic programming. The last field of the \li{list} from the sample showcases that the \li{list} can be used in both, any procedure that expects it to carry a `value', and in any procedure that expects it to store some `data'. In some languages (for example, C\#), this can be implemented by \emph{properties}, which might contain some hidden control-flow.
 
 \begin{codex}
-    \caption{Implementation of a common linked list (one field has two names)}
+    \caption{Implementation of a common linked list in \cmm (one field has two names)}
     \label{cex:list}
 
     \begin{lstlisting}
@@ -313,15 +313,15 @@ This is very strong assumption, but supported by a precedent given by many langu
 
 
 \begin{description}
-    \item[The \emph{suprema subtype constructor}] $\sup_s$ is defined as a function from a set of values of a subtype dimension $s$ to a value in this dimension. It is defined by the suprema operation on the lattice defining the subtype dimension.
+    \item[The suprema subtype constructor] $\sup_s$ is defined as a function from a set of values of a subtype dimension $s$ to a value in this dimension. It is defined by the suprema operation on the lattice defining the subtype dimension.
 
     Therefore it holds the following identity: $\sup_s \{v\} = v$. Note that because of this, it is not equivalent to a type constructor. But, just like a type constructor, it defines a value, albeit nonuniquely.
 
-    \item[The \emph{outside subtype information}] of the given procedure in a dimension $s$ consists of subtype constraints between all fixed values in the subtype dimension $s$ for the procedure and the bindings from their respective types (constraints of the form $t =_s s_1$, where $t$ is a type and $s_1$ is a subtype variable). All subtype variables appearing in a strongly connected component are unified. It can be reduced under transitivity and reflexivity for acquiring a canonical form.
+    \item[The outside subtype information] of the given procedure in a dimension $s$ consists of subtype constraints between all fixed values in the subtype dimension $s$ for the procedure and the bindings from their respective types (constraints of the form $t =_s s_1$, where $t$ is a type and $s_1$ is a subtype variable). All subtype variables appearing in a strongly connected component are unified. It can be reduced under transitivity and reflexivity for acquiring a canonical form.
 
     Note that the bindings of types to their corresponding subtype variables are $1 \to \ast$ (consider assigning a variable to another and then back, then they have to share the same constness).
 
-    \item[The \emph{inside subtype information}] of the given procedure in a dimension $s$ consists of a set of statements in the form $x = \sup_s X$, where $x$ is a subtype variable in $s$ and $X$ the set of its corresponding fixed lower bounds, and the bindings from $x$ to its corresponding types. It is not a part of the type signature of the procedure, validity of such simplification is described by \cref{suprema_subtyping}. Another direct consequence is that the inside subtype information is not required for any binding to an external procedure.
+    \item[The inside subtype information] of the given procedure in a dimension $s$ consists of a set of statements in the form $x = \sup_s X$, where $x$ is a subtype variable in $s$ and $X$ the set of its corresponding fixed lower bounds, and the bindings from $x$ to its corresponding types. It is not a part of the type signature of the procedure, validity of such simplification is described by \cref{suprema_subtyping}. Another direct consequence is that the inside subtype information is not required for any binding to an external procedure.
 \end{description}
 
 \begin{remark}[Contradictions are failures]
@@ -429,7 +429,7 @@ f(y); // calls: drop(ptr(bits64));
 
 
 \begin{codex}
-    \caption{More complex use of automatic resource management, opening a file}
+    \caption{A more complex use of automatic resource management: opening a file}
     \label{lst:complex}
     \begin{lstlisting}
 stackdata {

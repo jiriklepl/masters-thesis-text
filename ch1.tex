@@ -52,7 +52,7 @@ We demonstrated that it is indeed possible to represent the source code in the l
 
 In the previous work, for our purposes of extending C to use a HM-style type system with typeclasses, we determined that the algorithm W, as described in THIH, is too weak. In the following subsections we explore a possible extension of the algorithm W and discuss its practicality and how it gives a motivation for the deferred solving algorithm introduced in \cref{defer_solve}.
 
-For the needs of type inference, we, in the context of algorithm W, represent \emph{field accessors} as functions from a record structure to the given field (or, equivalently, with a pointer constructor applied to them), each such functions named after the given field name.
+In the context of algorithm W, for the needs of type inference, we represent \emph{field accessors} as functions from a record structure to the given field (or, equivalently, with a pointer constructor applied to them), each such functions named after the given field name.
 
 The algorithm W is able to either type-infer a program with no field overloading (all record field names are unique even between multiple record types) or type-check a program but with limited type inference if we would allow field name overloading.
 
@@ -65,7 +65,7 @@ What does this mean? Let us define two record types:
 
 Now, if we write \lstinline{a.x} or \lstinline{b.x}, it is obvious that these expressions have types \lstinline{int} and \lstinline{float}, respectively. If we renamed the field of \lstinline{B} to have different name (for example, \lstinline{y}), we could represent the field accessors as functions $.x : A \to int$ and $.y : B \to float$.
 
-But we do not want to bother the programmer with such strong constraints of requiring the fields to be uniquely named. To allow them have different types even though they share the same name, we have to overload the field accessor functions. Overloading is achieved via introducing a typeclass. We define the field accessors as two instances of a method \li{.x} of ``Has\_x'' typeclass with two type arguments, one for the record type and the other for the field type. The first type argument uniquely represents the instance of the field accessor and the second one allows us to specify the matching field type.
+But we do not want to bother the programmer by requiring unique names of all fields in the whole program. To allow them have different types even though they share the same name, we have to overload the field accessor functions. Overloading is achieved via introducing a typeclass. We define the field accessors as two instances of a method \li{.x} of ``Has\_x'' typeclass with two type arguments, one for the record type and the other for the field type. The first type argument uniquely represents the instance of the field accessor and the second one allows us to specify the matching field type.
 
 We define the multi-parameter typeclass (MPTC) \li{Has_x}: ($a \to b$ is a functional dependency stating that $a$ uniquely represents $b$)
 
@@ -80,7 +80,7 @@ instance HasX A int {.x : A -> int}
 instance HasX B float {.x : B -> float}
 \end{lstlisting}
 
-In the HM type system with typeclasses, this constraint cannot be expressed at all as the class constraints can be defined solely in the terms of taking a single type variable. In the THIH variation \cite{jones1999typing}, this can be indeed expressed (it is not reflected in the paper, but the supplementary implementation allows arbitrary number of arguments), and the algorithm is strong enough to type-check such construction for concrete types, but it lacks the ability to infer the obvious types of the previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b} and the expressions are defined by them.
+In the HM type system with typeclasses, this constraint cannot be expressed at all as the class constraints can be defined solely in the terms of taking a single type variable. In the THIH variation \cite{jones1999typing}, this can be indeed expressed (it is not reflected in the original presentation, but the supplementary implementation allows arbitrary number of class arguments), and the algorithm is strong enough to type-check such construction for concrete types, but it lacks the ability to infer the obvious types of the previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b}.
 
 \subsection{Tackling the limitations of syntax-driven inference}
 \label{sec:tackle}
@@ -89,7 +89,7 @@ In \cref{ex_structs}, the inability to type-infer the types of \lstinline{a.x} a
 
 \subsubsection{Using the algorithm W in the type system with MPTCs}
 
-If we want to simply modify the algorithm W so it solves principal types even in the presence of MPTCs, we can easily observe that in order to function properly, it has to, on each subprogram (strongly connected component of the program's call-graph; we perform type inference on these subprograms in topological order, beginning with the leaf components), first perform the usual unifications on the syntactic structure of the subprogram, returning a type assignment in the form: $\mtt{name} :: \forall \vect \alpha . P  \To t$, where $P$ is a set of constraints, each having a form $C \vect \tau$, where $C$ is a predicate on the types $\vect \tau$, propagated from the subexpressions of $\mtt {name}$, under some $\vect \alpha = \free t$. And then it has to solve the constraints in $P$ according to some extended constraint solving mechanism for MPTCs, for example with maps, as explored by \cite{jones2000type}. We assume this approach. Here we see the first hints of the modified algorithm W turning into more complicated version of deferred solving we introduce in \cref{defer_solve} as this constraint solving becomes progressively more significant part of the algorithm.
+If we want to simply modify the algorithm W so that it solves principal types even in the presence of MPTCs, we can easily observe that in order to function properly, it has to, on each subprogram (strongly connected component of the program's call-graph; we perform type inference on these subprograms in topological order, beginning with the leaf components), first perform the usual unifications on the syntactic structure of the subprogram, returning a type assignment in the form: $\mtt{name} :: \forall \vect \alpha . P  \To t$, where $P$ is a set of constraints, each having a form $C \vect \tau$, where $C$ is a predicate on the types $\vect \tau$, propagated from the subexpressions of $\mtt {name}$, under some $\vect \alpha = \free t$. And then it has to solve the constraints in $P$ according to some extended constraint solving mechanism for MPTCs, for example with maps, as explored by \cite{jones2000type}. We assume this approach. Here we see the first hints of the modified algorithm W turning into more complicated version of deferred solving we introduce in \cref{defer_solve} as this constraint solving becomes progressively more significant part of the algorithm.
 
 \subsubsection{Intermission: solving class constraints from known proofs}
 
@@ -106,7 +106,7 @@ Unfortunately, in general, the termination of the process depended on the type s
 
 Using the algorithm W requires nontrivial preprocessing in case of recursions or more complicated language sugar. After that, it works by assigning a principal type for each subterm of the solved (sub-)program in syntactically given order as demonstrated by \citet{jones1999typing}. This is often impossible when the language contains MPTCs. In \cref{sec:tackle}, we showed the difficulty of attempting to modify the algorithm to make this possible.
 
-Then, the algorithm W has to match each constraint to a proof. This can generate further constraints, if the proofs have some assumptions, and thus form chains, or even trees of subsequent constraints.
+Then, the algorithm W has to match each constraint to a proof. If the proofs have some assumptions, this generates further constraints and this forms chains, or even trees of subsequent constraints.
 
 The solving could be simplified by collecting all relevant constraints on the types (equalities and predicates) and then subsequently solving the types independently on their order, while having some indication on predicates that would state whether they are already solved to avoid unnecessary computations. This is exactly the principles of deferred solving we describe in \cref{defer_solve}, a two-phase algorithm, which does not require the described difficult preprocessing nor syntactic mapping of subterms to types, and introduces \emph{witnesses} that simplify solving the multiple class constraints.
 
@@ -119,7 +119,7 @@ Elaborations consist of type variables, and then \emph{dictionaries} and \emph{c
 
 Deferred solving, or deferred inference, is very similar to the idea of modified algorithm W we presented earlier, but it does not require each of the objects appearing in the type-inferred subprogram be directly syntactically mapped to a certain type. It just requires a set of constraints that capture the semantics of the program. These constraints, in the basic version, consist of type equalities between types that have to be equal and class constraints put on certain types that require a proof of the given tuple of types belonging to the given class (these proofs represent instances defined in the type-inferred language).
 
-It also simplifies the notion of type assignments in such a way that all types considered by the algorithm are monotypes. And the type quantification with predicates, which, in the algorithm W is considered a part of the type assignment, is, in this algorithm, instead, applied to a set of constraints.
+It also simplifies the notion of type assignments in such a way that all types considered by the algorithm are monotypes. Type quantification with predicates, which, in the algorithm W is considered a part of the type assignment, is, in this algorithm, instead, applied to a set of constraints.
 
 We use the following constructs:
 
@@ -184,9 +184,7 @@ Additionally, to the already described equality constraints and class constraint
 
         \item We use scopes to describe a context level of a constraint. For a constraint, a \emph{context level} is the maximum length of implications leading to it.
 
-        \item \emph{Context level} of the unbound type variables introduced in some scope in \cref{constraint_language} have the context level which is equal to the context level of the scope.
-
-        All the appearances of a certain type variable have the same context level.
+        \item \emph{Context level of an unbound type variable} is defined to be equal to the context level of its scope. Note that all appearances of a certain type variable have the same context level.
 
         \item \emph{Skolem constants} in the given scope are the type variables bound by some parent implication constraint.
     \end{itemize}
@@ -213,7 +211,7 @@ The Haskell code in \cref{cex:existentials} shows a definition of an type \lstin
 
 \begin{codex}
 \lstinputlisting[style=haskellStyle]{examples/existentials.hs}
-\caption{Example use of existentials in a Haskell program (Functions \texttt{traverse\_}, \texttt{putStr}, \texttt{fmap} and \texttt{show} are taken from standard Haskell 2010 library)}
+\caption{Example use of existentials in a Haskell program (Functions \texttt{traverse\_}, \texttt{putStr}, \texttt{map} and \texttt{show} are taken from standard Haskell 2010 library)}
 \label{cex:existentials}
 \end{codex}
 
@@ -331,7 +329,7 @@ Our simplified presentation of the algorithm (\Cref{deferred_loop}) is further s
         \If{$a$ and $b$ are the same}
         \State $\mcal W \gets \mcal W \setminus \{c\}$ \Comment {Remove the redundant constraint $c$}
         \ElsIf{$\mtt{Level} \geq 1 \land \vect \alpha_1 \cap (\free a \cup \free b) = \emptyset$}
-            \State $\mtt{globallyPromoteUnificationVariables}(\mtt {Level}, c)$ \Comment {\emph{promote} the unification variables of the current context appearing in $c$, globally decreasing their context level}
+            \State $\mtt{globallyPromoteUnificationVariables}(\mtt {Level}, c)$ \Comment {``promote'' the unification variables of the current context appearing in $c$, globally decreasing their context level}
             \State $\mtt {Ctx} \gets \mtt{floatConstraintHigher}(\mtt{Ctx}, c)$
         \ElsIf{Neither of $a$ and $b$ is a unification variable}
             \If{$a \equiv T \vect s, b \equiv T \vect t, |\vect s| = |\vect t|$}

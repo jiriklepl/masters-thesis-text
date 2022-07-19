@@ -5,7 +5,7 @@ import Data.Foldable (traverse_)
 data T where
   MkT :: Show a => { getT :: a } -> T
   -- defines a type 'T' with
-  -- an existentially - typed field 'getT'
+  -- an existentially-typed field 'getT'
 
 xs = [MkT 5 , MkT "String"]
 
@@ -13,4 +13,4 @@ xs = [MkT 5 , MkT "String"]
 f MkT { getT = a } = show a
 
 -- prints : 5" hello "
-main = traverse_ putStr ( fmap f xs )
+main = traverse_ putStr (map f xs)

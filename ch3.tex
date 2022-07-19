@@ -173,7 +173,7 @@ Not shown in the algorithm, blockifier also identifies duplicate declarations (m
 \subsubsection{Live-range analysis}
 
 
-After the blockifier builds the whole control flow graph and blocks data, live-range analysis (originally described by \citet{Aho2006compilers} as live-variable analysis, we use simplified version described by \citet{bednarek2008compilers}) measures live-ranges of all variables, gives errors for uninitialized variables (variables requested alive in the entry block) and warnings for unreachable basic blocks (basic blocks not in the dfs closure generated from the entry block).
+After the blockifier builds the whole control flow graph and blocks data, live-range analysis (originally described by \citet{Aho2006compilers} as live-variable analysis, we use simplified version as described by \citet{bednarek2008compilers}) measures live-ranges of all variables, gives errors for uninitialized variables (variables requested alive in the entry block) and warnings for unreachable basic blocks (basic blocks not in the dfs closure generated from the entry block).
 
 
 \section{Type System}
