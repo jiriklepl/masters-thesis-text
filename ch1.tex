@@ -129,17 +129,25 @@ We use the following constructs:
 
 
 \begin{description}
-    \item[Type Quantification] A quantification that universally binds a set of type variables.
-
-    We will often omit the word `type', when referring to type quantification.
-
     \item[Qualification] A construct consisting of a set of predicates (or constraints) being applied to an unquantified term of the type language. We then call it a qualified term.
 
-    The term being qualified is usually a type or a set of constraints.
+    The term being qualified is usually a type or a set of constraints. For a term $x$ and a set of predicates $P$, the following shows a qualified term:
 
-    \item[Scheme] A term scheme is a quantification applied to a qualified term of the type language.
+    $$P \To x$$
 
-    We will call \emph{type schemes} just schemes.
+    \item[Type Quantification] A quantification that universally binds a set of type variables.
+
+    We will often omit the word `type', when referring to type quantification. For a set of variables $\vect \alpha$, a quantification is:
+
+    $$\forall \vect \alpha$$
+
+    The following then shows the quantification applied to a term $x$ of the type language:
+
+    $$\forall \vect \alpha . x$$
+
+    \item[Scheme] A term scheme is a quantification applied to a qualified term of the type language. We will call \emph{type schemes} just schemes.
+
+    \item[Free type variables] In a given term of the type language, \emph{free type variables} are those type variables, that are not bound by a quantification. Formally, for a quantification: $\free {\forall \vect \alpha . x} = \free {x} \setminus \vect \alpha$; for a type variable $v$: $\free v = \{v\}$; otherwise: unification of free type variables of all subterms.
 \end{description}
 
 \subsection{Constraint language}

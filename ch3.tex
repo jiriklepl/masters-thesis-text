@@ -8,13 +8,11 @@
     \includegraphics[width=\linewidth]{img/out/arch.pdf}
 \end{figure}
 
-\section{Overview}
+In this chapter, we detail the design of the prototype compiler, show how the language and type system extensions discussed in \cref{chap2} are implemented.
 
-In this chapter, we demonstrate how we implemented the prototype compiler so it supported the introduced language and type system extensions we discussed in \cref{chap2} and translated the source code into a form interpretable by the LLVM backend for correct programs, while providing specific error messages to programs that are recognized as malformed due to various reasons (ranging from syntax errors to type errors).
+The overall architecture of the prototype implementation is shown in \cref{fig:arch}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error/warning information (depicted by slightly darker orange parallelograms). Briefly, the code is processed to a flattened and blockified form, then elaborated, inferred and monomorphized, and translated to the resulting LLVM assembly.
 
-The overall architecture of the prototype implementation is shown in \cref{fig:arch}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each somehow transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error information (depicted by, slightly darker, orange parallelograms), into the resulting LLVM representation.
-
-We will describe the purpose and the function of each of the components of the compiler pipeline separately. The description and introduced primitives of each component should be the main takeaway from this chapter rather than the specific implementation itself.
+We describe the purpose and the function of each of the components of the compiler pipeline separately. We focus on providing a generic, implementation-agnostic description of the algorithms that power the compiler, rather than the specific details of the Haskell implementation. The prototype compiler follows the provided description, but carries its own source code documentation accessible through `Haddock` documentation system. \xxx{ref ref ref ref ref ref}
 
 \section{Flattening and blockifying}
 \label{sec:flatBlock}
@@ -22,7 +20,7 @@ We will describe the purpose and the function of each of the components of the c
 Flattening and blockifying phase convert a possibly nested \cmm source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks as defined by \cite{llvmBB}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward transcription to the SSA form of LLVM.
 
 \begin{remark}
-    It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource object (see \cref{RAII}) and these calls' types then have to be type-inferred in order to perform the desired resource management actions.
+    It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource object (see \cref{RAII}), which have to be present before the type inference, because it is the inference that decides what resource management actions are taken.
 \end{remark}
 
 LLVM basic block is defined as a sequence of consecutive (non-terminating, if not malformed) statements that starts with a label (or an entry point of a procedure) and ends with a `terminator' statement, such as a branch, a return, an explicitly marked unreachable statement, or an implicit fallthrough to another basic block. Notably, basic blocks can not contain labels other than the initial ones.
@@ -101,7 +99,7 @@ The blockifying phase follows the flattening phase and it annotates each stateme
 \end{defn}
 
 \begin{codex}
-    \caption{An example of a code annotated by blockifying}
+    \caption{An example of a code annotated by blockifying (the resulting control flow graph \texttt{cf} contains: $\{(1,2), (1,3), (2,4), (3,4)\}$)}
     \label{lst:blockified}
     \begin{lstlisting}
 while: // starts 1
@@ -117,8 +115,6 @@ goto _fi; // part of 3; cf += (3, 4)
 _fi: // starts 4
 ... // part of 4
     \end{lstlisting}
-
-    The control flow graph contains: $\{(1,2), (1,3), (2,4), (3,4)\}$
 \end{codex}
 
 For the identified basic blocks, there is generated an accompanying control flow graph, a blocks table and blocks data.
@@ -806,7 +802,7 @@ foreign "C" g(bits64 x) {
 Note that if there was no limit on monomorphization (observe step \ref{steptwo}), it could potentially continue forever as seen in \cref{lst:nonTermination}. We usually choose the limit so it is safely bigger than the monomorphization depth of majority of practical programs; this is precedented, for example, by Haskell \cite{haskell2010}.
 
 \begin{codex}
-    \caption{Non-terminating monomorphization}
+    \caption{Example of non-terminating monomorphization. The program is semantically valid, but a successful monomorphization of its use would require an infinite set of subsequent definitions for the instances of \texttt{c}.}
     \label{lst:nonTermination}
 
     \begin{lstlisting}
@@ -826,8 +822,6 @@ instance C ptr(auto(a)) => C auto (a) {
     }
 }
     \end{lstlisting}
-
-    The program is semantically valid, but a successful monomorphization of its use would require an infinite set of subsequent definitions for the instances of \li{c}.
 \end{codex}
 
 In the prototype implementation, the monomorphization queue is separated into waves. The first wave consists of monomorphic top level definitions, then the first consist of the top level definitions being instantiated from references in the zeroth level, etc. This allows the monomorphization depth be checked by a simple counter (without waves, we would check the monomorphization depth by adding an extra argument to each record in the queue).
