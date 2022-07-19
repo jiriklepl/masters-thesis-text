@@ -47,7 +47,7 @@ In such case, the references to parent type variables are not required, because 
 \subsection{Extracting results from the inferencer state}
 \label{sec:inferInter}
 
-A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state described in \cref{sec:istate}. This means that this state has to be passed to all subsequent phases. This is most significant during monomorphization (\cref{sec:mono}), which has to change type elaborations of monomorphic copies of polymorphic top-level definitions. It has to repeatably perform lookups of type interpretations for each elaboration present in the given top-level definition.
+A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state described in \cref{sec:istate}. Therefore, this state has to be passed to all subsequent phases. This is most significant during monomorphization (\cref{sec:mono}), which has to change type elaborations of monomorphic copies of polymorphic top-level definitions. It has to repeatably perform lookups of type interpretations for each elaboration present in the given top-level definition.
 
 \paragraph{Possible improvement}
 Alternatively, we can elaborate each node of the inferred code with a fully substituted type (or qualified type for local reference to a polytype; type scheme for a polytype top-level definition).

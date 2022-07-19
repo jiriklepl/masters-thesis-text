@@ -14,7 +14,7 @@ Cmm (a variant of \cmm) is used as a backend intermediate representation for GHC
     By referring to just \cmm, we will always refer to the second version of the language, \cmm 2.0 (as specified by \citet{ramsey2005c}).
 \end{remark}
 
-Just like Cmm, \cmm is designed to serve as a back-end representation for various front-end compilers. It abstracts away various architectural specifics, while it also offers the users (frontend) to target for some specific architectural features, for example, specific register sizes -- \lstinline{bits32} (a 32 bits long register). It also allows the user to specifically request a \emph{tail call} instead of a regular procedure call, which does not constitute stack manipulation; or \li{cut to} branch to a \li{continuation} label in an active procedure, which (in contrast to regular branches) usually constitutes a stack unwind.
+Just like Cmm, \cmm is designed to serve as a backend representation for various frontend compilers. It abstracts away various architectural specifics, while it also offers the users (frontend) to target for some specific architectural features, for example, specific register sizes -- \lstinline{bits32} (a 32 bits long register). It also allows the user to specifically request a \emph{tail call} instead of a regular procedure call, which does not constitute stack manipulation; or \li{cut to} branch to a \li{continuation} label in an active procedure, which (in contrast to regular branches) usually constitutes a stack unwind.
 
 The register type by itself does not specify whether the register is an unsigned integer, signed integer, floating-point number, pointer, etc. These all are considered as equivalent types in the context of \cmm. The types are specified this way so the specification is sufficiently architecture-independent and future-proof.
 
@@ -51,7 +51,7 @@ The main syntactic difference from other C-like languages is the representation 
 
 To provide a good general concept of many advanced control flow constructs, \cmm provides \li{continuation}s. Those are a generalization of label statements that can be called (using a \li{cut to} statement) from one procedure to jump to another. It requires a pointer to the other procedures' activation, and, unlike regular labels, it can be called with values that change the local state of the target procedure: the actual arguments of this cut to call are bound to local variables inside the activation that is to be executed. Because of this, the fallthroughs to the blocks beginning with these statements are forbidden.
 
-It might seem that these continuations serve as a thread model for the language, but it is not so, a \cmm implementation does not include any particular thread model nor any thread scheduler. Continuations offer well-defined hooks for front-end compilers, possibly used for callbacks and for more advanced stack use. \cite{ramsey2005c}
+It might seem that these continuations serve as a thread model for the language, but it is not so, a \cmm implementation does not include any particular thread model nor any thread scheduler. Continuations offer well-defined hooks for frontend compilers, possibly used for callbacks and for more advanced stack use. \cite{ramsey2005c}
 
 \subsection{Kinds in \cmm}
 
@@ -59,7 +59,8 @@ As we discussed earlier, \cmm does not distinguish between different register ty
 
 By specifying a kind, a user can give constraints on which type of physical registers is the value allowed to be stored (or expected to) and then this constraint can be even more tightly constraint by specifying a specific register by its name (for example, ``IEEE 754 rounding mode'', which allows controlling the rounding mode of floating-point computation).
 
-Note that these data kinds are usually strictly separated from each other in many languages (by ``aliasing rules'' \cite{cstandard2018}).
+Note that these data kinds are usually strictly separated from each other in many languages (by ``aliasing rules'' \cite{cstandard2018}). In various calling conventions, they also affect how the parameters are passed (for example, on x64, the first 4 arguments are stored on different registers depending on whether the value is an integer or a floating-point number \footnote{\url{https://docs.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170} (visited on
+07/19/2022)}).
 
 Data kinds can be modelled efficiently, as we will describe, with a very limited notion of lattice-based subtyping we introduce in the next section, where we consider the empty set of possible registered the bottom and all registers the top (this relates to work by \citet{tiuryn1999subtyping}, who shows \texttt{PSPACE}-completeness for a generalization of this idea).
 
@@ -96,13 +97,8 @@ Superclasses are requirements that specify that each instance of the class has t
 \li{instance} definitions then define the instances of their corresponding typeclasses under some assumptions. For each instance, its assumptions have to satisfy all superclasses of the corresponding class (often, they are the same).
 
 \begin{codex}
-    \caption{Defining a class and and instance in the extended \cmm}
+    \caption{Defining a class and and instance in the extended \cmm (the method \texttt{m} takes an argument of a type \texttt{a} and returns a result of the same type; all instances of this method then have to follow this type scheme)}
     \label{cex:classInstance}
-
-    \begin{flushleft}
-        \noindent The method \li{m} takes an argument of type \li{a} and returns a result of the same type. All instances of this method then have to follow this type scheme.
-    \end{flushleft}
-
     \begin{lstlisting}
 class C a {
     m (auto (a) x) -> auto (a);
@@ -181,7 +177,7 @@ Inspired by the optional data-kind specifications supported by the \cmm language
 
 This turned out to be a decision significantly affecting the implementation process as the modelling of these data kinds and constnesses in the context of type inference is regarded as an open question and there were not enough easily accessible materials on primitives that would ensure efficient computability. In this section, we will show the design of such, driven by the \cmm subtypes as a motivation.
 
-As a result of incrementally building the type system alongside the prototype implementation of the compiler \cite{klepl2022compiler}, the implementation does not currently cover the whole type system space. It required many redesigns and some of its assumptions on the theory had to be either swapped for stronger versions, or completely removed (removed in case of bijections between types and their properties, which we will explore later). The implementation was changed to reflect these refinements in the theory, but it was later concluded, since the theory matured enough, that a complete redesign would be preferable.
+As a result of incrementally building the type system alongside the prototype implementation of the compiler\cmmrepo, the implementation does not currently cover the whole type system space. It required many redesigns and some of its assumptions on the theory had to be either swapped for stronger versions, or completely removed (removed in case of bijections between types and their properties, which we will explore later). The implementation was changed to reflect these refinements in the theory, but it was later concluded, since the theory matured enough, that a complete redesign would be preferable.
 
 \subsubsection{Subtyping system overview}
 
@@ -290,7 +286,7 @@ This example demonstrated that the minimal subtypes within a space of fixed valu
 \subsection{Inference of subtypes}
 \label{sec:inferSub}
 
-In \cref{subtyping-idea}, we used the term ``fixed values'', but we did not yet introduced its precise meaning. \emph{Fixed values} are some values that are not optimized by the subtyping inference mechanism for the given scope. For example, if we considered only the basic HM type system, the fixed values would comprise of, the fixed values would consist of subtype dimension constants (in \cref{subtyping-idea}, that would be $K$) and the subtype dimensions of skolem constants (in \cref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
+In \cref{subtyping-idea}, we used the term ``fixed values'', but we did not yet introduced its precise meaning. \emph{Fixed values} are some values that are not optimized by the subtyping inference mechanism for the given scope. For example, if we considered only the basic HM type system, the fixed values would comprise of, the fixed values would consist of subtype dimension constants (in \cref{subtyping-idea}, that would be $K$) and the subtype dimensions of Skolem constants (in \cref{subtyping-idea}, represented by the symbols $a$, $b$, and $c$).
 
 We call \emph{(closest) fixed lower bounds} of a subtype variable $v$ in a subtype dimension $s$ such fixed values $c$ in the dimension $s$, that $c \leq_s v$ and there is no other $c'$, such that $c \leq_s c' \leq_s v$ would be in the closure of the known inequalities. Note that if $c \leq_s c' \land c' \leq_s c$, then $c = c'$.
 
@@ -300,13 +296,13 @@ We call \emph{(closest) fixed lower bounds} of a subtype variable $v$ in a subty
     \begin{proof}
         The validity of this simplification can be shown in topological order of the variables, where the topology is defined by their inequalities. If they are in a strongly connected component, they have to be equal, so without a loss of generality, we can assume, that there is a topological ordering of the variables, starting with the lowest.
 
-        If a set $X$ denotes the set of all the lower bounds of a variable $x$ and it is the variable with the lowest topological order. That means that if a variable $y$ constrained by $x$, then the constraint is $x \leq y$. If $x^\ast$ is equal to the supremum of its lower bounds, then for every other $x'$ such that $x' \geq x^\ast$, if $y \geq x'$, then also $y \geq x^\ast$. This means that $x^\ast$ is at least as good as $x'$ for all the constraints regarding $x$, while it also minimizes $x$ itself.
+        If a set $X$ denotes the set of all the lower bounds of a variable $x$ and it is the variable with the lowest topological order. That means that if a variable $y$ constrained by $x$, then the constraint is $x \leq y$. If $x^\ast$ is equal to the supremum of its lower bounds, then for every other $x'$ such that $x' \geq x^\ast$, if $y \geq x'$, then also $y \geq x^\ast$. Therefore, $x^\ast$ is at least as good as $x'$ for all the constraints regarding $x$, while it also minimizes $x$ itself.
     \end{proof}
 
 \end{lemma}
 
 \begin{observe}
-    If the type of a procedure is a monotype (and thus it is a valid type for a program), it has no skolem constants, and we can thus safely define all its free subtype variables as suprema of their fixed lower bounds.
+    If the type of a procedure is a monotype (and thus it is a valid type for a program), it has no Skolem constants, and we can thus safely define all its free subtype variables as suprema of their fixed lower bounds.
 \end{observe}
 
 This is very strong assumption, but supported by a precedent given by many languages that define entry points of programs with predefined types (these entry points then represent the entirety of the program). We give two examples, both defining the entry point as \li{main}: Haskell (which requires monotype $\mtt{IO}\ \tau$ for some $\tau$ \cite{haskell2010}) and C (which notably allows two possible types \cite{cstandard2018}, with some implementation-defined alternatives).
@@ -326,14 +322,14 @@ This is very strong assumption, but supported by a precedent given by many langu
 
 \begin{remark}[Contradictions are failures]
     \label{def:contra}
-    If the outside subtype information of a given procedure in the dimension $s$, for two subtype constants $c_1, c_2$, contains an equality constraint $c_1 =_s c_2$ or an inequality constraint $c_1 \leq_s c_2$ such that $c_2 \neq c_1 \lor c_2$ ($c_1 \lor c_2$ is defined per the assumptions of the dimension $s$), we call such constraint an contradiction (as it contradicts the assumptions for the dimension $s$) and we report failure on such occurrence.
+    If the outside subtype information of a given procedure in the dimension $s$, for two subtype constants $c_1, c_2$, contains an equality constraint $c_1 =_s c_2$ or an inequality constraint $c_1 \leq_s c_2$ such that $c_2 \neq c_1 \lor c_2$ ($c_1 \lor c_2$ is defined per the assumptions of the dimension $s$), we call such constraint an contradiction with the definition of the dimension $s$ and we report failure for such occurrence.
 \end{remark}
 
 \subsubsection{Inference of subtypes in the presence of typeclasses}
 
 If we extend this mechanism to the type system with typeclasses, we have to regard the subtype dimensions of variables constrained in a typeclass constraints.
 
-Each subtype variable of a skolem constant, subtype dimension constant, or a subtype variable of a type variable appearing in a typeclass constraint is a fixed value.
+Each subtype variable of a Skolem constant, subtype dimension constant, or a subtype variable of a type variable appearing in a typeclass constraint is a fixed value.
 
 The algorithm we based our type inference on uses context levels that measure how free the variables are in the given context, described in \cref{defer_solve}. This applies to their subtype dimensions as well. And then, in a context with a certain context level, we consider any subtype variable with a lower context level be a fixed value as well. We did not strive for representing existentials, as there has to be runtime type information included with them to interpret them (see \cref{sys_defer}), so we will not consider such system throughout this thesis. Yet, we specify it for any such extensions attempted by some future work.
 
@@ -341,7 +337,7 @@ The algorithm we based our type inference on uses context levels that measure ho
 
 In the context of the subtyping system, we call a program any predefined binding to an outside world (for the modified \cmm language, given by the \li{foreign "C"} specifier).
 
-Any such program is required to be monotype (type without any free type variables, or equivalently, skolem constants) and its parameters (in \cmm, formal arguments and returns) are required to have predefined subtype dimensions. This requirement ensures the assumptions of \cref{suprema_subtyping} for solvability of a program discussed in its corollary.
+Any such program is required to be monotype (type without any free type variables, or equivalently, Skolem constants) and its parameters (in \cmm, formal arguments and returns) are required to have predefined subtype dimensions. This requirement ensures the assumptions of \cref{suprema_subtyping} for solvability of a program discussed in its corollary.
 
 In the scope of the modified \cmm, we require that each parameter of the \li{foreign "C"} procedure has to be a runtime object of a predefined kind.
 

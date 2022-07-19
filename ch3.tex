@@ -10,7 +10,7 @@
 
 In this chapter, we detail the design of the prototype compiler, show how the language and type system extensions discussed in \cref{chap2} are implemented.
 
-The overall architecture of the prototype implementation is shown in \cref{fig:arch}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error/warning information (depicted by slightly darker orange parallelograms). Briefly, the code is processed to a flattened and blockified form, then elaborated, inferred and monomorphized, and translated to the resulting LLVM assembly.
+The overall architecture of the prototype implementation\cmmrepo is shown in \cref{fig:arch}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error/warning information (depicted by slightly darker orange parallelograms). Briefly, the code is processed to a flattened and blockified form, then elaborated, inferred and monomorphized, and translated to the resulting LLVM assembly.
 
 We describe the purpose and the function of each of the components of the compiler pipeline separately. We focus on providing a generic, implementation-agnostic description of the algorithms that power the compiler, rather than the specific details of the Haskell implementation. The prototype compiler follows the provided description, but carries its own source code documentation accessible through `Haddock` documentation system. \xxx{ref ref ref ref ref ref}
 
@@ -187,7 +187,7 @@ We implemented the type system as defined in \cref{sec:typesystem}. During the d
 
         More specifically, if they are type applications $\alpha \beta$ and $\alpha' \beta'$, respectively, then from $t =_T t'$, it also follows that $\alpha =_T \alpha'$ and $\beta =_T \beta'$, but it does not follow that $\alpha =_s \alpha'$ and $\beta =_s \beta'$ for a general subtype dimension. We will offer a counterexample.
 
-        Let us say, $t$ and $t'$ are pointers to functions that take a 32-bit bitvector and return the same type, they are both compile-time constants and the both pointers are stored on the same types of registers (they have the same data kind). This means that $t$ and $t'$ follow the assumptions listed above. But one of them can be constrained to be a pointer to a function that takes an integer and returns an integer, while the other can be constrained to be a pointer to a function that takes a float number and returns a float number (can be shown by a function defined similarly to $id$ known from Haskell). If we assumed that $t = t'$, we would have to solve the constraint $\mtt{float} = \mtt{int}$, where both operands are constants. This would lead to a contradiction as defined by \cref{def:contra}.
+        Let us say, $t$ and $t'$ are pointers to functions that take a 32-bit bitvector and return the same type, they are both compile-time constants and the both pointers are stored on the same types of registers (they have the same data kind). Therefore, $t$ and $t'$ follow the assumptions listed above. But one of them can be constrained to be a pointer to a function that takes an integer and returns an integer, while the other can be constrained to be a pointer to a function that takes a float number and returns a float number (can be shown by a function defined similarly to $id$ known from Haskell). If we assumed that $t = t'$, we would have to solve the constraint $\mtt{float} = \mtt{int}$, where both operands are constants. This would lead to a contradiction as defined by \cref{def:contra}.
     \end{proof}
 \end{lemma}
 
@@ -198,7 +198,7 @@ Note that there can be systems with different subtype dimensions, in which the t
 
 Consider \cref{congruence}, which describes why subtypes do not commute with type algebra, and \cref{inconsistency}, which describes why we do not consider two types having the same dimensions necessarily the same.
 
-Notice that if we have two function types $t \equiv \alpha \to \beta$ and $t' \equiv \alpha' \to \beta'$ and $t \leq t'$, then the only derivable constraints on $\alpha, \alpha', \beta, \beta'$ are $\alpha \sim_T \alpha'$ and $\beta \sim_T \beta'$. This means that if we assign a reference to a function to a variable, the subtype constraints on its arguments are ``forgotten''. In the prototype implementation, this does not pose any problems as we consider only direct references to functions in call statements. But, In general case, it should be addressed as we describe here:
+Notice that if we have two function types $t \equiv \alpha \to \beta$ and $t' \equiv \alpha' \to \beta'$ and $t \leq t'$, then the only derivable constraints on $\alpha, \alpha', \beta, \beta'$ are $\alpha \sim_T \alpha'$ and $\beta \sim_T \beta'$. Therefore, if we assign a reference to a function to a variable, the subtype constraints on its arguments are ``forgotten''. In the prototype implementation, this does not pose any problems as we consider only direct references to functions in call statements. But, In general case, it should be addressed as we describe here:
 
 In \cref{def:stDim}, we introduced that subtype dimension are non-affecting typeclass resolution. For any implementation, which considers assignments of references to functions, the relationship of $\alpha$ and $\alpha'$ and $\beta$ and $\beta'$ can be ensured by introducing appropriate constraints after deciding the typings according to the desired semantics (for example, $\alpha \sim \alpha' \land \beta' \sim \beta$).
 
@@ -487,7 +487,7 @@ State variable & Definition \\
   The known proofs for each class constraint. Each proof has the form $\forall \vect \alpha . F \To C!\ \vect t$, where $C!\ \vect t$ is a class fact and $F \in {\mbb F}^\ast$ is the list of assumptions of the corresponding proof. \\
 
   $fd \in C_{fd} \to \mathbb{FD},\,C_{fd} \subseteq C_{cs}$ & \textbf{Functional dependencies}\quad
-  Functional dependency sets for each class constraint. They are stored after acquiring a simplified form (for this, see $\mtt{FunDeps.hs}$ in \cite{klepl2022compiler}; not relevant to the type system, but might be of interest) with subsequent addition of the implicit trivial rule. \\
+  Functional dependency sets for each class constraint. They are stored after acquiring a simplified form (for this, see $\mtt{FunDeps.hs}$ in \xxx{ref}; not relevant to the type system, but might be of interest) with subsequent addition of the implicit trivial rule. \\
 \bottomrule
 \end{tabular}
 \caption{Variables maintained as the internal state of the inference algorithm (refer to \cref{sec:istate} for details).}
@@ -736,7 +736,7 @@ The type inference pipeline then consists of the following steps:
     \item If there are none, we determine whether there are some unresolved constraints and if there are, we report an error. If there are none, the code is ready to be monomorphized.
 \end{enumerate}
 
-The algorithm, if implemented entirely, is correct as described in \cref{defer_solve} and \cref{sec:typesystem}. The various variables ($\mcal D, \mcal P, \mcal C, \mcal K, \dots$) represent the input constraints (and derived constraints) in a more centralized, equivalent, form (demonstrated by the step \ref{closing}, which translates this form back into constraints), while the invariants (see \cref{sec:invariants}) ensure the updates to the variables are equivalent to rewriting used in deferred solving. The invariants also ensure that the information is updated whenever possible. Note that because of non-nested contexts, there are no skolem constants nor context levels in the algorithm.
+The algorithm, if implemented entirely, is correct as described in \cref{defer_solve} and \cref{sec:typesystem}. The various variables ($\mcal D, \mcal P, \mcal C, \mcal K, \dots$) represent the input constraints (and derived constraints) in a more centralized, equivalent, form (demonstrated by the step \ref{closing}, which translates this form back into constraints), while the invariants (see \cref{sec:invariants}) ensure the updates to the variables are equivalent to rewriting used in deferred solving. The invariants also ensure that the information is updated whenever possible. Note that because of non-nested contexts, there are no Skolem constants nor context levels in the algorithm.
 
 \section{Monomorphization}
 \label{sec:mono}
