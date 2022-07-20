@@ -1,34 +1,11 @@
 
 \chapwithtoc{Conclusion}
 
-In this thesis, we have described and implemented a rather complex extension of the deferred type inference algorithm, and applied it for inference of types of an extended variant of the \cmm language that features types and a simple but powerful type-driven form of resource management. The output of the thesis, a prototype compiler\cmmrepo, translates the typed \cmm language into lower-level, simpler LLVM assembly code, which can be further used to produce executables and libraries.
+In this thesis, we have described an extension of the deferred type inference algorithm with constrained version of subtyping (described in \cref{defer_solve,sec:typesystem}), and applied it to inference of types of an extended variant of the \cmm language, which is described in \cref{chap2}. In particular, the extended \cmm language features polymorphic types with overloading based on multi-parameter typeclass with user-specified functional dependencies, record types, and a type-driven form of automatic resource management. These features cover the the main goals of the thesis.
 
-In particular, we have successfully achieved the following main goals:
+The output of the thesis, a prototype compiler, translates the extended \cmm language into lower-level, simpler LLVM assembly code, which can be further used to produce executables and libraries. The compilation process and each of its phases are detailed in \cref{chap3}.
 
-\begin{description}
-    \small
-    \item[Extend \cmm with parametric polymorphism with typeclasses] We achieved this goal successfully and we demonstrate parametric polymorphism with typeclasses in our results, see \cref{sec:reduction}. We also extended the typeclasses to multi-parameter typeclasses with user-specified functional dependencies, solving one of the issues identified in the previous work \cite{klepl2020type}. This allows for more expressive code and stronger type constraints than regular typeclasses, see \cref{sec:mptcs,sec:uspecFD}.
-
-    \item[Extend \cmm with record types]  We extended the language with \li{struct} types (\cref{sec:structExt}) inspired by C, but allowing for multiple aliases to fields. The field accessors are defined as singleton methods of classes parametrized by corresponding structs and their respective fields and with functional dependencies \li{struct -> field}, which solves the field-accessor-related issue identified in the previous work.
-
-    \item[Extend \cmm with automatic resource management features] We extended the language with \li{new} specifier (\cref{RAII}), which signifies that an object is to automatically undergo a predefined resource management action on each procedure exit. We also successfully experimented with introducing user-specified special cases to this mechanism and with various combinations with the type inference mechanism. We showed practical uses-cases for each of these further extensions, see \cref{sec:tcResMan}.
-
-    \item[The solution should simplify implementation of low-level software] \xxx{We showed that the solution can be used to reduce the written code (\cref{sec:reduction}) and we also discussed the effects on performance and showed the generic code does not constitute any runtime type checks or indirections.}
-
-    \item[The extended \cmm  code compiles into LLVM] \xxx{In \cref{sec:protoComp}, we showed many examples of the input code and the corresponding translation to LLVM. In \cref{sec:flatBlock,sec:typeInf,sec:mono,translation}, we explained the steps necessary for such translation and discussed some optimizations that use the same primitives as the translation and which can be performed simultaneously with the semantic processing of the code for translation. The compiler also contains options \li{-f} and \li{-n} for running the compiler pipeline up to the flattening phase and just before the transcription to LLVM, respectively. These options help connect the input code to its LLVM representation.}
-
-    \item[The available features will be evaluated by demonstrational programs] \xxx{ In our results (\cref{chap4}), we include an example for every claim we make about the extended \cmm in results or here. Furthermore, there are even more examples, that can be automatically executed by a script, in the supplementary repository.}
-
-    \item[The available features will be compared with similarly-focused languages] \xxx{We compared the features of the extended \cmm to C, the ``de facto'' standard system programming language and we discussed possible benefits of our approach to some common design patterns of C (\cref{sec:autoC}).}
-
-    \xxx{We also compared the features of the extended \cmm to other languages offering support for generics, namely Java and Python. And we showed that our solution, contrasting these, does not require any runtime type information (\cref{sec:reduction}).}
-
-    \xxx{We then compared the features of the extended \cmm to other languages offering automatic resource management, namely C++ and C\#. And discussed the differences in design decisions (\cref{sec:OtherRAII}).}
-
-    \xxx{Less-significantly, we compared the type system introduced into \cmm to the one we introduced into C in the previous work and we concluded that it solves the unreached goals of that work.}
-
-    \item[User frontend for customizable subtyping systems] While, in \cref{sec:typesystem}, we have shown that the subtyping system is capable of inferring user-specified semantics of subtypes -- for example, giving a possibility for the user to simulate various levels of constantness known from C++ (\li{constexpr}), we did not develop a practical frontend that would allow programmers to interact with this feature directly.
-\end{description}
+In \cref{chap4}, we discuss possible practical use-cases of the implemented features. The discussion is accompanied by many code examples, demonstrational programs and a brief comparison with similarly-focused languages. More examples, used as tests during the development of the compiler, are present in the supplementary repository\cmmrepo.
 
 % \section*{The overall quality of the solution}
 
@@ -45,7 +22,7 @@ Here we include the possible extensions to our solution that were outside of tim
 \begin{description}
     \item[Existential types] We based our solution for type inference on deferred solving algorithm capable of solving existential types \cite{vytiniotis2011outsidein}. One natural course of future development could be trying to combine those with our extensions to the language. Usefulness of existential types in imperative languages has been demonstrated, for example, by \citet{grossman2002existential}.
 
-    \item[Stronger subtyping system] We discussed some insufficiencies of the type system we developed. We leave for a future work a revised approach, which constitutes two constraint generation phases as described in \cref{sec:weakness}. This revised approach can generate stronger subtype constraints.
+    \item[Stronger subtyping system] We discussed some insufficiencies of the type system we developed. We leave for a future work a revised approach, which constitutes two constraint generation phases capable of generating stronger subtype constraints as described in \cref{sec:weakness}.
 
     At this point, it is unclear whether the complications induced by better subtype support, mainly the complexity of inference, would be sufficiently counter-weighted by the newly gained features. Further research is needed to show if there is any significant benefit in letting the programmers to interact with the subtype system -- for example, defining their own semantics and interpretation for constness-like annotations.
 \end{description}
