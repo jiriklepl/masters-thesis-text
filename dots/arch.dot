@@ -1,5 +1,5 @@
 digraph {
-    node [style="filled", fontsize="24pt"]
+    node [style="filled", fontsize="32pt"]
 
     subgraph terminals {
         node [shape="ellipse", fillcolor="yellow"]
@@ -12,23 +12,20 @@ digraph {
         node [shape="parallelogram"]
 
         subgraph orangeData {
-            node [fillcolor="orange"]
+            node [fillcolor="orange", group="g3"]
 
-            ASTErrors [label="AST errors"]
             FillingErrors [label="Type instantiation\nerrors"]
             ManglingErrors [label="Mangling\nerrors"]
-            UnifyErrors [label="Unification\nerrors"]
-            BlockifierErrors [label="Blockifier\nerrors"]
             MonomorphizeErrors [label="Monomorphization\nerrors"]
-            VariablesErrors [label="Variable collecton\nerrors"]
-            LeftFacts [label="Leftover\nconstraints"]
+            BlockifierErrors [label="Blockifier\nerrors"]
+            PreprocessErrors [label="Preprocessor\nerrors"]
+            LeftFacts [label="Unification errors,\nleftover constraints"]
         }
         subgraph greenData {
-            node [fillcolor="lightgreen"]
+            node [fillcolor="lightgreen", group="g1"]
 
             AST
             Facts [label="Type constraints"]
-            Variables [label="Variables"]
             ASTTypeElabs [label="AST\nwith elaborations"]
             Judgments [label="Type assigments"]
             FlatAST [label="Flat AST"]
@@ -42,21 +39,19 @@ digraph {
     }
 
     subgraph components {
-        node [shape="component"]
+        node [shape="component", group="g1"]
 
         subgraph greenComponents {
             node [fillcolor="lightblue"]
 
-            FunDepSimpl [label="Functional dependencies\nsimplifier"]
-            Parser [label="Tokenizer + Lexer"]
+            Parser [label="Tokenizer + Parser"]
             Flattener
             Preprocess [label="Type inference\npreprocessing"]
-            VariableMining [label="Variable collection\n(repeated)"]
             Blockifier
             FlowAnalysis [label="Flow analysis"]
             Inference [label="Type inference"]
             Monomorphization
-            ElabFilling [label="elaboration filling"]
+            ElabFilling [label="Elaboration filling"]
             Mangling
             Translator
         }
@@ -65,20 +60,16 @@ digraph {
 
     Source -> Parser -> AST
     AST -> Flattener -> FlatAST
-    VariableMining -> VariablesErrors
-    AST -> VariableMining -> Variables -> Preprocess
-    Facts -> FunDepSimpl
+    Preprocess -> PreprocessErrors
+    Facts -> Inference -> Judgments -> Monomorphization -> MonoAST -> ElabFilling -> FilledMonoAST -> Mangling -> PostAST
     ASTTypeElabs -> Monomorphization
-    FunDepSimpl -> Inference -> Judgments -> Monomorphization -> MonoAST -> ElabFilling -> FilledMonoAST -> Mangling -> PostAST
     ElabFilling -> FillingErrors
     Mangling -> ManglingErrors
-    { Inference Monomorphization } -> UnifyErrors
+    Monomorphization -> MonomorphizeErrors
     FlatAST -> Blockifier -> {BlockifiedAST BlockifierErrors }
     BlockifiedAST -> FlowAnalysis -> BlockifiedASTAnnots
     FlowAnalysis -> BlockifierErrors
     BlockifiedASTAnnots -> Preprocess -> { Facts ASTTypeElabs }
-    Monomorphization -> MonomorphizeErrors
-    { FillingErrors ManglingErrors UnifyErrors BlockifierErrors MonomorphizeErrors VariablesErrors LeftFacts } -> ASTErrors
     Inference -> LeftFacts
     PostAST -> Translator -> LLVM
 }
