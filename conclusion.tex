@@ -1,28 +1,20 @@
 
 \chapwithtoc{Conclusion}
 
-In this thesis, we have described an extension of the deferred type inference algorithm with constrained version of subtyping (described in \cref{defer_solve,sec:typesystem}), and applied it to inference of types of an extended variant of the \cmm language, which is described in \cref{chap2}. In particular, the extended \cmm language features polymorphic types with overloading based on multi-parameter typeclass with user-specified functional dependencies, record types, and a type-driven form of automatic resource management. These features cover the the main goals of the thesis.
+In this thesis, we have described an extension of the deferred type inference algorithm with constrained version of subtyping (described in \cref{defer_solve,sec:typesystem}), and applied it to inference of types of an extended variant of the \cmm language, which is described in \cref{chap2}. Our extended \cmm language features polymorphic types with overloading based on multi-parameter typeclass with user-specified functional dependencies, record types, and a type-driven form of automatic resource management. Overall, this fulfills the main goals of the thesis.
 
-The output of the thesis, a prototype compiler, translates the extended \cmm language into lower-level, simpler LLVM assembly code, which can be further used to produce executables and libraries. The compilation process and each of its phases are detailed in \cref{chap3}.
+The secondary output of the thesis, a prototype compiler for the language, translates the extended \cmm language into lower-level, simpler LLVM assembly code, which can be further used to produce executables and libraries. The compilation process and each of its phases are detailed in \cref{chap3}.
 
-In \cref{chap4}, we discuss possible practical use-cases of the implemented features. The discussion is accompanied by many code examples, demonstrational programs and a brief comparison with similarly-focused languages. More examples, used as tests during the development of the compiler, are present in the supplementary repository\cmmrepo.
-
-% \section*{The overall quality of the solution}
-
-% In the prototype compiler, we focused on the assignment goals and on the goals the previous work did not manage to achieved. We also addressed concerns with stability and usability of the compiler included in the previous work. These concerns were mostly about compiler errors that apparently did not reflect the actual errors made by the user and about platform-specificity of the solution. The functionality of the compiler of the previous work was tied to some platform specifics which were not sufficiently reflected by the provided documentation. In the prototype compiler for this thesis, we address both these issues. The functionality of the compiler does not put any assumptions on the actual platform other than the code dependencies stated in included documentation. The concern with errors is addressed by introducing \li{ASTErrors} extensively used throughout the implementation, that on top of the specific also print out the assumed relevant location in the code that issues the error.
-
-% \section*{Practical uses of the solution}
-
-% We discussed practical use-cases of our solution in systems programming, specifically, in Linux kernel programming. We also discussed various general use-cases for polymorphism with typeclasses for reducing human-written by introducing polymorphic definitions and for automatic resource management. We supported these discussions by examples compiled using the prototype compiler and compared them to similar solutions of popular languages.
+In \cref{chap4}, we discuss possible practical use-cases of the explored and implemented language features. The discussion is accompanied by many code examples, demonstrational programs and a brief comparison with similarly-focused languages. More examples, used as tests during the development of the compiler, are present in the supplementary repository\cmmrepo.
 
 \section*{Future work}
 
-Here we include the possible extensions to our solution that were outside of time constraints of our work.
+Here, we list several possible extensions to our work that did not fit the scope of the thesis, but would be interesting to explore nevertheless:
 
 \begin{description}
-    \item[Existential types] We based our solution for type inference on deferred solving algorithm capable of solving existential types \cite{vytiniotis2011outsidein}. One natural course of future development could be trying to combine those with our extensions to the language. Usefulness of existential types in imperative languages has been demonstrated, for example, by \citet{grossman2002existential}.
+    \item[Existential types] We based our solution for type inference on deferred solving algorithm capable of solving existential types \cite{vytiniotis2011outsidein}. One natural course of future development could be trying to combine these with our extensions to the language. Utility of existential types in imperative languages has been demonstrated for example by \citet{grossman2002existential}.
 
-    \item[Stronger subtyping system] We discussed some insufficiencies of the type system we developed. We leave for a future work a revised approach, which constitutes two constraint generation phases capable of generating stronger subtype constraints as described in \cref{sec:weakness}.
+    \item[Stronger subtyping system] We discussed some inefficiencies of the type system we developed. For future work, we leave a revised approach that constitutes two constraint generation phases capable of generating stronger subtype constraints, as described in \cref{sec:weakness}.
 
     At this point, it is unclear whether the complications induced by better subtype support, mainly the complexity of inference, would be sufficiently counter-weighted by the newly gained features. Further research is needed to show if there is any significant benefit in letting the programmers to interact with the subtype system -- for example, defining their own semantics and interpretation for constness-like annotations.
 \end{description}
