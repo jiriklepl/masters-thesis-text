@@ -1,11 +1,11 @@
 digraph {
-    node [style="filled"]
+    node [style="filled", fontsize="24pt"]
 
     subgraph terminals {
         node [shape="ellipse", fillcolor="yellow"]
 
         Source [label="CHMMM source"]
-        LLVM [label="LLVM code"]
+        LLVM [label="LLVM assembly"]
     }
 
     subgraph data {
@@ -15,28 +15,28 @@ digraph {
             node [fillcolor="orange"]
 
             ASTErrors [label="AST errors"]
-            FillingErrors [label="Type instantiation errors"]
-            ManglingErrors [label="Mangling errors"]
-            UnifyErrors [label="Unification errors"]
-            BlockifierErrors [label="Blockifier errors"]
-            MonomorphizeErrors [label="Monomorphization errors"]
-            VariablesErrors [label="Variable collecton errors"]
+            FillingErrors [label="Type instantiation\nerrors"]
+            ManglingErrors [label="Mangling\nerrors"]
+            UnifyErrors [label="Unification\nerrors"]
+            BlockifierErrors [label="Blockifier\nerrors"]
+            MonomorphizeErrors [label="Monomorphization\nerrors"]
+            VariablesErrors [label="Variable collecton\nerrors"]
+            LeftFacts [label="Leftover\nconstraints"]
         }
         subgraph greenData {
             node [fillcolor="lightgreen"]
 
             AST
-            Facts [label="Type facts"]
-            LeftFacts [label="Leftover facts"]
+            Facts [label="Type constraints"]
             Variables [label="Variables"]
             ASTTypeElabs [label="AST\nwith elaborations"]
             Judgments [label="Type assigments"]
             FlatAST [label="Flat AST"]
             BlockifiedAST [label="Blockified AST"]
             BlockifiedASTAnnots [label="Blockified AST\nwith analyzed flow"]
-            MonoAST [label="Monomorphized AST with type elaborations"]
-            FilledMonoAST [label="Monomorphized AST with instantiated types"]
-            PostAST [label="Postprocessed AST that can be translated"]
+            MonoAST [label="Monomorphized AST\nwith type elaborations"]
+            FilledMonoAST [label="Monomorphized AST\nwith instantiated types"]
+            PostAST [label="Postprocessed AST\nthat can be translated"]
         }
 
     }
@@ -48,11 +48,8 @@ digraph {
             node [fillcolor="lightblue"]
 
             FunDepSimpl [label="Functional dependencies\nsimplifier"]
-            AnnotMining  [label="Annotation mining"]
-            Parser
+            Parser [label="Tokenizer + Lexer"]
             Flattener
-            Unification
-            Prettyprinter
             Preprocess [label="Type inference\npreprocessing"]
             VariableMining [label="Variable collection\n(repeated)"]
             Blockifier
@@ -63,16 +60,6 @@ digraph {
             Mangling
             Translator
         }
-
-        subgraph yellowComponents {
-            node [fillcolor="yellow"]
-
-        }
-
-    }
-
-    subgraph decisions {
-        node [shape="diamond"]
     }
 
 
@@ -80,20 +67,18 @@ digraph {
     AST -> Flattener -> FlatAST
     VariableMining -> VariablesErrors
     AST -> VariableMining -> Variables -> Preprocess
-    Facts -> { FunDepSimpl AnnotMining }
-    ASTTypeElabs -> AnnotMining
+    Facts -> FunDepSimpl
     ASTTypeElabs -> Monomorphization
-    { FunDepSimpl AnnotMining } -> Inference -> Judgments -> Monomorphization -> MonoAST -> ElabFilling -> FilledMonoAST -> Mangling -> PostAST -> Prettyprinter
+    FunDepSimpl -> Inference -> Judgments -> Monomorphization -> MonoAST -> ElabFilling -> FilledMonoAST -> Mangling -> PostAST
     ElabFilling -> FillingErrors
     Mangling -> ManglingErrors
-    { Inference Monomorphization } -> Unification
+    { Inference Monomorphization } -> UnifyErrors
     FlatAST -> Blockifier -> {BlockifiedAST BlockifierErrors }
     BlockifiedAST -> FlowAnalysis -> BlockifiedASTAnnots
     FlowAnalysis -> BlockifierErrors
-    Unification -> { UnifyErrors Monomorphization Inference }
     BlockifiedASTAnnots -> Preprocess -> { Facts ASTTypeElabs }
     Monomorphization -> MonomorphizeErrors
-    { FillingErrors ManglingErrors UnifyErrors BlockifierErrors MonomorphizeErrors VariablesErrors LeftFacts } -> ASTErrors -> Prettyprinter
-    Inference -> { Prettyprinter LeftFacts }
+    { FillingErrors ManglingErrors UnifyErrors BlockifierErrors MonomorphizeErrors VariablesErrors LeftFacts } -> ASTErrors
+    Inference -> LeftFacts
     PostAST -> Translator -> LLVM
 }

@@ -12,12 +12,12 @@ In this chapter, we detail the design of the prototype compiler, show how the la
 
 The overall architecture of the prototype implementation\cmmrepo is shown in \cref{fig:arch}. The data flow diagram shows the transformation of the input through the components (depicted by light blue rectangles) of the compiler, each transforming the intermediate representation (AST; depicted by light green parallelograms) and/or generating some error/warning information (depicted by slightly darker orange parallelograms). Briefly, the code is processed to a flattened and blockified form, then elaborated, inferred and monomorphized, and translated to the resulting LLVM assembly.
 
-We describe the purpose and the function of each of the components of the compiler pipeline separately. We focus on providing a generic, implementation-agnostic description of the algorithms that power the compiler, rather than the specific details of the Haskell implementation. The prototype compiler follows the provided description, but carries its own source code documentation accessible through `Haddock` documentation system. \xxx{ref ref ref ref ref ref}
+We describe the purpose and the function of each of the components of the compiler pipeline separately. We focus on providing a generic, implementation-agnostic description of the algorithms that power the compiler, rather than the specific details of the Haskell implementation. The prototype compiler follows the provided description, but carries its own source code documentation accessible through `Haddock` documentation system.
 
 \section{Flattening and blockifying}
 \label{sec:flatBlock}
 
-Flattening and blockifying phase convert a possibly nested \cmm source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks as defined by \cite{llvmBB}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward transcription to the SSA form of LLVM.
+\sloppy Flattening and blockifying phase (modules \li{CMM.AST.Flattener} and \li{CMM.AST.Blockifier}) convert a possibly nested \cmm source code into code with no nesting that is separated into simple blocks of continuous execution (corresponding to the LLVM basic blocks as defined by \cite{llvmBB}). These blocks form a semi-sequential representation of the code organized in a graph structure that reflects the program's control flow. Later, this allows for a straightforward transcription to the SSA form of LLVM.
 
 \begin{remark}
     It is unusual to perform flattening and blockifying before type inference, but it is necessary as these two steps generate calls to the \li{drop} function for each resource object (see \cref{RAII}), which have to be present before the type inference, because it is the inference that decides what resource management actions are taken.
@@ -325,8 +325,6 @@ $\mbb{W}$ stands for a flat constraint or an implication constraint similarly to
   \end{grammar}
 \end{lang}
 
-\pagebreak % TODO: remove this as needed
-
 In the context of constraints, we use some specific constructs and naming:
 \begin{description}
     \item[Derived constraints] Sometimes we use derived constraints like $\mathbb{T} \leq_K \mathbb{K}$, $\mathbb{T} =_K \mathbb{T}$, etc. These are either special cases of the aforementioned constraints, or compositions of multiple constraints. The most complicated derived constraint we use is the \emph{SubType} constraint, $\mathbb{T} \leq \mathbb{T}$, which is a combination of $\mathbb{T} \sim_T \mathbb{T}$, $\mathbb{T} \leq_K \mathbb{T}$ and $\mathbb{T} \leq_C \mathbb{T}$.
@@ -354,7 +352,7 @@ In the context of constraints, we use some specific constructs and naming:
 \subsection{Preprocessing}
 \label{preprocessing}
 
-The type inference preprocessing, also called \emph{constraint generation}, takes the AST representation of the source code as its input, annotates each node with \emph{elaborations}, and for each of these elaborations, generates constraints (described in \cref{lang:flat}) capturing the semantics of the code. We will not describe the whole process in detail as it is language-specific and the cases, albeit simple, are quite numerous. An example of the result of this process is demonstrated by \cref{lst:elab}.
+The type inference preprocessing (module \li{CMM.Inference.Preprocess}), also called \emph{constraint generation}, takes the AST representation of the source code as its input, annotates each node with \emph{elaborations}, and for each of these elaborations, generates constraints (described in \cref{lang:flat}) capturing the semantics of the code. We will not describe the whole process in detail as it is language-specific and the cases, albeit simple, are quite numerous. An example of the result of this process is demonstrated by \cref{lst:elab}.
 
 \begin{codex}
     \caption{Example elaboration and constraints generated from a call statement}
@@ -420,7 +418,7 @@ The output of type inference preprocessing is the list of constraints and the \e
 \subsection{Type inferencer state}
 \label{sec:istate}
 
-During the inference, the algorithm maintains a relatively complex representation of 2 mappings and 2 graphs that represent the relationships between the type variables:
+During the type inference, the algorithm maintains a relatively complex representation of 2 mappings and 2 graphs that represent the relationships between the type variables:
 
 \begin{description}
     \item[Result renaming] a mapping from variables \emph{forgotten} (due to unification) to their \emph{alive} representants
@@ -487,7 +485,7 @@ State variable & Definition \\
   The known proofs for each class constraint. Each proof has the form $\forall \vect \alpha . F \To C!\ \vect t$, where $C!\ \vect t$ is a class fact and $F \in {\mbb F}^\ast$ is the list of assumptions of the corresponding proof. \\
 
   $fd \in C_{fd} \to \mathbb{FD},\,C_{fd} \subseteq C_{cs}$ & \textbf{Functional dependencies}\quad
-  Functional dependency sets for each class constraint. They are stored after acquiring a simplified form (for this, see $\mtt{FunDeps.hs}$ in \xxx{ref}; not relevant to the type system, but might be of interest) with subsequent addition of the implicit trivial rule. \\
+  Functional dependency sets for each class constraint. They are stored after acquiring a simplified form (for this, see $\mtt{FunDeps.hs}$ in the supplementary repository; not relevant to the type system, but might be of interest) with subsequent addition of the implicit trivial rule. \\
 \bottomrule
 \end{tabular}
 \caption{Variables maintained as the internal state of the inference algorithm (refer to \cref{sec:istate} for details).}
@@ -633,7 +631,7 @@ In the scope of the prototype algorithm we distinguish 4 types of unification. T
 Here we describe helper routines we use in \cref{sec:inferPipeline}.
 
 \begin{description}
-    \item[$v \gets$ \textsc{FreshVariable()}] The identifier for a fresh variable $v$ is chosen according to: \linebreak $\min \left(\mathbb{V} \setminus \mathcal{V} \setminus \mathcal{G}\right)$. It is given a ``generic'' type kind, which then is unified with whatever kind the fresh variable is assigned to represent. And the parent is set to $cp$, the current parent.
+    \item[\textsc{FreshVariable()}] The identifier for a fresh variable $v$ is chosen according to: \linebreak $\min \left(\mathbb{V} \setminus \mathcal{V} \setminus \mathcal{G}\right)$. It is given a ``generic'' type kind, which then is unified with whatever kind the fresh variable is assigned to represent. And the parent is set to $cp$, the current parent.
 
     \item[\textsc{RepairStep()}] After each step of the algorithm that transforms one of the state variables (mainly $\mathcal{G}$ and $\mathcal{P}$, $\mcal{D}$) into a new state, we perform the minimal necessary unifications (possibly recursively):
 
@@ -716,7 +714,7 @@ Here we describe helper routines we use in \cref{sec:inferPipeline}.
 
 Because of not supporting nested constraints (see the introduction of this section), we use implication constraints solely for expressing schemes: function schemes, class schemes and class facts. We present the prototype algorithm in a simplified form without considering how these schemes are added from the constraint language to the inferencer state as that is an implementation-specific detail not related to the type theory. For a full picture of the prototype algorithm, it is just important to note that $\mcal F$ contains each of the implication constraints representing an \emph{unclosed function}: a function not yet added to the function schemes $fs$.
 
-The type inference pipeline then consists of the following steps:
+The type inference pipeline (module \li{CMM.Inference}) then consists of the following steps:
 
 \begin{enumerate}
     \item We perform \textsc{AlgorithmInitialization()}
@@ -741,7 +739,7 @@ The algorithm, if implemented entirely, is correct as described in \cref{defer_s
 \section{Monomorphization}
 \label{sec:mono}
 
-The monomorphization algorithm is a two-phase processes that is performed on a type-inferred code with elaborations present in an annotation of each node of the AST. It outputs a code, which is generated by a static interpretation of the callgraph (generalized to all references to top-level definitions) of the original code, starting from all monomorphic definitions, for each reference to a polymorphic definition, creating a monomorphic copy of the polymorphic definition, and continuing with references from the copy, recursively. The input and the output of this phase can be seen in \cref{lst:mono}.
+The monomorphization algorithm (module \li{CMM.Monomorphize}) is a two-phase processes that is performed on a type-inferred code with elaborations present in an annotation of each node of the AST. It outputs a code, which is generated by a static interpretation of the callgraph (generalized to all references to top-level definitions) of the original code, starting from all monomorphic definitions, for each reference to a polymorphic definition, creating a monomorphic copy of the polymorphic definition, and continuing with references from the copy, recursively. The input and the output of this phase can be seen in \cref{lst:mono}.
 
 The elaborations of the input AST contain directly interpretable type information inferred by the type inference. In the prototype implementation, this interpretation is tied to the inferencer state introduced in \cref{sec:istate}, but we recommend the elaborations be independent on any outside information as described in \cref{sec:newApproach}.
 
@@ -832,7 +830,7 @@ In the prototype implementation, the monomorphization queue is separated into wa
 
 In the prototype implementation, the monomorphization algorithm does not change the code, it simply copies the top level definitions and changes their annotations so that they contain elaborations interpreted as the correct monotypes (it does so by applying a substitution from each definition's polytype to the copy's monotype to the elaboration of each node inside the definition).
 
-The monomorphization phase is then followed by two postprocessing phases, \emph{elaboration filling} and \emph{name mangling}, which change the some code depending on its elaboration. These two phases replace type variables appearing in the code to their appropriate types (stored in the corresponding elaborations) and ``mangle'' names of definitions of polytypes and their references. These concerns can be included in monomorphization itself, but implementing them separately turned out to simplify their implementation (note that this is specific to the prototype implementation).
+The monomorphization phase is then followed by two postprocessing phases, \emph{elaboration filling} and \emph{name mangling} (modules \li{CMM.FillElabs} and \li{CMM.Mangle}), which change the some code depending on its elaboration. These two phases replace type variables appearing in the code to their appropriate types (stored in the corresponding elaborations) and ``mangle'' names of definitions of polytypes and their references. These concerns can be included in monomorphization itself, but implementing them separately turned out to simplify their implementation (note that this is specific to the prototype implementation).
 
 \subsubsection{Elaboration filling}
 
@@ -850,7 +848,7 @@ This phase takes an elaborated and monomorphized AST. It renames all functions n
 \section{Translation}
 \label{translation}
 
-The final translation of the code (or code generation) is performed on the postprocessed monomorphized code with type elaborations and block annotations (see \cref{sec:blockify} and ). We use llvm-hs-pure (see \cite{llvmHSpure}) as a framework for LLVM AST generation and llvm-hs-pretty for subsequent prettyprinting \cite{llvmHSpretty}. The prettyprinted output of translation is then a LLVM assembly code interpretable by the low-level virtual machine compiler \emph{llc}. For an example, see \cref{lst:transl}.
+The final translation of the code (or code generation; module \li{CMM.Translator}) is performed on the postprocessed monomorphized code with type elaborations and block annotations (see \cref{sec:blockify} and ). We use llvm-hs-pure (see \cite{llvmHSpure}) as a framework for LLVM AST generation and llvm-hs-pretty for subsequent prettyprinting \cite{llvmHSpretty}. The prettyprinted output of translation is then a LLVM assembly code interpretable by the low-level virtual machine compiler \emph{llc}. For an example, see \cref{lst:transl}.
 
 \begin{codex}
     \caption{Example source code before and after the translation to LLVM.}
