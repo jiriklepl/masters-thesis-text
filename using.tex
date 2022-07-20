@@ -1,0 +1,37 @@
+\chapter{Using the prototype compiler}
+\label{chap:proto}
+
+The prototype compiler and its documentation are available at: \url{https://github.com/jiriklepl/masters-thesis-code}.
+
+Here we provide a shortened version of the instructions:
+
+\subsection*{Building}
+
+\begin{lstlisting}[language=Sh]
+# to get the repository:
+git clone https://github.com/jiriklepl/masters-thesis-code
+cd masters-thesis-code
+
+# to build the project:
+git submodule init
+git submodule update
+cabal build --only-dependencies Compiler
+cabal build Compiler
+
+# to build the development documentation:
+cabal haddock Compiler
+\end{lstlisting}
+
+\subsection*{Running}
+
+For general use:
+
+\begin{lstlisting}[language=Sh]
+cabal run Compiler -- [options...] input_file
+\end{lstlisting}
+
+\noindent For user documentation:
+
+\begin{lstlisting}[language=Sh]
+cabal run Compiler -- -h
+\end{lstlisting}
