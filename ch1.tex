@@ -33,7 +33,7 @@ When type inferring a term $x$, the algorithm W follows the inference rules list
     \end{array}}$$
 \end{figure}
 
-Throughout this section, we will show that the algorithm W provides a good basis for typechecking of the type system, but with more extensions, namely multi-parameter typeclasses with functional dependencies \cite{jones2000type} (we abbreviate them MPTCs), it becomes unnecessarily complex and inefficient if we want to use it for type inference as well. We will describe, how the same principles can be used to implement much simpler and more extensible two-phase algorithm based on constraint solving.
+Throughout this section, we will show that the algorithm W provides a good basis for type checking of the type system, but with more extensions, namely multi-parameter typeclasses with functional dependencies \cite{jones2000type} (we abbreviate them MPTCs), it becomes unnecessarily complex and inefficient if we want to use it for type inference as well. We will describe, how the same principles can be used to implement much simpler and more extensible two-phase algorithm based on constraint solving.
 
 \subsection{Extensions of algorithm W}
 
@@ -83,7 +83,7 @@ In the HM type system with typeclasses, this constraint cannot be expressed at a
 \subsection{Tackling the limitations of syntax-driven inference}
 \label{sec:tackle}
 
-In \cref{ex_structs}, the inability to type-infer the types of \lstinline{a.x} and \lstinline{b.x} could be possibly solved during the subsequent monomorphization phase, which, given the complete knowledge of the record types of \li{a} and \li{b}, would be able to follow the types of the computation just as the type inference algorithm of C (strictly top-down approach). However, in the general case, this would mean the monomorphization could fail for reasons of type checking (thus, the previous typechecking would be only partial), and we could not infer the types against the direction of the computation, which we aimed for. Therefore, we should address this issue in the type inference itself, in the algorithm W.
+In \cref{ex_structs}, the inability to type-infer the types of \lstinline{a.x} and \lstinline{b.x} could be possibly solved during the subsequent monomorphization phase, which, given the complete knowledge of the record types of \li{a} and \li{b}, would be able to follow the types of the computation just as the type inference algorithm of C (strictly top-down approach). However, in the general case, this would mean the monomorphization could fail for reasons of type checking (thus, the previous type checking would be only partial), and we could not infer the types against the direction of the computation, which we aimed for. Therefore, we should address this issue in the type inference itself, in the algorithm W.
 
 \subsubsection{Using the algorithm W in the type system with MPTCs}
 
