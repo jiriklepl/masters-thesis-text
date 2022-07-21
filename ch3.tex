@@ -176,7 +176,7 @@ After the blockifier builds the whole control flow graph and blocks data, live-r
 
 \section{Type System}
 
-We implemented the type system as defined in \cref{sec:typesystem}. During the development, we identified many flaws in the practical implementations of the simple original design, which we briefly comment on in this section. The first and most significant flaw was assuming that the types are equal if they are equal in every subtype dimension and their typing. This fatal flaw was removed from the system, but we include it here as a warning for any attempt at a similar design. \cref{inconsistency} shows an inconsistency caused by such an assumption:
+We have implemented the type system as defined in \cref{sec:typesystem}. During the development, we identified many flaws in the practical implementations of the simple original design, which we briefly comment on in this section. The first and most significant flaw was assuming that the types are equal if they are equal in every subtype dimension and their typing. This fatal flaw was removed from the system, but we include it here as a warning for any attempt at a similar design. \cref{inconsistency} shows an inconsistency caused by such an assumption:
 
 \begin{lemma}Type system from \cref{sec:typesystem} is generally inconsistent if equality of all typing dimensions dimension implies type equality
     \label{inconsistency}
@@ -368,11 +368,11 @@ x = f(a->b);
     \begin{itemize}
         \item \li{x} elaboration: $v_1$
 
-        \item \li{f} elaboration: $\mtt instance\ v_2 v_f$ (pair instance scheme)
+        \item \li{f} elaboration: $\mtt {instance}\ v_2\ v_f$ (pair instance scheme)
 
         \item \li{a} elaboration: $v_3$
 
-        \item \li{a->b} elaboration: $\mtt member\ v_4 v_5 v_{getB}$ (triple return instance scheme)
+        \item \li{a->b} elaboration: $\mtt {member}\ v_4\ v_5\ v_{getB}$ (triple return instance scheme)
     \end{itemize}
 
 
@@ -837,14 +837,12 @@ This phase takes an elaborated and monomorphized AST, reads the type elaboration
 
 This phase takes an elaborated and monomorphized AST. It renames all functions not marked with the \li{foreign "C"} specialization according to their types. The name mangling used in this implementation is not very space-efficient as it is designed to be human-readable for easier exploration and debugging. See \cref{lst:mono} for an example of a mangled function name.
 
-\begin{defn}[Name mangling]
-    The mangled name consists of the \li{_M\$} prefix (standing for ``mangled'') followed by the name and then by the result of applying the mangle function to a type. The mangle function, for primitive types (\li{bits32}, etc.), returns their shortened name (for \li{bits32}, \li{b32}, for example), and for composite types, returns the prefix corresponding to the top-most type constructor followed by its mangled arguments enclosed in \li{\$L} and \li{R\$} (for functions, the arguments and the returns are enclosed separately).
-\end{defn}
+The mangled name consists of the \li{_M\$} prefix (standing for ``mangled'') followed by the name and then by the result of applying the mangle function to a type. The mangle function, for primitive types (\li{bits32}, etc.), returns their shortened name (for \li{bits32}, \li{b32}, for example), and for composite types, returns the prefix corresponding to the top-most type constructor followed by its mangled arguments enclosed in \li{\$L} and \li{R\$} (for functions, the arguments and the returns are enclosed separately).
 
 \section{Translation}
 \label{translation}
 
-The final translation of the code (or code generation; module \li{CMM.Translator}) is performed on the postprocessed monomorphized code with type elaborations and block annotations (see \cref{sec:blockify} and ). We use \emph{llvm-hs-pure} (see \cite{llvmHSpure}) as a framework for LLVM AST generation and \emph{llvm-hs-pretty} for subsequent prettyprinting \cite{llvmHSpretty}. The prettyprinted output of translation is then an LLVM assembly code interpretable by the low-level virtual machine compiler \emph{llc}. For an example, see \cref{lst:transl}.
+The final translation of the code (or code generation; module \li{CMM.Translator}) is performed on the postprocessed monomorphized code with type elaborations and block annotations (see \cref{sec:blockify} and ). We use modified versions of packages \emph{llvm-hs-pure} and \emph{llvm-hs-pretty} as a framework for LLVM AST generation and subsequent prettyprinting \cite{llvmHSpure,llvmHSpretty}. The prettyprinted output of translation is then an LLVM assembly code interpretable by the low-level virtual machine compiler \emph{llc}. For an example, see \cref{lst:transl}.
 
 \begin{codex}
     \caption{Example source code before and after the translation to LLVM.}

@@ -264,7 +264,7 @@ Let there be some constness variables $x, y, w$ coming from some internal specif
     \item $a$ and $b$ are less general than $w$
 \end{itemize}
 
-\centerline{\includegraphics[width=\linewidth / 2]{img/out/subtyping-idea.pdf}}
+\centerline{\includegraphics[width=0.5\linewidth]{img/out/subtyping-idea.pdf}}
 
 If the above ones are the only subtype constraints in the given component (we can consider just this subtype dimension since they are required to be orthogonal), we can safely unify the constness variables $x$ and $w$ as they are limited by the same fixed values (upper-bounded by $c$ and $K$ and lower-bounded by $a$ and $b$). We can clearly see that the minimal $x$ will always be equal to $w$ regardless of constnesses of $a$, $b$, and $c$ provided by outside contexts. It is less obvious to tell whether we can safely unify $x$ and $y$. Since the system is based on minimization, the minimal $y$ will indeed always be equal to $x$. There is an apparent exception for cases where $x$ is not solvable because of $K$; but we are interested in solving the whole program and not just single values, so separating these cases does not make any sense -- yet still, in practice, this `` exception'' is a good reason for keeping some outside meta-information about the bounds of the original variables for clearer error messages.
 

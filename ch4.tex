@@ -132,7 +132,7 @@ c2 = _Madd_$f$Lb64...(a2, b2);
 
 \subsection{Simplified pointer dereferences}
 
-In \cmm, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter or the result. Any inferred type of the result or the address parameter then propagates to the other one. We show this in \cref{lst:fieldAccessors}.
+In \cmm, a reference to memory (used for indirect writes and reads) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter or the result. Any inferred type of the result or the address parameter then propagates to the other one. We show this in \cref{lst:fieldAccessors}.
 
 \subsection{Translation into LLVM}
 
@@ -213,7 +213,7 @@ F$else_1:
 \subsubsection{Multi-parameter typeclasses}
 \label{sec:mptcs}
 
-Multi-parameter typeclasses allow us to overload procedures with more than one type argument. This is useful for situations when the procedure is to be implemented differently depending on the parameter types. Perhaps, the procedure can be implemented more efficiently when the input types are the same. The example in \cref{lst:mptcs} shows exactly that. If both of the types are \li{bits32}, the instance adds the inputs together and returns the result. If the second argument is a pointer, it performs a more complicated operation on the first argument, represented by multiplication.
+Multi-parameter typeclasses allow us to overload procedures according to more than one type argument. This is useful for situations when the procedure is to be implemented differently depending on the parameter types. Perhaps, the procedure can be implemented more efficiently when the input types are the same. The example in \cref{lst:mptcs} shows exactly that. If both of the types are \li{bits32}, the instance adds the inputs together and returns the result. If the second argument is a pointer, it performs a more complicated operation on the first argument, represented by multiplication.
 
 \begin{codex}
     \small

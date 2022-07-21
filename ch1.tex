@@ -68,14 +68,14 @@ But we do not want to bother the programmer by requiring unique names of all fie
 We define the multi-parameter typeclass (MPTC) \li{Has_x}: ($a \to b$ is a functional dependency stating that $a$ uniquely represents $b$)
 
 \begin{center}
-    \lstinline/class HasX a b | a -> b {.x : a -> b}/
+    \lstinline/class Has_x a b | a -> b {.x : a -> b}/
 \end{center}
 
 The two instances are then defined:
 
 \begin{lstlisting}
-instance HasX A int {.x : A -> int}
-instance HasX B float {.x : B -> float}
+instance Has_x A int {.x : A -> int}
+instance Has_x B float {.x : B -> float}
 \end{lstlisting}
 
 This constraint cannot be expressed in the HM type system with typeclasses, as each class constraint can take only a single type variable. In the THIH variation \cite{jones1999typing}, this can be indeed expressed (it is not reflected in the original presentation, but the supplementary implementation allows an arbitrary number of class arguments), and the algorithm is strong enough to type-check such construction for concrete types. However, it lacks the ability to infer the obvious types of the previously mentioned expressions \lstinline{a.x} and \lstinline{b.x} even though we know the types of both \lstinline{a} and \lstinline{b}.
@@ -97,7 +97,7 @@ Notice that the substitution $\sigma$ that is used to prove a constraint $C \tau
 
 Using a more complicated example, we can demonstrate that class constraints often generate additional (more complex) class constraints: To prove $\Gamma \vdash \mtt {Ord} [Int]$ in the context $\Gamma = \{\mtt {Ord}\ \mtt {Int}; \forall a . \mtt {Ord}\ a \To \mtt {Ord} [a]\}$, we first deduce $\Gamma \vdash \mtt {Ord} [Int] \Leftarrow \Gamma \vdash \mtt {Ord}\ Int$ (proven using substitution $[a := \mtt {Int}]$ and the proof $\forall a . \mtt {Ord}\ a \To \mtt {Ord} [a]$) and then $\Gamma \vdash \mtt {Ord}\ Int$ (proven by being an assumption of the context; therefore, using an empty substitution).
 
-Unfortunately, in general, the termination of the process depended on the type system choosing the correct proof --- naively, it could have explored a valid branch that proves $\mtt Ord [a]$ from a proof assuming $\mtt Ord [[a]]$, etc., which could continue indefinitely. This shows that the type system can be pushed to generate infinite chains of proofs for some contexts (if we introduce language extensions such as MPTCs and non-reducing proofs without some appropriate requirements).
+Unfortunately, in general, the termination of the process depends on the type system choosing the correct proof --- naively, it could have explored a valid branch that proves $\mtt Ord [a]$ from a proof assuming $\mtt Ord [[a]]$, etc., which could continue indefinitely. This shows that the type system can be pushed to generate infinite chains of proofs for some contexts (for example, if we introduce language extensions such as MPTCs and non-reducing proofs without some appropriate requirements).
 
 \subsection{Challenges of extending the algorithm W}
 
@@ -211,7 +211,7 @@ The Haskell code in \cref{cex:existentials} shows a definition of a type \lstinl
 \label{cex:existentials}
 \end{codex}
 
-We want to translate this example into the constraint language. We will decorate the variables in the elaborations with $@$ for clarity, and ignore the elaboration levels for brevity (all global variables are in level 0, and all locally-mentioned variables are in level 1). The functions and their types get elaborated, as shown in \cref{cex:exist-elab}, by putting an extra type variable in each place where the output from the type inference is expected.
+We want to translate this example into the constraint language. We decorate the variables in the elaborations with $@$ for clarity, and ignore the elaboration levels for brevity (all global variables are in level 0, and all locally-mentioned variables are in level 1). The functions and their types get elaborated, as shown in \cref{cex:exist-elab}, by putting an extra type variable in each place where the output from the type inference is expected.
 
 
 \begin{codex}
