@@ -56,15 +56,19 @@ Dedication. \xxx{It is nice to say thanks to supervisors, friends, family, book 
 }
 
 \def\AbstractEN{%
-Systems programming languages facilitate the implementation of software that runs in restricted environments close to the hardware, typically operating systems, drivers, and real-time and embedded systems.
-Implementation of desirable features of such languages, such as generic programming and type system capabilities that prevent programmer errors, are complicated by strict constraints on the run-time properties of the generated code.
+Systems programming languages facilitate the implementation of software that runs in restricted environments close to the hardware, such as operating systems, drivers, and real-time and embedded systems.
+Implementation of desirable features of such languages, such as generic programming and type system capabilities that prevent programmer errors, are complicated by strict constraints on the run-time properties of the program.
 This thesis explores a novel combination of C-\phantom{}- language with advanced type system features that allow type checking of highly polymorphic generic code and demonstrates type-driven resource management in this language.
 As the main result, the thesis provides a proof-of-concept in a prototype compiler of an extended version of C-\phantom{}- to LLVM and describes a type system based on deferred constraint solving that is capable of type inference in the presence of multi-parameter typeclasses and C-\phantom{}- subtypes.
 We demonstrate the functionality of the type system and the compiler on selected program examples and report several identified design challenges that may be addressed to make the system more practical.
 }
 
 \def\AbstractCS{%
-\xxx{You will need to submit both Czech and English abstract to the SIS, no matter what language you use in the thesis. If writing in English, translate the contents of \texttt{\textbackslash{}AbstractEN} into this field. In case you do not speak czech, your supervisor should be able to help you with the translation.}
+Systémové programovací jazyky usnadňují implementaci softwaru, který běží v omezených prostředích blízko hardwaru, jako jsou operační systémy, drivery, systémy reálného času a vestavěné systémy.
+Implementace prospěšných prvků pro tyto jazyky, jako jsou generické programování a typový systém zajišťující bezchybnost kódu, je ztěžována úzkými požadavky na běhovýmé vlastnostni programu.
+Hlavní náplní této práce je prozkoumat novou kombinaci jazyka C-\phantom{}- s prvky typového systému umožňující typovou kontrolu vysoce polymorfního kódu a demonstruje možnosti typově vedené správy zdrojů v tomto jazyku.
+Jako hlavní výstup práce podává důkaz konceptu zprostředkovaný prototypem překladače rožšířeného jazyka C-\phantom{}- do LLVM a popisuje typový systém založený na odkládajícím řešení omezujících podmínek, který je schopen typové inference za přítomnosti více-parametrových typových tříd a subtypy C-\phantom{}-.
+Funkcionalitu typového systému a překladače demonstrujeme na vybraných ukázkác programů a popisujeme několik rozpoznaných komplikací návrhu, které lze adresovat pro praktičtější implementaci.
 }
 
 % 3 to 5 keywords (recommended), each enclosed in curly braces.

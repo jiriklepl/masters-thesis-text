@@ -124,7 +124,7 @@ We add \li{struct}s, a record structure syntax for a feature known from other C-
 Structures use the syntax derived from regular data notation for maximum consistency. One of the side-effects of this approach is that one field can have various name aliases, demonstrated by \cref{cex:list}. This might seem inconsequential, but it can have very interesting consequences in polymorphic programming. The last field of the \li{list} from the sample showcases that the \li{list} can be used in both any procedure that expects it to carry a `value', and in any procedure that expects it to store some `data'. In some languages (for example, C\#), this can be implemented by \emph{properties}, which might contain some hidden control flow.
 
 \begin{codex}
-    \caption{Implementation of a common linked list in \cmm (one field has two names)}
+    \caption{Implementation of a generic linked list in \cmm (parametrized by type). For demonstration, the value-carrying field has two names}
     \label{cex:list}
 
     \begin{lstlisting}

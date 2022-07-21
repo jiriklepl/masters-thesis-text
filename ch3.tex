@@ -654,11 +654,9 @@ Here we describe helper routines we use in \cref{sec:inferPipeline}.
     Before the algorithm starts, we apply \textsc{IntroduceVariable} to each of the variables encountered in $\mathcal{F}$, and we update the counter of variables so the next fresh variable has a unique identifier.
 \end{description}
 
-
-
 \begin{algorithm}
     \small
-    \caption{Solution loop}
+    \caption{Constraint-resolution loop of the inference algorithm}
     \label{main_loop}
     \begin{algorithmic}
         \Require All state variables of the inference algorithm set to initial values

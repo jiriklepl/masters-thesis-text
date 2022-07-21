@@ -3,9 +3,9 @@
 \Author{Jiří Klepl}
 \Title{Inference-driven resource managemenent and polymorphism in systems programming}
 \Keywords{programming languages \sep type systems \sep compilers \sep systems programming \sep resource management}
-\Subject{Systems programming languages facilitate implementation of software that runs in restricted environments close to hardware, typically operating systems, drivers, real-time and embedded systems.
-Implementation of desirable features of such languages, such as generic programming and type system capabilities that prevent programmer errors, are complicated by strict constraints on the run-time properties of the generated code.
-This thesis explores a novel combination of C-- language with advanced type system features that allow type checking of highly polymorphic generic code, and demonstrates a type-driven resource management in this language.
-As the main result, the thesis provides a proof-of-concept in a prototype compiler of an extended version of C-- to LLVM, and describes a type system based on deferred constraint solving that is capable of type inference in presence of multi-parameter typeclasses and C-- subtypes.
-We demonstrate the functionality of the type system and the compiler on selected program examples, and report several identified design challenges that may be addressed to make the system more practical.}
+\Subject{Systems programming languages facilitate the implementation of software that runs in restricted environments close to the hardware, such as operating systems, drivers, and real-time and embedded systems.
+Implementation of desirable features of such languages, such as generic programming and type system capabilities that prevent programmer errors, are complicated by strict constraints on the run-time properties of the program.
+This thesis explores a novel combination of C-- language with advanced type system features that allow type checking of highly polymorphic generic code and demonstrates type-driven resource management in this language.
+As the main result, the thesis provides a proof-of-concept in a prototype compiler of an extended version of C-- to LLVM and describes a type system based on deferred constraint solving that is capable of type inference in the presence of multi-parameter typeclasses and C-- subtypes.
+We demonstrate the functionality of the type system and the compiler on selected program examples and report several identified design challenges that may be addressed to make the system more practical.}
 \Publisher{Charles University}

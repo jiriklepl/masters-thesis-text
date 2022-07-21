@@ -330,31 +330,31 @@ The prototype compiler allows the definition of functional dependencies for arbi
 
 // a type class with
 //  a fun. dependency: a -> b
-class Id a b | a -> b {
-  id (auto (a) x) -> auto (b);
+class C a b | a -> b {
+  c (auto (a) x) -> auto (b);
 }
 
-instance Id bits32 bits32 {
-  id (auto u) {
+instance C bits32 bits32 {
+  c (auto u) {
     return (u);
   }
 }
 
-instance Id bits64 bits64 {
-  id (auto u) {
-    return (u);
+instance C bits64 bits32 {
+  c (auto u) {
+    return (0);
   }
 }
+
+bits32 x;
+auto c_x;
+bits64 y;
+auto c_y;
 
 ...
 
-bits32 x;
-auto id_x;
-bits64 y;
-auto id_y;
-
-id_x = id(x);
-id_y = id(y);
+c_x = c(x);
+c_y = c(y);
     \end{lstlisting}
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
@@ -363,25 +363,25 @@ id_y = id(y);
 // Monomorphized code
 //  with interpreted
 //  functional dependencies
-_Mid_$f$Lb32...(bits32 u) {
+_Mc_$f$Lb32...(bits32 u) {
   return (u);
 }
-_Mid_$f$Lb64...(bits64 u) {
-  return (u);
+_Mc_$f$Lb64...(bits64 u) {
+  return (0);
 }
-
-...
 
 bits32 x;
-// type-inferred return
+// type-inferred by return:
 bits32 id_x;
 
 bits64 y;
-// type-inferred return
-bits64 id_y;
+// type-inferred by return:
+bits32 c_y;
 
-id_x = _Mid_$f$Lb32...(x);
-id_y = _Mid_$f$Lb64...(y);
+...
+
+c_x = _Mc_$f$Lb32...(x);
+c_y = _Mc_$f$Lb64...(y);
     \end{lstlisting}
     \end{minipage}
     \end{center}
@@ -399,7 +399,7 @@ With the prototype implementation based on deferred solving with MPTCs and funct
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
     \begin{minipage}{0.45\linewidth}
-    \begin{lstlisting}[basicstyle=\footnotesize\ttfamily]
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
 // Source code
 struct A {
   id: bits32;
@@ -501,8 +501,8 @@ If an object carries the \li{new} specialization, the compiler calls the \li{dro
     \label{lst:resource}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
-    \begin{minipage}{0.35\linewidth}
-    \begin{lstlisting}
+    \begin{minipage}{0.4\linewidth}
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
 // Source code
 struct X {
   x: bits32;
@@ -543,8 +543,8 @@ f(bits32 a) {
     \end{lstlisting}
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
-    \begin{minipage}{0.65\linewidth}
-    \begin{lstlisting}[style=llvmStyle]
+    \begin{minipage}{0.6\linewidth}
+    \begin{lstlisting}[style=llvmStyle,basicstyle=\scriptsize\ttfamily]
 ; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...X({i32}*  %u_0) {
@@ -595,8 +595,8 @@ It may happen that the resource management action depends on a type parameter. P
     \label{lst:polyResource}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
-    \begin{minipage}{0.35\linewidth}
-    \begin{lstlisting}
+    \begin{minipage}{0.4\linewidth}
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
 // Source code
 struct X {
   x: bits32;
@@ -630,8 +630,8 @@ f(ptr(X) s,
     \end{lstlisting}
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
-    \begin{minipage}{0.65\linewidth}
-    \begin{lstlisting}[style=llvmStyle]
+    \begin{minipage}{0.6\linewidth}
+    \begin{lstlisting}[style=llvmStyle,basicstyle=\scriptsize\ttfamily]
 ; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...(i32*  %u_0) {
@@ -684,8 +684,8 @@ Sometimes, when we use automatic resource management, there exists a special cas
     \label{lst:manual}
     \begin{center}
     %\begin{minipage}[t]{0.5\linewidth}
-    \begin{minipage}{0.35\linewidth}
-    \begin{lstlisting}
+    \begin{minipage}{0.4\linewidth}
+    \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
 // Source code
 drop(auto a) {
   return ();
@@ -724,8 +724,8 @@ f(bits32 a) {
     \end{lstlisting}
     %\begin{minipage}[t]{0.5\linewidth}
     \end{minipage}%
-    \begin{minipage}{0.65\linewidth}
-    \begin{lstlisting}[style=llvmStyle]
+    \begin{minipage}{0.6\linewidth}
+    \begin{lstlisting}[style=llvmStyle,basicstyle=\scriptsize\ttfamily]
 ; Output LLVM assembly
 define external ccc <{}>
 @_Mdrop...(i32*  %a_0) {
