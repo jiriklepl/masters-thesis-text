@@ -1,14 +1,14 @@
 \chapter{Results and discussion}
 \label{chap4}
 
-In this chapter, we show the possibilities of use of the extended \cmm compiled by the prototype compiler\cmmrepo described in \cref{chap3}.
+In this chapter, we discuss the possibilities of use of the extended \cmm compiled by the prototype compiler\cmmrepo described in \cref{chap3}.
 
 \section{Functionality of the prototype compiler}
 \label{sec:protoComp}
 
 \subsection{Type inference of local declarations}
 
-First, we demonstrate simple properties of the type system. As expected, the compiler is able to infer types of local declarations. On a simple example of \li{gcd} procedure (\cref{lst:localDecl}) that contains variables declared with ``auto'' type, it is able to deduce the correct type for a local variable and the return value.
+First, we demonstrate the simple properties of the type system. As expected, the compiler is able to infer types of local declarations. On a simple example of \li{gcd} procedure (\cref{lst:localDecl}) that contains variables declared with ``auto'' type, it is able to deduce the correct type for a local variable and the return value.
 
 \begin{codex}
     \caption{Example of type-inferring local declarations}
@@ -59,11 +59,11 @@ foreign "C" gcd(bits32 u,
 \subsection{Generic programming using polymorphism}
 \label{sec:reduction}
 
-Type inference allows us to write polymorphic procedures, which are then correctly interpreted by the compiler and rewritten into an efficient code with correctly filled types for each each use in different context. The user does not have to define a procedure for each use separately. This is demonstrated by \cref{lst:reduction}. The code is ``monomorphized'' into code containing monomorphic definitions replacing the user-provided polymorphic ones with correctly inferred types.
+Type inference allows us to write polymorphic procedures, which are then correctly interpreted by the compiler and rewritten into an efficient code with correctly filled types for each call in a different context. The user does not have to define a procedure for each use separately. This is demonstrated by \cref{lst:reduction}. The code is ``monomorphized'' into code containing monomorphic definitions replacing the user-provided polymorphic ones with correctly inferred types.
 
-Notably, compared to some other solutions (for example: Java, Python), which provide various ways to reduce code by polymorphism, the resulting code contains no runtime checks of types and the code is as efficient as if it was written by hand for every specific type.
+Notably, compared to some other solutions (for example, Java and Python), which provide various ways to reduce code by polymorphism, the resulting code contains no runtime checks of types, and the code is as efficient as if it was written by hand for every specific type.
 
-This constitutes ``mangling'' the names of monomorphic copies of polymorphic procedures depending on their types. This is performed so each generated definition has a unique name and they can be correctly referenced from their corresponding call sites.
+Monomorphization constitutes ``mangling'' the names of monomorphic copies of polymorphic procedures depending on their types. Mangling is performed so each generated definition has a unique name and can be correctly referenced from its corresponding call sites.
 
 \begin{codex}
     \caption{Example use of generic programming (some names are truncated for brevity)}
@@ -132,17 +132,18 @@ c2 = _Madd_$f$Lb64...(a2, b2);
 
 \subsection{Simplified pointer dereferences}
 
-In \cmm, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter, or, from the result. Any inferred type of the result or the address parameter then propagates to the other one. We show this in \cref{lst:fieldAccessors}.
+In \cmm, a reference to memory (used for indirect write on indirect read) has to specify the type of the memory location using the syntax \li{type[address]}. This syntax is close to C array indexing, but it consists of a type parameter and an address parameter (basically, a pointer). Introducing type inference into the language allowed us to make a simplification of this syntax with the type left out. The type is then inferred from the address parameter or the result. Any inferred type of the result or the address parameter then propagates to the other one. We show this in \cref{lst:fieldAccessors}.
 
 \subsection{Translation into LLVM}
 
-The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation, with subsequent flow analysis, which then allows the code be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred, but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases an fairly unusual assignment statement, which is a feature of \cmm.
+The prototype compiler translates the input code into the LLVM assembly language. This requires transforming the code into a simpler, flat representation with subsequent flow analysis, which then allows the code to be transcribed into the SSA representation of LLVM. Performing flow analysis allows for, among other things, identifying unreachable code, which is still type-inferred but not translated, and identifying uninitialized variables, which is followed by generating an error for each. The example in \cref{lst:translex} shows the translation without unreachable code and showcases a fairly unusual assignment statement, which is a feature of \cmm.
 
 \subsection{Improvements over the algorithm W}
 
-In our previous work \cite{klepl2020type}, we used an variation of algorithm W based on THIH \cite{jones1999typing}. We concluded that such approach did not allow for multi-parameter typeclasses (\emph{MPTC}s) and general use of field accessors to \li{struct} fields, we required each field to have a unique name.
+In our previous work \cite{klepl2020type}, we used a variation of algorithm W based on THIH \cite{jones1999typing}. We concluded that such an approach did not allow for multi-parameter typeclasses (\emph{MPTC}s) and general use of field accessors to \li{struct} fields; we required each field to have a unique name.
 
-In the prototype compiler, we address this and the prototype compiler's type inference interprets both MPTCs and field accessors without requirement on unique names.
+In the prototype compiler, we address this, and the prototype compiler's type inference interprets both MPTCs and field accessors without the requirement for unique names.
+
 \begin{codex}
     \small
     \caption{Example of translation of an input source code into LLVM}
@@ -212,7 +213,8 @@ F$else_1:
 \subsubsection{Multi-parameter typeclasses}
 \label{sec:mptcs}
 
-Multi-parameter typeclasses allow us to overload procedures with more than one type argument, this is useful for situations when the procedure is to be implemented differently depending on the parameter types. Perhaps, the procedure can be implemented more efficiently, when the input types are the same. The example in \cref{lst:mptcs} shows exactly that. If both of the types are \li{bits32}, the instance adds the inputs together and returns the result. If the second argument is a pointer, it performs some more complicated operation on the first argument, represented by multiplication.
+Multi-parameter typeclasses allow us to overload procedures with more than one type argument. This is useful for situations when the procedure is to be implemented differently depending on the parameter types. Perhaps, the procedure can be implemented more efficiently when the input types are the same. The example in \cref{lst:mptcs} shows exactly that. If both of the types are \li{bits32}, the instance adds the inputs together and returns the result. If the second argument is a pointer, it performs a more complicated operation on the first argument, represented by multiplication.
+
 \begin{codex}
     \small
     \caption{Example of MPTC usage in the extended \cmm (some names are truncated for brevity)}
@@ -313,9 +315,9 @@ LR$procedure4:
 \subsubsection{User-specified functional dependencies}
 \label{sec:uspecFD}
 
-Sometimes, a procedure can have returns of different types depending on the given arguments. In many instances, these types are closely related to the argument types and they can be derived from type algebra. For such cases, regular (multi-parameter) typeclasses are enough as demonstrated by other examples. But, sometimes the types of the returned values are not algebraicly dependent on the argument types. One example of this are the oftenly mentioned field accessors.
+Sometimes, a procedure can have returns of different types depending on the given arguments. In many instances, these types are closely related to argument types, and they can be derived from type algebra. For such cases, regular (multi-parameter) typeclasses are enough, as demonstrated by other examples. But, sometimes, the types of the returned values are not algebraically dependent on the argument types. The often mentioned field accessors are an example of this.
 
-The prototype compiler allows definition of functional dependencies for arbitrary user-defined typeclass. A simple use of this is demonstrated in \cref{lst:fundeps}. The compiler correcly type-infers the result types according to the given functional dependency.
+The prototype compiler allows the definition of functional dependencies for arbitrary user-defined typeclass. Simple use of this is demonstrated in \cref{lst:fundeps}. The compiler correctly type-infers the result types according to the given functional dependency.
 
 \begin{codex}
     \caption{Example use of functional dependencies (some names are truncated for brevity)}
@@ -387,9 +389,9 @@ id_y = _Mid_$f$Lb64...(y);
 
 \subsubsection{Field accessors}
 
-Field accessors allow us to introduce further semantics into structs. This is useful in situations, where each object in a certain model has to contain some information that characterizes the given object. It can be the object's identifier, or age, and perhaps, it can have different types for different objects. For example, one part of the model can use 32-bit wide identifiers and another 64-bit wide. This is where the approach from the previous work did not suffice.
+Field accessors allow us to introduce further semantics into structs. This is useful in situations where each object in a certain model has to contain some information that characterizes the given object. It can be the object's identifier or age, and perhaps, it can have different types for different objects. For example, one part of the model can use 32-bit wide identifiers and another 64-bit wide. This is where the approach from the previous work did not suffice.
 
-With the prototype implementation based on deferred solving with MPTCs and functional dependencies, type-inferring general field accessors is possible as shown in \cref{lst:fieldAccessors}. The compiler type-infers all relevant types, only \li{struct} definitions are typed explicitly.
+With the prototype implementation based on deferred solving with MPTCs and functional dependencies, type-inferring general field accessors is possible, as shown in \cref{lst:fieldAccessors}. In the example, the compiler type-infers all relevant types; only \li{struct} definitions are typed explicitly.
 
 \begin{codex}
     \caption{Example use of field accessors (some names are truncated for brevity)}
@@ -489,9 +491,9 @@ LR$procedure1:
 \subsection{Typeclass-based resource management}
 \label{sec:tcResMan}
 
-Let us say, we want to perform some resource managemet action on every procedure exit. Perhaps, we opened a file and we want to close it. In practice, this is quite common, and it let to, for example, developing RAII in C++, or try/finally pattern in C\#. For this purpose, in the prototype compiler, we can use \li{new}-specialized stack-allocated objects.
+Let us say we want to perform some resource management action on every procedure exit. Perhaps, we opened a file, and we want to close it. In practice, this is quite common, and it led to, for example, developing RAII in C++ or try/finally pattern in C\#. For this purpose, in the prototype compiler, we can use \li{new}-specialized stack-allocated objects.
 
-If an object carries the \li{new} specialization, the compiler calls \li{drop} procedure on the pointer reference to the object before every exit from the procedure. This \li{drop} call then carries out the resource management action as defined for the object's type. This is demonstrated by \cref{lst:resource}
+If an object carries the \li{new} specialization, the compiler calls the \li{drop} procedure on the pointer reference to the object before every exit from the procedure. This \li{drop} call then carries out the resource management action as defined for the object's type. This is demonstrated by \cref{lst:resource}.
 
 \begin{codex}
     \small
@@ -585,7 +587,7 @@ LR$procedure3:
 
 \subsubsection{Type-inferred resource management}
 
-It may happen that the resource management action depends on a type parameter. Perhaps, this can be due to architectural specifics of the target platform, or due to specifics of a certain component. The system is ready for such situation -- we can combine automatic resource management and type inference of the resource objects (with or without typeclass overloading) as demonstrated by \cref{lst:polyResource}
+It may happen that the resource management action depends on a type parameter. Perhaps, this can be due to the architectural specifics of the target platform or due to specifics of a certain component. The system is ready for such a situation -- we can combine automatic resource management and type inference of the resource objects (with or without typeclass overloading) as demonstrated by \cref{lst:polyResource}
 
 \begin{codex}
     \small
@@ -673,7 +675,7 @@ LR$procedure1:
 
 \subsubsection{Automatic resource management with \texttt{dropped} statements}
 
-Sometimes, when we use automatic resource management, there exists a special case, in which we do not want to perform the resource management action. This may apply to cases where the resource is a file handle of a file we failed to open. In the prototype compiler, we can use \li{dropped} statement with a named reference to a resource object to specify that the corresponding resource management action does not happen automatically (but may be still manually) in the given part of the scope. We demonstrate its use in \cref{lst:manual}.
+Sometimes, when we use automatic resource management, there exists a special case in which we do not want to perform the resource management action. This may apply to cases where the resource is a file handle of a file we failed to open. In the prototype compiler, we can use \li{dropped} statement with a named reference to a resource object to specify that the corresponding resource management action does not happen automatically (but may still happen manually) in the given part of the scope. We demonstrate its use in \cref{lst:manual}.
 
 
 \begin{codex}
@@ -773,7 +775,7 @@ F$else_3:
 
 \subsection{Subtyping in systems programming}
 
-The subset of subtyping modelled by our proposed type system can be used to check and infer various secondary properties of objects. Throughout the thesis, we demonstrated its use on constnesses and data kinds of the \cmm language. Connecting the analysis of these secondary properties to the type system allows for tying the constraints on these properties only to a particular typing (as defined in \cref{sec:typesystem}), for example, by defining each typeclass instance with a different set of constraints.
+The subset of subtyping modeled by our proposed type system can be used to check and infer various secondary properties of objects. Throughout the thesis, we demonstrated its use on constnesses and data kinds of the \cmm language. Connecting the analysis of these secondary properties to the type system allows for tying the constraints on these properties only to a particular typing (as defined in \cref{sec:typesystem}), for example, by defining each typeclass instance with a different set of constraints.
 
 \subsection{C subtyping}
 
@@ -782,14 +784,14 @@ In the previous work \cite{klepl2020type}, we identified a weakness of the then-
 The semantics of the C \li{const} qualifier (as specified by \cite{cstandard2018}), quite differ from the constness introduced in \cref{sec:repre}, despite the similarity of names. For our purposes, we simplify the semantics into two cases:
 
 \begin{enumerate}
-    \item If the \li{const} qualifier is applied to a variable (for example, \li{char *const p}), the type of the variable is the same as if it was not \li{const}-qualified. Any attempt to assign to this variable is an undefined behavior. \label{constvar}
+    \item If the \li{const} qualifier is applied to a variable (for example, \li{char *const p}), the type of the variable is the same as if it was not \li{const}-qualified. Any attempt to assign to this variable is undefined behavior. \label{constvar}
 
-    \item If the \li{const} qualifier is applied to a type pointed to by a certain pointer (for example, \li{char const *p}), any assignments to the pointer from pointers pointing to a non-\li{const}-qualified version of the same type are valid and the two pointers have the same value afterwards. The reverse assignment would be, again, an undefined behavior. \label{pointerSubtype}
+    \item If the \li{const} qualifier is applied to a type pointed to by a certain pointer (for example, \li{char const *p}), any assignments to the pointer from pointers pointing to a non-\li{const}-qualified version of the same type are valid, and the two pointers have the same value afterward. The reverse assignment would be, again, an undefined behavior. \label{pointerSubtype}
 
     In our formalism, this means that \li{T *} is less general than \li{T const *}.
 \end{enumerate}
 
-We can model the semantics of the case number \ref{pointerSubtype} (case number \ref{constvar} is identified syntactically) via introducing two new subtype dimensions, one which is only relevant to pointer types (in simplification; we could then generalize this to array types and other aggregate types), let us call this dimension the \emph{C-const dimension}. And one other dimension to represent all subtype relations, let us call this dimension the \emph{assigment dimension}.
+We can model the semantics of the case number \ref{pointerSubtype} (case number \ref{constvar} is identified syntactically) via introducing two new subtype dimensions, one of which is only relevant to pointer types (in simplification; we could then generalize this to array types and other aggregate types), let us call this dimension the \emph{C-const dimension}. And one other dimension to represent all subtype relations, let us call this dimension the \emph{assigment dimension}.
 
 \begin{defn}[C-const dimension]
     The C-const subtype dimension $C$ is defined by two constants $\mtt{NonConst}, \mtt{Const}$ and an ordering $\top = \mtt{Const} >_C \mtt{NonConst} = \bot$.
@@ -811,16 +813,16 @@ In the following, we use $a \sim_\chi b$ as a shortcut for $a \leq_\chi b \land 
     \item For (generalized) assignments with operand types $t_l, t_r$, we put $t_l \geq_s t_r$ for each dimension $s$ and $t_l \sim_T t_r$. (we say ``generalized assignments'' as we consider even actual arguments to procedures and return operands, etc.).
 \end{itemize}
 
-To sufficiently constrain the space so the modelled semantics are the same as the semantics of the C \li{const} qualifier, after deciding all typings and before deciding any subtype dimensions, we introduce new constraints.
+To sufficiently constrain the space, so the modeled semantics are the same as the semantics of the C \li{const} qualifier, after deciding all typings and before deciding any subtype dimensions, we introduce new constraints.
 
-These constraints are derived from the assignment dimension $A$ for each two types such that $t \leq_A t'$. For example, if $t \equiv T\ast\ast$ and $t' \equiv T'\ast\ast$, we put $T \sim T'$ (as this is still part of the semantic case number \ref{pointerSubtype}). We will not go into further details as this is outside the scope of this work. After this step, the type inference continues as usual.
+These constraints are derived from the assignment dimension $A$ for every two types such that $t \leq_A t'$. For example, if $t \equiv T\ast\ast$ and $t' \equiv T'\ast\ast$, we put $T \sim T'$ (as this is still part of the semantic case number \ref{pointerSubtype}). We will not go into further details as this is outside the scope of this work. After this step, the type inference continues as usual.
 
 We leave this for future work together with considering the possibility of generating all subtype constraints after deciding the typings for the given subprogram component.
 
 \subsection{Automatic resource management in practical systems programming}
 \label{sec:autoC}
 
-We show how to use the results of this thesis to simplify the resource management in system programming languages.
+We show how to use the results of this thesis for simplifying resource management in system programming languages.
 
 \citet{kernelStyle} proposed the following convention in \citetitle{kernelStyle}:
 
@@ -828,9 +830,9 @@ We show how to use the results of this thesis to simplify the resource managemen
   The goto statement comes in handy when a procedure exits from multiple locations and some common work such as cleanup has to be done. If there is no cleanup needed then just return directly.
 \end{quote}
 
-In \cref{cex:cleanup}, we show that the automatic resource management features introduced by the extended \cmm can serve as an alternative to this convention. In particular, the cleanup section is replaced by a definition of an resource-representing object and accompanying \li{drop} procedure.
+In \cref{cex:cleanup}, we show that the automatic resource management features introduced by the extended \cmm can serve as an alternative to this convention. In particular, the cleanup section is replaced by a definition of a resource-representing object and accompanying \li{drop} procedure.
 
-\paragraph{``If there is no cleanup needed then just return directly''} In order to fully serve as a practical alternative to the \li{goto cleanup} pattern in a general case, we also introduce \li{dropped} statement. \li{dropped} statement takes a named alias to the resource-representing object and the resource management action is not performed for this object on exits, which follow in the control flow of the given procedure.
+\paragraph{``If there is no cleanup needed, then just return directly''} In order to fully serve as a practical alternative to the \li{goto cleanup} pattern in a general case, we also introduce \li{dropped} statement. \li{dropped} statement takes a named alias to the resource-representing object, and the resource management action is not performed for this object on exits, which follows in the control flow of the given procedure.
 
 One improvement over the \li{goto cleanup} pattern is that this can easily scale with more actions tied to multiple resource-representing objects, each such action then possibly being prevented by a separate \li{dropped} statement on some subset of control flow paths.
 
@@ -910,10 +912,10 @@ fun(bits32 a) -> bits32 {
 \section{Relation to other resource management systems}
 \label{sec:OtherRAII}
 
-There are multiple constructs in other languages that implement the automatic resource management action that has to happen on every scope exit. We will look at two: C++ RAII and C\# \li{try\{...\} finally\{...\}}.
+Multiple constructs in other languages implement the automatic resource management action that has to happen on every scope exit. We will look at two: C++ RAII and C\# \li{try\{...\} finally\{...\}}.
 
-C++ calls the resource management action \emph{destructor} and, in the given scope, it is called on every exit. In C\#, \li{finally \{ ... \}} serves for this purpose as well. In the extended \cmm, the resource management action is specified by defining a resource-representing object with the \li{new} keyword -- this object then constitutes a call of the \li{drop} method on every scope exit.
+C++ calls the resource management action \emph{destructor}, and, in the given scope, it is called on every exit. In C\#, \li{finally \{ ... \}} serves for this purpose as well. In the extended \cmm, the resource management action is specified by defining a resource-representing object with the \li{new} keyword. This object then constitutes a call of the \li{drop} method on every scope exit.
 
-If we specify an automatic resource management action for some scope in C++ or C\#, it is often difficult to specify a set of scope exits that do not issue the action. For example, in C++, the action is always executed, and the non-action is available only as a side effect of optimization or the moving convention, which may be marked by \li{std::move}. The extended \cmm offers a relatively direct approach to the problem: all exits execute the dropping action by default for safety, unless the exit follows a \li{dropped} statement, at which point no action is executed at all.
+If we specify an automatic resource management action for some scope in C++ or C\#, it is often difficult to specify a set of scope exits that do not issue the action. For example, in C++, the action is always executed, and the non-action is available only as a side effect of optimization or the moving convention, which may be marked by \li{std::move}. The extended \cmm offers a relatively direct approach to the problem: all exits execute the dropping action by default for safety unless the exit follows a \li{dropped} statement, at which point no action is executed at all.
 
-Additonally, the initialization of a resource in the extended \cmm is not directly linked to its release (\li{drop}), as is the case with C++ where the constructors and destructors are symmetrical. To implement this kind of symmetric behavior, we could enforce executing resource initialization code at the procedure entry for each resource-representing object using another method from the same typeclass.
+Additionally, the initialization of a resource in the extended \cmm is not directly linked to its release (\li{drop}), as is the case with C++, where the constructors and destructors are symmetrical. To implement this kind of symmetric behavior, we could enforce executing resource initialization code at the procedure entry for each resource-representing object using another method from the same typeclass.
