@@ -8,11 +8,7 @@ Before we talk about the specifics of \cmm, let us explain our choice of this pa
 
 Cmm (a variant of \cmm) is used as a backend intermediate representation for GHC \cite{haskellbackends}, the most popular Haskell compiler. \cmm was designed on a great experiential basis by Simon Peyton Jones, one of the co-creators of the Haskell language and GHC itself.
 
-\begin{remark}
-    The \cmm language has two major versions, which differ quite significantly.
-
-    By referring to just \cmm, we will always refer to the second version of the language, \cmm 2.0 (as specified by \citet{ramsey2005c}).
-\end{remark}
+The \cmm language has two major versions, which differ quite significantly. By referring to just \cmm, we will always refer to the second version of the language, \cmm 2.0 (as specified by \citet{ramsey2005c}).
 
 Just like Cmm, \cmm is designed to serve as a backend representation for various frontend compilers. It abstracts away some architectural specifics, while it also offers the users (frontend) to target for some specific architectural features, for example, specific register sizes -- \lstinline{bits32} (a 32 bits long register). It also allows the user to specifically request a \emph{tail call} instead of a regular procedure call, which does not constitute stack manipulation; or \li{cut to} branch to a \li{continuation} label in an active procedure, which (in contrast to regular branches) usually constitutes a stack unwind.
 
