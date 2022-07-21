@@ -22,21 +22,21 @@
 \def\ThesisTypeTitle{\ifEN MASTER THESIS \else DIPLOMOVÁ PRÁCE \fi}
 %\def\ThesisTypeTitle{\ifEN RIGOROUS THESIS \else RIGORÓZNÍ PRÁCE \fi}
 %\def\ThesisTypeTitle{\ifEN DOCTORAL THESIS \else DISERTAČNÍ PRÁCE \fi}
-%\def\ThesisGenitive{\ifEN bachelor \else bakalářské \fi}
-\def\ThesisGenitive{\ifEN master \else diplomové \fi}
-%\def\ThesisGenitive{\ifEN rigorous \else rigorózní \fi}
-%\def\ThesisGenitive{\ifEN doctoral \else disertační \fi}
-%\def\ThesisAccusative{\ifEN bachelor \else bakalářskou \fi}
+%\def\ThesisGenitive{\ifEN bachelor \else bakal{\'a}\v{r}sk{\'e} \fi}
+\def\ThesisGenitive{\ifEN master \else diplomov{\'e} \fi}
+%\def\ThesisGenitive{\ifEN rigorous \else rigor{\'o}zn{\'i} \fi}
+%\def\ThesisGenitive{\ifEN doctoral \else diserta\v{c}n{\'i} \fi}
+%\def\ThesisAccusative{\ifEN bachelor \else bakal{\'a}\v{r}skou \fi}
 \def\ThesisAccusative{\ifEN master \else diplomovou \fi}
-%\def\ThesisAccusative{\ifEN rigorous \else rigorózní \fi}
-%\def\ThesisAccusative{\ifEN doctoral \else disertační \fi}
+%\def\ThesisAccusative{\ifEN rigorous \else rigor{\'o}zn{\'i} \fi}
+%\def\ThesisAccusative{\ifEN doctoral \else diserta\v{c}n{\'i} \fi}
 
 
 
 %%% Fill in your details %%%
 
 \def\ThesisTitle{Inference-driven resource managemenent and polymorphism in systems programming}
-\def\ThesisAuthor{Jiří Klepl}
+\def\ThesisAuthor{Ji\v{r}{\'i} Klepl}
 \def\YearSubmitted{2022}
 
 % department assigned to the thesis
@@ -44,7 +44,7 @@
 % Is it a department (katedra), or an institute (ústav)?
 \def\DeptType{Department}
 
-\def\Supervisor{RNDr. Miroslav Kratochvíl, Ph.D.}
+\def\Supervisor{RNDr. Miroslav Kratochv{\'i}l, Ph.D.}
 \def\SupervisorsDepartment{Department of Software Engineering}
 
 % Study programme and specialization
@@ -52,7 +52,7 @@
 \def\StudyBranch{ISWSP}
 
 \def\Dedication{%
-Dedication. \xxx{It is nice to say thanks to supervisors, friends, family, book authors and food providers.}
+I would like to thank my supervisor and mentor Mirek Kratochv{\'i}l for his support and guidance throughout my work on this thesis. His input was valuable in all aspects of the work, including the intricacies of academic writing and typesetting. I~would also like to thank my family and friends for supporting me and encouraging me during my studies.
 }
 
 \def\AbstractEN{%
@@ -64,11 +64,11 @@ We demonstrate the functionality of the type system and the compiler on selected
 }
 
 \def\AbstractCS{%
-Systémové programovací jazyky usnadňují implementaci softwaru, který běží v omezených prostředích blízko hardwaru, jako jsou operační systémy, drivery, systémy reálného času a vestavěné systémy.
-Implementace prospěšných prvků pro tyto jazyky, jako jsou generické programování a typový systém zajišťující bezchybnost kódu, je ztěžována úzkými požadavky na běhovýmé vlastnostni programu.
-Hlavní náplní této práce je prozkoumat novou kombinaci jazyka C-\phantom{}- s prvky typového systému umožňující typovou kontrolu vysoce polymorfního kódu a demonstruje možnosti typově vedené správy zdrojů v tomto jazyku.
-Jako hlavní výstup práce podává důkaz konceptu zprostředkovaný prototypem překladače rožšířeného jazyka C-\phantom{}- do LLVM a popisuje typový systém založený na odkládajícím řešení omezujících podmínek, který je schopen typové inference za přítomnosti více-parametrových typových tříd a subtypy C-\phantom{}-.
-Funkcionalitu typového systému a překladače demonstrujeme na vybraných ukázkác programů a popisujeme několik rozpoznaných komplikací návrhu, které lze adresovat pro praktičtější implementaci.
+Syst{\'e}mov{\'e} programovac{\'i} jazyky usnad\v{n}uj{\'i} implementaci softwaru, kter{\'y} b\v{e}\v{z}{\'i} v omezen{\'y}ch prost\v{r}ed{\'i}ch bl{\'i}zko hardwaru, jako jsou opera\v{c}n{\'i} syst{\'e}my, drivery, syst{\'e}my re{\'a}ln{\'e}ho \v{c}asu a vestav\v{e}n{\'e} syst{\'e}my.
+Implementace prosp\v{e}\v{s}n{\'y}ch prvk\r{u} pro tyto jazyky, jako jsou generick{\'e} programov{\'a}n{\'i} a typov{\'y} syst{\'e}m zaji\v{s}\v{t}uj{\'i}c{\'i} bezchybnost k{\'o}du, je zt\v{e}\v{z}ov{\'a}na úzk{\'y}mi po\v{z}adavky na b\v{e}hov{\'y}m{\'e} vlastnostni programu.
+Hlavn{\'i} n{\'a}pln{\'i} t{\'e}to pr{\'a}ce je prozkoumat novou kombinaci jazyka C-\phantom{}- s prvky typov{\'e}ho syst{\'e}mu umo\v{z}\v{n}uj{\'i}c{\'i} typovou kontrolu vysoce polymorfn{\'i}ho k{\'o}du a demonstruje mo\v{z}nosti typov\v{e} veden{\'e} spr{\'a}vy zdroj\r{u} v tomto jazyku.
+Jako hlavn{\'i} v{\'y}stup pr{\'a}ce pod{\'a}v{\'a} d\r{u}kaz konceptu zprost\v{r}edkovan{\'y} prototypem p\v{r}eklada\v{c}e ro\v{z}\v{s}{\'i}\v{r}en{\'e}ho jazyka C-\phantom{}- do LLVM a popisuje typov{\'y} syst{\'e}m zalo\v{z}en{\'y} na odkl{\'a}daj{\'i}c{\'i}m \v{r}e\v{s}en{\'i} omezuj{\'i}c{\'i}ch podm{\'i}nek, kter{\'y} je schopen typov{\'e} inference za p\v{r}{\'i}tomnosti v{\'i}ce-parametrov{\'y}ch typov{\'y}ch t\v{r}{\'i}d a subtypy C-\phantom{}-.
+Funkcionalitu typov{\'e}ho syst{\'e}mu a p\v{r}eklada\v{c}e demonstrujeme na vybran{\'y}ch uk{\'a}zk{\'a}c program\r{u} a popisujeme n\v{e}kolik rozpoznan{\'y}ch komplikac{\'i} n{\'a}vrhu, kter{\'e} lze adresovat pro prakti\v{c}t\v{e}j\v{s}{\'i} implementaci.
 }
 
 % 3 to 5 keywords (recommended), each enclosed in curly braces.
@@ -94,6 +94,6 @@ Funkcionalitu typového systému a překladače demonstrujeme na vybraných uká
 \def\StudyProgrammeEN{Computer Science - Software Systems}
 \def\StudyBranchEN{ISWSP}
 \def\KeywordsEN{%
-{programming languages} {type systems} {compilers} {systems programming} {resource management}
+{programming languages}, {type systems}, {compilers}, {systems programming}, {resource management}
 }
 \fi
