@@ -1,7 +1,7 @@
 \chapter{Lessons learned and discussion}
 \label{chap5}
 
-In this section, we discuss and evaluate various design decisions made during the implementation of the prototype compiler. The prototype offered a good insight into the intricacies of extending type inference by parametric polymorphism with typeclasses and subtyping, and some of the design decisions that were initially considered good have turned to be suboptimal. We summarize such findings, and describe several alternatives that may alleviate the issues we encountered. Finally, we highlight how the implementation in a functional language simplified various complicated compiler constructions.
+In this section, we discuss and evaluate various design decisions made during the implementation of the prototype compiler. The prototype offered a good insight into the intricacies of extending type inference by parametric polymorphism with typeclasses and subtyping. Some design decisions that were initially considered good have turned out to be suboptimal. We summarize such findings and describe several alternatives that may alleviate the issues we encountered. Finally, we highlight how the implementation in a functional language simplifies various complicated compiler constructions.
 
 \section{Compiler architecture drawbacks and possible improvements}
 \label{sec:newApproach}
@@ -9,17 +9,17 @@ In this section, we discuss and evaluate various design decisions made during th
 \subsection{Complexity of the inferencer state}
 \label{sec:state}
 
-The biggest issue with the prototype compiler is that it transforms all input constraints into a centralized inner state with numerous invariants that have to be explicitly ensured by various ``repair steps'' (described in \cref{sec:istate,sec:invariants}). The reason behind this design decision was that:
+The biggest issue with the prototype compiler is that it transforms all input constraints into a centralized inner state with numerous invariants that various ``repair steps'' must explicitly ensure (described in \cref{sec:istate,sec:invariants}). The reason behind this design decision was that:
 
 \begin{enumerate}
-    \item The original vision of subtyping considered propagation of subtype inequalities with type algebra. This was later shown to be incompatible with the desired semantics -- two pointer types constructed from the same target type would have to share their subtype inequalities, as described by \cref{inconsistency}.
+    \item The original vision of subtyping considered the propagation of subtype inequalities with type algebra. We later showed this to be incompatible with the desired semantics -- two pointer types constructed from the same target type would have to share their subtype inequalities, as described by \cref{inconsistency}.
 
     \item The original intent included an attempt to make typeclass resolution dependent on subtypes. We didn't manage to find any practical model without ambiguity or undecidability.
 
-    Since we define semantics of considered subtypes as a minimization problem, any typeclass allowing at least two minimal instances for some set of inequalities is ambiguous.
+    Since we define the semantics of considered subtypes as a minimization problem, any typeclass allowing at least two minimal instances for some set of inequalities is ambiguous.
 \end{enumerate}
 
-Since both of these attempts showed no practical use and the subtype system matured into different way, there are no lasting reasons for this design.
+Since both of these attempts showed no practical use and the subtype system matured a different way, there are no lasting reasons for this design.
 
 \paragraph{Possible improvement} The inferencer state can be vastly simplified by introducing special type variables with a separate namespace for each (subtype) dimension $s$ and, for each, two extra constraints instead of $t \leq_s t'$ in \cref{lang:flat}:
 
@@ -33,31 +33,31 @@ If we extend this with the $\sup_s$ operator (introduced in \cref{sec:inferSub})
 \subsection{Omission of context levels}
 \label{sec:global}
 
-The prototype compiler performs most constraint solving steps on the whole program globally (on all constraints) and not just on strongly connected subprogram components (top-level definitions with cyclic dependencies). This then called for implementation of even stronger construct than context levels introduced in \cref{defer_solve}, ``references to parent type variables'' (defined in \cref{sec:repre}; each uniquely representing a top-level definition). This is required in the prototype design for deciding what type variables (representing types) are present in each top-level definition.
+The prototype compiler performs most constraint-solving steps on the whole program globally (on all constraints) and not just on strongly connected subprogram components (top-level definitions with cyclic dependencies). This then called for implementation of even stronger construct than context levels introduced in \cref{defer_solve}, ``references to parent type variables'' (defined in \cref{sec:repre}; each uniquely representing a top-level definition). This is required in the prototype design for deciding what type variables (representing types) are present in each top-level definition.
 
-When the type inference of a top-level definition is closed, the compiler looks up all type variables with the corresponding reference to parent type variable and constructs a scheme for the given definition, which is then added to the state, as described in \cref{sec:inferPipeline}. This is very inefficient and error-prone.
+When the type inference of a top-level definition is closed, the compiler looks up all type variables with the corresponding reference to the parent type variable. It then constructs a scheme for the given definition, which is then added to the state, as described in \cref{sec:inferPipeline}. This is very inefficient and error-prone.
 
-Another consequence of this is the ``instantiation constraint'' introduced by the prototype compiler in \cref{lang:flat}. If the compiler solved each subprogram component separately, these constraints could be immediately replaced with appropriate instantiations or just unifications, depending on whether the `polytype' operand is present in the same component or in already solved component.
+Another consequence of this is the ``instantiation constraint'' introduced by the prototype compiler in \cref{lang:flat}. Suppose the compiler solved each subprogram component separately. In that case, these constraints could be immediately replaced with appropriate instantiations or just unifications, depending on whether the `polytype' operand is present in the same or an already solved component.
 
 \paragraph{Possible improvement}
-It would be much easier to implement the inference in such a way that each subprogram component is solved separately in their topological order.
+It would be much easier to implement the inference so that each subprogram component is solved separately in their topological order.
 
-In such case, the references to parent type variables are not required, because all considered type variables are relevant to the given component and we solve each subprogram component with different variables. Similarly, the instantiation constraint is completely unnecessary. During inference preprocessing for the given component, we already know what references are pointing to polytypes, and we can generate the appropriate constraints.
+In such cases, the references to parent type variables are not required because all considered type variables are relevant to the given component. We solve each subprogram component with different variables. Similarly, the instantiation constraint is completely unnecessary. During inference preprocessing for the given component, we already know what references point to polytypes and can generate the appropriate constraints.
 
 \subsection{Extracting results from the inferencer state}
 \label{sec:inferInter}
 
-A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state described in \cref{sec:istate}. Therefore, this state has to be passed to all subsequent phases. This is most significant during monomorphization (\cref{sec:mono}), which has to change type elaborations of monomorphic copies of polymorphic top-level definitions. It has to repeatably perform lookups of type interpretations for each elaboration present in the given top-level definition.
+A problem connected to the one discussed in \cref{sec:state} is that the prototype compiler stores types exclusively in the inferencer state described in \cref{sec:istate}. Therefore, this state has to be passed to all subsequent phases. Most notably, the inferencer state is used during monomorphization (\cref{sec:mono}) to interpret all types, and to change type elaborations of monomorphic copies of polymorphic top-level definitions. Monomorphizer has to repeatably perform lookups for type interpretations for each elaboration present in the given top-level definition.
 
 \paragraph{Possible improvement}
 Alternatively, we can elaborate each node of the inferred code with a fully substituted type (or qualified type for local reference to a polytype; type scheme for a polytype top-level definition).
 
-That way, the qualified types would take a witness of the corresponding instance, and they would also contain the instantiated type of the instance, making the monomorphization (and partially also the subsequent compilation phases) much easier.
+That way, the qualified types would take a witness of the corresponding instance and contain the instantiated type of the instance, making the monomorphization (and partially also the subsequent compilation phases) much easier.
 
 \subsection{Propagation of subtype inequalities}
 \label{sec:weakness}
 
-The type system does not propagate subtype inequalities as discussed in \cref{sec:state}. This has an effect of ``forgetting'' appropriate subtypes for arguments, when a reference to a procedure is passed. We have explored the implications more closely in \cref{sec:tsLims}.
+The type system does not propagate subtype inequalities as discussed in \cref{sec:state}, which leads to``forgetting'' appropriate subtypes for arguments when a reference to a procedure is passed. We have explored the implications more closely in \cref{sec:tsLims}.
 
 \paragraph{Possible improvement}
 We could add an extra subtype dimension $a$ with only one constant $\bot_a$. For each assignment (for example, \li{x = y}, function argument passing, etc.), we still consider the left-hand operand to be more general in all dimensions than the right-hand operand, including the $a$ dimension.
@@ -66,12 +66,12 @@ With that, after we solve the typings in each \emph{program} (external binding w
 
 \section{Useful functional constructs for compiler implementation}
 
-As this work is our first compiler with no significant dependencies on an established framework (with the exception of the code generation), our approach was at times, quite experimental. This lead to many design-related findings, some of which might be beneficial to any future work in similar areas.
+As this work is our first compiler with no significant dependencies on an established framework (except for code generation), our approach was, at times, quite experimental. This led to many design-related findings, some of which might benefit future work in similar areas.
 
 \subsection{Annotation wrappers}
 \label{sec:annotations}
 
-One such finding is the design pattern we used for defining the AST nodes in Haskell as shown in \cref{lst:topLevel}.
+One such finding is the design pattern we used for defining the AST nodes in Haskell, as shown in \cref{lst:topLevel}.
 
 \begin{listing}
     \caption{Definition of an AST node \texttt{TopLevel}}
@@ -97,14 +97,14 @@ This allows us to represent the AST in a type-safe manner with arbitrary annotat
 
     \item The \li{Foldable} class then allows us the abstraction to perform various folds on the node's annotations (perhaps, to collect some values from them), while \li{Traversable} allows us to perform monadic transformations on them (stateful transformations).
 
-    \item The \li{Data} class then allows us to write very succinct implementations for transformations of the AST which access only a handful of nodes of the whole structure. The best example of using these would be the implementation for the mangle function, which mangles the names in the AST.
+    \item The \li{Data} class then allows us to write succinct implementations for transformations of the AST, which access only a handful of nodes of the whole structure. The best example of using these would be the implementation of the mangle function, which mangles the names in the AST.
 \end{itemize}
 
 \subsubsection{Possible benefits of deriving the \texttt{Data} class}
 
-We, in many instances, use generics described by \citet{lammel2003scrap}. This is demonstrated by \cref{lst:dataGenerics}. The important part of the example, we want to show, is the function \li{go = gmapM go `extM` lValueCase}. This function, which can be extended with more \li{`extM` xCase} cases performs the monadic (= stateful) transformation \li{lValueCase} on the given input, or, if the type of the argument does not match the type expected by the case, it traverses all immediate subterms, again, attempting to perform one of the monadic transformations, and then recursively on their immediate subterms, etc., until each branch of the expression ends in a match or in a leaf.
+We, in many instances, use generics described by \citet{lammel2003scrap}. This is demonstrated by \cref{lst:dataGenerics}. The important part of the example, we want to show, is the function \li{go = gmapM go `extM` lValueCase}. This function, which we can extend with more \li{`extM` xCase} cases, performs the monadic (= stateful) transformation \li{lValueCase} on the given input; or, if the type of the argument does not match the type expected by any case, it traverses all immediate subterms, again, attempting to perform one of the monadic transformations, and then recursively on their immediate subterms, etc., until each branch of the expression ends in a match or a leaf.
 
-Notice that if the case matches the expected type, but not the expected value, we explicitly (using \li{gmapM go}) propagate the transformation to child nodes of the matched case.
+Notice that if the case matches the expected type but not the expected value, we explicitly (using \li{gmapM go}) propagate the transformation to child nodes of the matched case.
 
 The \li{go = gmapM go `extM` lValueCase} pattern does not look that impressive at first, but it is a generalized visitor pattern that can quite significantly shorten the development time and the code complexity. For stateless transformations, use \li{gmapT} and \li{extT}.
 
@@ -138,10 +138,10 @@ mangle n@(_ `Annot` (_ :: a)) = go n
 
 We made notice of importance of separating the whole compilation into layers similarly to the UNIX philosophy. Each of such layers should do one job and do it well. This approach greatly improves the debugging and the analysis of the program.
 
-As an anti-example, take the monomorphization layer. It has two (albeit very related) jobs: it stores the types inferred by the inference layer into the annotations in AST and it also monomorphizes the code -- those are two distinct responsibilities. Separating them into two layers would have an effect of it being possible to use the above pattern to simplify one of such layers into mere hundreds of lines of code.
+As an anti-example, take the monomorphization layer. It has two (albeit very related) jobs: it stores the types inferred by the inference layer into the annotations in AST and monomorphizes the code -- those are two distinct responsibilities. Separating them into two layers would make it possible to use the pattern from \cref{lst:dataGenerics} to simplify one of such layers into mere hundreds of lines of code.
 
 Good examples of using this principle are the modules \li{CMM.Mangle} (source of \cref{lst:dataGenerics}) and \li{CMM.FillElabs}.
 
 \subsection{Generic AST annotations}
 
-We found out the benefit of defining the layers with no assumptions on the actual structure of the node annotations described in \cref{sec:annotations} but requiring a typeclass which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely and this allowed us to quite easily introduce new annotations to the AST nodes and to quickly change the the layer pipeline.
+We found the benefit of defining the layers with no assumptions on the actual structure of the node annotations described in \cref{sec:annotations} but requiring a typeclass which defines the access to the required part of the annotation (most preferably, by a lens). We adhered to this principle quite closely, allowing us to easily introduce new annotations to the AST nodes and quickly change the layer pipeline.
