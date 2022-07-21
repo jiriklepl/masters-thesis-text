@@ -102,7 +102,7 @@ This allows us to represent the AST in a type-safe manner with arbitrary annotat
 
 \subsubsection{Possible benefits of deriving the \texttt{Data} class}
 
-We, in many instances, use generics described by \citet{lammel2003scrap}. This is demonstrated by \cref{lst:dataGenerics}. The important part of the example, we want to show, is the function \li{go = gmapM go `extM` lValueCase}. This function, which we can extend with more \li{`extM` xCase} cases, performs the monadic (= stateful) transformation \li{lValueCase} on the given input; or, if the type of the argument does not match the type expected by any case, it traverses all immediate subterms, again, attempting to perform one of the monadic transformations, and then recursively on their immediate subterms, etc., until each branch of the expression ends in a match or a leaf.
+In many instances, we use generics described by \citet{lammel2003scrap}. This is demonstrated by \cref{lst:dataGenerics}. Function \li{go = gmapM go `extM` lValueCase} is the most important part of the example. This function performs a stateful monadic transformation \li{lValueCase} on each first occurrence of a matching type in the syntactic structure of the given input. We can extend it with more \li{`extM` xCase} cases for different types.
 
 Notice that if the case matches the expected type but not the expected value, we explicitly (using \li{gmapM go}) propagate the transformation to child nodes of the matched case.
 
